@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+*.log
+coverage
+data/downloads
+data/sources
+tmp_ebible_index.html
