@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
+import { parseJsonSafe } from "@/lib/study-client-utils";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,29 +19,64 @@ export default function RegisterPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
 
-    const response = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: normalizedName,
+          email: normalizedEmail,
+          password
+        })
+      });
+    } catch {
+      setError("Unable to reach registration service. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok) {
-      const data = (await response.json()) as { error?: string };
+      const data = (await parseJsonSafe(response)) as { error?: string };
       setError(data.error ?? "Unable to create account.");
       setIsSubmitting(false);
       return;
     }
 
-    const signInResult = await signIn("credentials", {
-      email,
-      password,
-      redirect: false
-    });
+    try {
+      const signInResult = await signIn("credentials", {
+        email: normalizedEmail,
+        password,
+        redirect: false
+      });
 
-    if (signInResult?.error) {
-      setError("Account created, but auto-login failed. Please log in.");
-      setIsSubmitting(false);
+      if (signInResult?.error) {
+        Sentry.withScope((scope) => {
+          scope.setTag("event", "register_auto_login_fallback");
+          scope.setTag("source", "register_page");
+          scope.setLevel("info");
+          scope.setExtra("reason", signInResult.error);
+          scope.setExtra("emailDomain", normalizedEmail.split("@")[1] ?? "unknown");
+          Sentry.captureMessage("register_auto_login_fallback");
+        });
+        router.push(`/login?registered=1&email=${encodeURIComponent(normalizedEmail)}`);
+        router.refresh();
+        return;
+      }
+    } catch {
+      Sentry.withScope((scope) => {
+        scope.setTag("event", "register_auto_login_fallback");
+        scope.setTag("source", "register_page");
+        scope.setLevel("info");
+        scope.setExtra("reason", "sign_in_exception");
+        scope.setExtra("emailDomain", normalizedEmail.split("@")[1] ?? "unknown");
+        Sentry.captureMessage("register_auto_login_fallback");
+      });
+      router.push(`/login?registered=1&email=${encodeURIComponent(normalizedEmail)}`);
+      router.refresh();
       return;
     }
 

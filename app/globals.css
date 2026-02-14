@@ -56,6 +56,11 @@ a {
   align-items: center;
   gap: 12px;
   padding: 14px 0;
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: rgba(246, 242, 233, 0.94);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--stroke);
 }
 
@@ -242,9 +247,17 @@ button:disabled {
   grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(180px, 230px);
 }
 
+.studyWorkspace.withHistory.navCollapsed {
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) 74px;
+}
+
+.studyWorkspace.navCollapsed {
+  grid-template-columns: minmax(0, 1fr) 74px;
+}
+
 .studyHistoryRail {
   position: sticky;
-  top: 14px;
+  top: 72px;
   align-self: start;
 }
 
@@ -254,7 +267,7 @@ button:disabled {
 
 .studyRail {
   position: sticky;
-  top: 14px;
+  top: 72px;
   align-self: start;
 }
 
@@ -396,11 +409,28 @@ button:disabled {
 }
 
 .studyGraphHeader {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .studyGraphHeader h2 {
   margin: 0;
+}
+
+.studyGraphHeader.collapsedHeader {
+  min-height: 30px;
+}
+
+.studyGraphCollapseButton {
+  padding: 6px 10px;
+  font-size: 12px;
+  background: #867259;
+}
+
+.studyGraphPanel.collapsed {
+  padding: 8px;
 }
 
 .studyGraphColumn {
@@ -428,6 +458,12 @@ button:disabled {
   gap: 8px;
   align-items: center;
   text-align: left;
+}
+
+.studyGraphNodeButton.compact {
+  grid-template-columns: auto;
+  padding: 8px 6px;
+  width: 42px;
 }
 
 .studyGraphNodeButton.prompt {
@@ -541,7 +577,7 @@ button:disabled {
 
 .wwjdHistoryRail {
   position: sticky;
-  top: 14px;
+  top: 72px;
   align-self: start;
 }
 

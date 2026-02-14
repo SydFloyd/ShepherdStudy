@@ -23,6 +23,7 @@ export default function StudyPage() {
   );
   const [startingPassage, setStartingPassage] = useState("");
   const [promptInput, setPromptInput] = useState("");
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const { status: sessionStatus } = useSession();
 
   const {
@@ -71,7 +72,7 @@ export default function StudyPage() {
 
   return (
     <section
-      className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}`}
+      className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}${isNavCollapsed ? " navCollapsed" : ""}`}
     >
       {sessionStatus === "authenticated" ? (
         <aside className="studyHistoryRail">
@@ -217,6 +218,8 @@ export default function StudyPage() {
             nodes={graph.nodes}
             edges={graph.edges}
             activeNodeId={focusedNodeId ?? turns.at(-1)?.graphNodeId}
+            isCollapsed={isNavCollapsed}
+            onToggleCollapsed={() => setIsNavCollapsed((current) => !current)}
             onNodeSelect={onGraphNodeSelect}
           />
         </aside>

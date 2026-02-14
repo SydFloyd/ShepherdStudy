@@ -106,7 +106,7 @@ export function WwjdThreadPanel({
                   );
                 }}
               >
-                ⋯
+                ...
               </button>
             </div>
           ))}

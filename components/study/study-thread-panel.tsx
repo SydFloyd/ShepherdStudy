@@ -106,7 +106,7 @@ export function StudyThreadPanel({
                   );
                 }}
               >
-                ⋯
+                ...
               </button>
             </div>
           ))}
