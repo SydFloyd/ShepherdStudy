@@ -56,7 +56,7 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
   return (
     <section className="card">
       <h1>Log in</h1>
-      <form className="grid" onSubmit={onSubmit} method="get" action="/api/auth/signin">
+      <form className="grid" onSubmit={onSubmit}>
         <label>
           Email
           <input
@@ -85,18 +85,8 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
       {error ? <p className="muted">{error}</p> : null}
       {!error && queryError ? <p className="muted">{queryError}</p> : null}
       <p className="muted">
-        Login issue on this browser? Use the{" "}
-        <Link href="/api/auth/signin?callbackUrl=/study">secure sign-in page</Link>.
-      </p>
-      <p className="muted">
         New here? <Link href="/register">Create an account</Link>
       </p>
-      <noscript>
-        <p className="muted">
-          JavaScript appears disabled. Use the{" "}
-          <Link href="/api/auth/signin?callbackUrl=/study">secure sign-in page</Link>.
-        </p>
-      </noscript>
     </section>
   );
 }
