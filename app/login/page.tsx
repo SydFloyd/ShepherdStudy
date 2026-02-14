@@ -1,10 +1,12 @@
-import { LoginForm } from "./login-form";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 type LoginPageProps = {
   searchParams: Promise<{
     email?: string | string[];
     registered?: string | string[];
     error?: string | string[];
+    view?: string | string[];
   }>;
 };
 
@@ -17,12 +19,21 @@ function firstValue(value: string | string[] | undefined): string {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = await searchParams;
+  const forceView = firstValue(resolvedSearchParams.view) === "1";
+
+  if (!forceView) {
+    redirect("/api/auth/signin?callbackUrl=/study");
+  }
 
   return (
-    <LoginForm
-      initialEmail={firstValue(resolvedSearchParams.email)}
-      wasRegistered={firstValue(resolvedSearchParams.registered) === "1"}
-      errorCode={firstValue(resolvedSearchParams.error)}
-    />
+    <section className="card">
+      <h1>Log in</h1>
+      <p className="muted">
+        Continue to the secure sign-in page.
+      </p>
+      <p className="muted">
+        <Link href="/api/auth/signin?callbackUrl=/study">Open secure sign-in</Link>
+      </p>
+    </section>
   );
 }
