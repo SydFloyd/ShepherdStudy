@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
 import { ReactNode } from "react";
 
 import { AnalyticsScript } from "@/components/analytics-script";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
+import { authOptions } from "@/lib/auth";
 
 import "./globals.css";
 
@@ -17,12 +19,14 @@ type Props = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: Props) {
+export default async function RootLayout({ children }: Props) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en">
       <body>
         <AnalyticsScript />
-        <Providers>
+        <Providers session={session}>
           <div className="shell">
             <Nav />
             <main className="main">{children}</main>
