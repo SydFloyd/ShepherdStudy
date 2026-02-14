@@ -33,10 +33,10 @@ export default function LoginPage() {
       email: email.trim().toLowerCase(),
       password,
       redirect: false
-    });
+    }).catch(() => null);
 
-    if (result?.error) {
-      setError("Invalid email or password.");
+    if (!result || result.error || result.ok !== true) {
+      setError("Unable to sign in. Check your email and password.");
       setIsSubmitting(false);
       return;
     }

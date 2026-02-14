@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import * as Sentry from "@sentry/nextjs";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
 export default function RegisterPage() {
@@ -46,41 +44,7 @@ export default function RegisterPage() {
       return;
     }
 
-    try {
-      const signInResult = await signIn("credentials", {
-        email: normalizedEmail,
-        password,
-        redirect: false
-      });
-
-      if (signInResult?.error) {
-        Sentry.withScope((scope) => {
-          scope.setTag("event", "register_auto_login_fallback");
-          scope.setTag("source", "register_page");
-          scope.setLevel("info");
-          scope.setExtra("reason", signInResult.error);
-          scope.setExtra("emailDomain", normalizedEmail.split("@")[1] ?? "unknown");
-          Sentry.captureMessage("register_auto_login_fallback");
-        });
-        router.push(`/login?registered=1&email=${encodeURIComponent(normalizedEmail)}`);
-        router.refresh();
-        return;
-      }
-    } catch {
-      Sentry.withScope((scope) => {
-        scope.setTag("event", "register_auto_login_fallback");
-        scope.setTag("source", "register_page");
-        scope.setLevel("info");
-        scope.setExtra("reason", "sign_in_exception");
-        scope.setExtra("emailDomain", normalizedEmail.split("@")[1] ?? "unknown");
-        Sentry.captureMessage("register_auto_login_fallback");
-      });
-      router.push(`/login?registered=1&email=${encodeURIComponent(normalizedEmail)}`);
-      router.refresh();
-      return;
-    }
-
-    router.push("/study");
+    router.push(`/login?registered=1&email=${encodeURIComponent(normalizedEmail)}`);
     router.refresh();
   }
 
