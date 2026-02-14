@@ -41,9 +41,9 @@ This file tracks the implementation sequence for productionization and serves as
 - `DONE` Add backup/restore checklist for Postgres.
 
 ## Phase 6: QA Gate
-- `TODO` Unit tests for quota logic + study response transforms.
-- `TODO` Integration tests for thread persistence and retrieval.
-- `TODO` E2E smoke tests for `/study` and `/wwjd`.
+- `DONE` Unit tests for quota logic + study response transforms.
+- `DONE` Integration tests for thread persistence and retrieval.
+- `DONE` E2E smoke tests for `/study` and `/wwjd`.
 
 ## Phase 7: Launch
 - `TODO` Configure production domain and HTTPS.

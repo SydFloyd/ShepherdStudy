@@ -51,6 +51,12 @@ function getActorKey(input: { userId?: string | null; request: Request }) {
   return `anon:${firstIp ?? "unknown-ip"}:${userAgent.slice(0, 48)}`;
 }
 
+export const __testables = {
+  startOfUtcDay,
+  nextUtcDayStart,
+  getActorKey
+};
+
 export async function consumeQuota(input: {
   request: Request;
   userId?: string | null;
@@ -158,4 +164,3 @@ export async function consumeQuota(input: {
 
   return decision;
 }
-
