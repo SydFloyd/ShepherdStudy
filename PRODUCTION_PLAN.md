@@ -46,6 +46,6 @@ This file tracks the implementation sequence for productionization and serves as
 - `DONE` E2E smoke tests for `/study` and `/wwjd`.
 
 ## Phase 7: Launch
-- `TODO` Configure production domain and HTTPS.
-- `TODO` Add privacy/terms pages.
-- `TODO` Add analytics and retention monitoring.
+- `IN_PROGRESS` Configure production domain and HTTPS (hosting/DNS action required).
+- `DONE` Add privacy/terms pages.
+- `DONE` Add analytics and retention monitoring.

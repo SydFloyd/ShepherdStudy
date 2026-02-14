@@ -35,6 +35,21 @@ a {
   margin-top: 20px;
 }
 
+.footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--stroke);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 12px;
+}
+
 .nav {
   display: flex;
   justify-content: space-between;
@@ -69,6 +84,14 @@ a {
   border: 1px solid var(--stroke);
   border-radius: 12px;
   padding: 16px;
+}
+
+.legalPage h1 {
+  margin-top: 0;
+}
+
+.legalPage h2 {
+  margin-bottom: 6px;
 }
 
 .grid {

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
+import { AnalyticsScript } from "@/components/analytics-script";
+import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
 
@@ -19,10 +21,12 @@ export default function RootLayout({ children }: Props) {
   return (
     <html lang="en">
       <body>
+        <AnalyticsScript />
         <Providers>
           <div className="shell">
             <Nav />
             <main className="main">{children}</main>
+            <Footer />
           </div>
         </Providers>
       </body>
