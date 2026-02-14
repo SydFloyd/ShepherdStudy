@@ -8,3 +8,6 @@ coverage
 data/downloads
 data/sources
 tmp_ebible_index.html
+
+# Sentry Config File
+.env.sentry-build-plugin
