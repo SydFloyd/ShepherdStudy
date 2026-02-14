@@ -151,6 +151,8 @@ export default function StudyPage() {
                   answer={turn.response.answer}
                   context={turn.response.context}
                   relevance={turn.response.relevance}
+                  feedbackItemId={turn.id}
+                  threadId={activeThreadId}
                 />
               </section>
 

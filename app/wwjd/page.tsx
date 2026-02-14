@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { WwjdThreadPanel } from "@/components/wwjd/wwjd-thread-panel";
+import { FeedbackControls } from "@/components/feedback-controls";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import {
   BIBLE_TRANSLATIONS,
@@ -341,6 +342,13 @@ export default function WwjdPage() {
                   {message.role === "assistant" ? "WWJD Assistant" : "You"}
                 </p>
                 <p>{message.content}</p>
+                {message.role === "assistant" ? (
+                  <FeedbackControls
+                    surface="wwjd"
+                    itemId={`wwjd-${index}`}
+                    threadId={activeThreadId}
+                  />
+                ) : null}
                 {message.role === "assistant" && message.recommendations ? (
                   <details className="wwjdRecoBar">
                     <summary>

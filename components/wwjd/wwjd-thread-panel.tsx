@@ -26,8 +26,6 @@ export function WwjdThreadPanel({
   const [menu, setMenu] = useState<{
     threadId: string;
     title: string;
-    x: number;
-    y: number;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -86,60 +84,46 @@ export function WwjdThreadPanel({
                 type="button"
                 className="studyThreadActionsButton"
                 aria-label={`Actions for ${thread.title}`}
-                onClick={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
+                onClick={() => {
                   setMenu((current) =>
                     current?.threadId === thread.id
                       ? null
                       : {
                           threadId: thread.id,
-                          title: thread.title,
-                          x: Math.max(
-                            8,
-                            Math.min(rect.right - 124, window.innerWidth - 132)
-                          ),
-                          y: Math.max(
-                            8,
-                            Math.min(rect.bottom + 6, window.innerHeight - 120)
-                          )
+                          title: thread.title
                         }
                   );
                 }}
               >
                 ...
               </button>
+              {menu?.threadId === thread.id ? (
+                <div ref={menuRef} className="studyThreadMenu inline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextTitle = window.prompt("Rename WWJD chat", menu.title);
+                      if (nextTitle && nextTitle.trim()) {
+                        onRenameThread(menu.threadId, nextTitle.trim());
+                      }
+                      setMenu(null);
+                    }}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onArchiveThread(menu.threadId);
+                      setMenu(null);
+                    }}
+                  >
+                    Archive
+                  </button>
+                </div>
+              ) : null}
             </div>
           ))}
-        </div>
-      ) : null}
-
-      {menu ? (
-        <div
-          ref={menuRef}
-          className="studyThreadMenu popup"
-          style={{ left: menu.x, top: menu.y }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              const nextTitle = window.prompt("Rename WWJD chat", menu.title);
-              if (nextTitle && nextTitle.trim()) {
-                onRenameThread(menu.threadId, nextTitle.trim());
-              }
-              setMenu(null);
-            }}
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onArchiveThread(menu.threadId);
-              setMenu(null);
-            }}
-          >
-            Archive
-          </button>
         </div>
       ) : null}
     </article>

@@ -1,9 +1,13 @@
+import { FeedbackControls } from "@/components/feedback-controls";
+
 type Props = {
   modeName: string;
   behaviorName: string;
   answer: string;
   context: string;
   relevance: string;
+  feedbackItemId: string;
+  threadId?: string | null;
 };
 
 export function StudyAssistantPanel({
@@ -11,7 +15,9 @@ export function StudyAssistantPanel({
   behaviorName,
   answer,
   context,
-  relevance
+  relevance,
+  feedbackItemId,
+  threadId
 }: Props) {
   return (
     <article className="card assistantPanel">
@@ -24,6 +30,7 @@ export function StudyAssistantPanel({
       <p>{context}</p>
       <h3>Relevance</h3>
       <p>{relevance}</p>
+      <FeedbackControls surface="study" itemId={feedbackItemId} threadId={threadId} />
     </article>
   );
 }
