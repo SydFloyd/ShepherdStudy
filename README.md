@@ -1,6 +1,6 @@
-# Shepherd Study MVP
+# Shepherd Study
 
-Bible study web MVP with personalized scripture recommendations using OpenAI.
+Bible study web application with personalized scripture recommendations using OpenAI.
 
 ## Mission Guardrails
 
