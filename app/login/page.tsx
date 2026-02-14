@@ -1,77 +1,89 @@
-"use client";
-
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { headers } from "next/headers";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+type LoginPageProps = {
+  searchParams: Promise<{
+    email?: string | string[];
+    registered?: string | string[];
+    error?: string | string[];
+  }>;
+};
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const prefillEmail = params.get("email");
-    const wasRegistered = params.get("registered") === "1";
-    if (prefillEmail) {
-      setEmail(prefillEmail);
-    }
-    if (wasRegistered) {
-      setError("Account created. Please log in.");
-    }
-  }, []);
-
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
-    const result = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      password,
-      redirect: false
-    }).catch(() => null);
-
-    if (!result || result.error || result.ok !== true) {
-      setError("Unable to sign in. Check your email and password.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    router.push("/study");
-    router.refresh();
+function firstValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
   }
+  return value ?? "";
+}
+
+function mapAuthError(errorCode: string): string {
+  switch (errorCode) {
+    case "CredentialsSignin":
+      return "Unable to sign in. Check your email and password.";
+    case "AccessDenied":
+      return "Access denied for this account.";
+    case "Configuration":
+      return "Authentication is temporarily unavailable.";
+    default:
+      return errorCode ? "Unable to sign in." : "";
+  }
+}
+
+async function getCsrfToken(): Promise<string | null> {
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (!host) {
+    return null;
+  }
+
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
+  const csrfResponse = await fetch(`${protocol}://${host}/api/auth/csrf`, {
+    cache: "no-store"
+  }).catch(() => null);
+
+  if (!csrfResponse?.ok) {
+    return null;
+  }
+
+  const csrfPayload = (await csrfResponse.json().catch(() => null)) as
+    | { csrfToken?: string }
+    | null;
+  return csrfPayload?.csrfToken ?? null;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const email = firstValue(resolvedSearchParams.email);
+  const wasRegistered = firstValue(resolvedSearchParams.registered) === "1";
+  const authError = mapAuthError(firstValue(resolvedSearchParams.error));
+  const csrfToken = await getCsrfToken();
 
   return (
     <section className="card">
       <h1>Log in</h1>
-      <form className="grid" onSubmit={onSubmit}>
-        <label>
-          Email
-          <input
-            value={email}
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            value={password}
-            type="password"
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Signing in..." : "Log in"}
-        </button>
-      </form>
-      {error ? <p className="muted">{error}</p> : null}
+      {csrfToken ? (
+        <form className="grid" method="post" action="/api/auth/callback/credentials">
+          <input type="hidden" name="csrfToken" value={csrfToken} />
+          <input type="hidden" name="callbackUrl" value="/study" />
+          <label>
+            Email
+            <input name="email" type="email" defaultValue={email} required />
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" required />
+          </label>
+          <button type="submit">Log in</button>
+        </form>
+      ) : (
+        <p className="muted">
+          Unable to load secure login form. Use the{" "}
+          <Link href="/api/auth/signin?callbackUrl=/study">secure sign-in page</Link>.
+        </p>
+      )}
+      {wasRegistered ? <p className="muted">Account created. Please log in.</p> : null}
+      {authError ? <p className="muted">{authError}</p> : null}
       <p className="muted">
         New here? <Link href="/register">Create an account</Link>
       </p>
