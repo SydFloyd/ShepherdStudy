@@ -2,6 +2,13 @@
   "name": "bible-study-mvp",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome 111",
+    "edge 111",
+    "firefox 111",
+    "safari 16.1",
+    "ios_saf 16.1"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
