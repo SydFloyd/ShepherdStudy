@@ -23,7 +23,6 @@ export default function StudyPage() {
   );
   const [startingPassage, setStartingPassage] = useState("");
   const [promptInput, setPromptInput] = useState("");
-  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const { status: sessionStatus } = useAuthStatus();
 
   const {
@@ -71,9 +70,7 @@ export default function StudyPage() {
   const graph = buildLocalGraph(turns);
 
   return (
-    <section
-      className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}${isNavCollapsed ? " navCollapsed" : ""}`}
-    >
+    <section className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}`}>
       {sessionStatus === "authenticated" ? (
         <aside className="studyHistoryRail">
           <StudyThreadPanel
@@ -125,54 +122,46 @@ export default function StudyPage() {
         </article>
 
         <div className="studyTurns">
-          {turns.length === 0 ? (
-            <article className="card">
-              <p className="muted">
-                Start with a prompt, an optional starting verse, or both.
-              </p>
-            </article>
-          ) : (
-            turns.map((turn) => (
-              <section
-                key={turn.id}
-                id={`study-turn-${turn.id}`}
-                data-graph-node-id={turn.graphNodeId}
-                className="studyTurnBlock"
-              >
-                <article className="card studyUserBubble">
-                  <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
-                  <p>{turn.userText}</p>
-                </article>
+          {turns.map((turn) => (
+            <section
+              key={turn.id}
+              id={`study-turn-${turn.id}`}
+              data-graph-node-id={turn.graphNodeId}
+              className="studyTurnBlock"
+            >
+              <article className="card studyUserBubble">
+                <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
+                <p>{turn.userText}</p>
+              </article>
 
-                <section className="studyResultGrid">
-                  {turn.response.passage ? (
-                    <StudyPassagePanel passage={turn.response.passage} />
-                  ) : (
-                    <article className="card">
-                      <h2>No Anchor Passage</h2>
-                      <p className="muted">
-                        This response did not resolve to a single anchor verse.
-                      </p>
-                    </article>
-                  )}
-                  <StudyAssistantPanel
-                    modeName={turn.response.modeName}
-                    behaviorName={turn.response.assistantBehaviorName}
-                    answer={turn.response.answer}
-                    context={turn.response.context}
-                    relevance={turn.response.relevance}
-                  />
-                </section>
-
-                <StudyRecommendations
-                  recommendations={turn.response.recommendations}
-                  translation={turn.response.passage?.translation ?? translation}
-                  sourceNodeId={turn.graphNodeId}
-                  onSelectRecommendation={onRecommendationSelect}
+              <section className="studyResultGrid">
+                {turn.response.passage ? (
+                  <StudyPassagePanel passage={turn.response.passage} />
+                ) : (
+                  <article className="card">
+                    <h2>No Anchor Passage</h2>
+                    <p className="muted">
+                      This response did not resolve to a single anchor verse.
+                    </p>
+                  </article>
+                )}
+                <StudyAssistantPanel
+                  modeName={turn.response.modeName}
+                  behaviorName={turn.response.assistantBehaviorName}
+                  answer={turn.response.answer}
+                  context={turn.response.context}
+                  relevance={turn.response.relevance}
                 />
               </section>
-            ))
-          )}
+
+              <StudyRecommendations
+                recommendations={turn.response.recommendations}
+                translation={turn.response.passage?.translation ?? translation}
+                sourceNodeId={turn.graphNodeId}
+                onSelectRecommendation={onRecommendationSelect}
+              />
+            </section>
+          ))}
           {pendingVerseTurn ? (
             <section className="studyTurnBlock">
               <article className="card studyUserBubble">
@@ -218,8 +207,6 @@ export default function StudyPage() {
             nodes={graph.nodes}
             edges={graph.edges}
             activeNodeId={focusedNodeId ?? turns.at(-1)?.graphNodeId}
-            isCollapsed={isNavCollapsed}
-            onToggleCollapsed={() => setIsNavCollapsed((current) => !current)}
             onNodeSelect={onGraphNodeSelect}
           />
         </aside>

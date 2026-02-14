@@ -247,14 +247,6 @@ button:disabled {
   grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(180px, 230px);
 }
 
-.studyWorkspace.withHistory.navCollapsed {
-  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) 74px;
-}
-
-.studyWorkspace.navCollapsed {
-  grid-template-columns: minmax(0, 1fr) 74px;
-}
-
 .studyHistoryRail {
   position: sticky;
   top: 72px;
@@ -419,20 +411,6 @@ button:disabled {
   margin: 0;
 }
 
-.studyGraphHeader.collapsedHeader {
-  min-height: 30px;
-}
-
-.studyGraphCollapseButton {
-  padding: 6px 10px;
-  font-size: 12px;
-  background: #867259;
-}
-
-.studyGraphPanel.collapsed {
-  padding: 8px;
-}
-
 .studyGraphColumn {
   display: grid;
   gap: 0;
@@ -458,12 +436,6 @@ button:disabled {
   gap: 8px;
   align-items: center;
   text-align: left;
-}
-
-.studyGraphNodeButton.compact {
-  grid-template-columns: auto;
-  padding: 8px 6px;
-  width: 42px;
 }
 
 .studyGraphNodeButton.prompt {
