@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { getCsrfToken } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 
 type LoginFormProps = {
   initialEmail: string;
@@ -26,33 +26,45 @@ function mapAuthError(errorCode: string): string {
 export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormProps) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
-  const [csrfToken, setCsrfToken] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [debugDetail, setDebugDetail] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryError = mapAuthError(errorCode);
 
-  useEffect(() => {
-    getCsrfToken()
-      .then((token) => {
-        if (token) {
-          setCsrfToken(token);
-        }
-      })
-      .catch(() => {
-        setCsrfToken("");
-      });
-  }, []);
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    setDebugDetail(null);
+
+    const result = await signIn("credentials", {
+      email: email.trim().toLowerCase(),
+      password,
+      redirect: false,
+      callbackUrl: "/study"
+    }).catch(() => null);
+
+    if (!result) {
+      setError("Unable to sign in right now.");
+      setDebugDetail("No response from auth service.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (result.error || result.ok !== true) {
+      setError("Unable to sign in. Check your email and password.");
+      setDebugDetail(result.error ?? "Unknown auth failure.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    window.location.href = result.url ?? "/study";
+  }
 
   return (
     <section className="card">
       <h1>Log in</h1>
-      <form
-        className="grid"
-        method="post"
-        action="/api/auth/callback/credentials"
-        onSubmit={() => setIsSubmitting(true)}
-      >
-        <input type="hidden" name="csrfToken" value={csrfToken} />
-        <input type="hidden" name="callbackUrl" value="/study" />
+      <form className="grid" onSubmit={onSubmit}>
         <label>
           Email
           <input
@@ -73,15 +85,14 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
             required
           />
         </label>
-        <button type="submit" disabled={isSubmitting || !csrfToken}>
+        <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Signing in..." : "Log in"}
         </button>
       </form>
       {wasRegistered ? <p className="muted">Account created. Please log in.</p> : null}
+      {error ? <p className="muted">{error}</p> : null}
       {queryError ? <p className="muted">{queryError}</p> : null}
-      {!csrfToken ? (
-        <p className="muted">Preparing secure sign-in...</p>
-      ) : null}
+      {debugDetail ? <p className="muted">Diagnostic: {debugDetail}</p> : null}
       <p className="muted">
         New here? <Link href="/register">Create an account</Link>
       </p>
