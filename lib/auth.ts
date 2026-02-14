@@ -2,7 +2,6 @@ import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-import { logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -25,19 +24,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials, req) {
-        const requestHost =
-          (req?.headers?.host as string | undefined) ??
-          (req?.headers?.["x-forwarded-host"] as string | undefined);
-        const userAgent =
-          (req?.headers?.["user-agent"] as string | undefined) ?? "unknown";
-
+      async authorize(credentials) {
         if (!credentials?.email || !credentials.password) {
-          logEvent("warn", "auth.authorize.missing_credentials", {
-            route: "/api/auth/callback/credentials",
-            host: requestHost,
-            userAgent
-          });
           return null;
         }
 
@@ -47,12 +35,6 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          logEvent("warn", "auth.authorize.user_not_found", {
-            route: "/api/auth/callback/credentials",
-            host: requestHost,
-            userAgent,
-            email: normalizedEmail
-          });
           return null;
         }
 
@@ -62,21 +44,9 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!validPassword) {
-          logEvent("warn", "auth.authorize.invalid_password", {
-            route: "/api/auth/callback/credentials",
-            host: requestHost,
-            userAgent,
-            userId: user.id
-          });
           return null;
         }
 
-        logEvent("info", "auth.authorize.success", {
-          route: "/api/auth/callback/credentials",
-          host: requestHost,
-          userAgent,
-          userId: user.id
-        });
         return {
           id: user.id,
           email: user.email,
@@ -86,23 +56,6 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
-      }
-
-      try {
-        const target = new URL(url);
-        const allowed = new URL(baseUrl);
-        if (target.origin === allowed.origin) {
-          return url;
-        }
-      } catch {
-        // Ignore invalid redirect targets and fall back to base URL.
-      }
-
-      return baseUrl;
-    },
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;

@@ -165,7 +165,8 @@ export function useStudySession() {
       | { error: string };
 
     if (!response.ok || "error" in data) {
-      setError(data.error ?? "Unable to generate recommendations.");
+      const message = data.error ?? "Unable to generate recommendations.";
+      setError(`Study request failed (${response.status}): ${message}`);
       setIsLoading(false);
       return false;
     }
@@ -281,7 +282,8 @@ export function useStudySession() {
       | { error: string };
 
     if (!studyResponse.ok || "error" in studyData) {
-      setError(studyData.error ?? "Unable to generate recommendations.");
+      const message = studyData.error ?? "Unable to generate recommendations.";
+      setError(`Study request failed (${studyResponse.status}): ${message}`);
       setPendingVerseTurn((current) =>
         current && current.id === pendingId ? null : current
       );

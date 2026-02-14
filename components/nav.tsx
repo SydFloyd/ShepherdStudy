@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
+
+import { useAuthStatus } from "@/hooks/use-auth-status";
 
 export function Nav() {
-  const { data } = useSession();
+  const { status } = useAuthStatus();
+  const isAuthenticated = status === "authenticated";
 
   return (
     <nav className="nav">
@@ -14,7 +17,7 @@ export function Nav() {
       <div className="navLinks">
         <Link href="/study">Study</Link>
         <Link href="/wwjd">WWJD</Link>
-        {data?.user ? (
+        {isAuthenticated ? (
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/" })}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 
 import {
   BibleTranslationId,
@@ -13,6 +12,7 @@ import { StudyGraphPanel } from "@/components/study/study-graph-panel";
 import { StudyPassagePanel } from "@/components/study/study-passage-panel";
 import { StudyRecommendations } from "@/components/study/study-recommendations";
 import { StudyThreadPanel } from "@/components/study/study-thread-panel";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useStudyNavigation } from "@/hooks/use-study-navigation";
 import { useStudySession } from "@/hooks/use-study-session";
 import { buildLocalGraph } from "@/lib/study-client-utils";
@@ -24,7 +24,7 @@ export default function StudyPage() {
   const [startingPassage, setStartingPassage] = useState("");
   const [promptInput, setPromptInput] = useState("");
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
-  const { status: sessionStatus } = useSession();
+  const { status: sessionStatus } = useAuthStatus();
 
   const {
     turns,

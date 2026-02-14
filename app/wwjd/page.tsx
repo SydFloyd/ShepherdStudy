@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 
 import { WwjdThreadPanel } from "@/components/wwjd/wwjd-thread-panel";
+import { useAuthStatus } from "@/hooks/use-auth-status";
 import {
   BIBLE_TRANSLATIONS,
   BibleTranslationId,
@@ -39,7 +39,7 @@ type PassagePreview = {
 };
 
 export default function WwjdPage() {
-  const { status: sessionStatus } = useSession();
+  const { status: sessionStatus } = useAuthStatus();
   const [translation, setTranslation] = useState(DEFAULT_BIBLE_TRANSLATION);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -243,7 +243,8 @@ export default function WwjdPage() {
       | { error: string };
 
     if (!response.ok || "error" in data) {
-      setError(data.error ?? "Unable to generate WWJD response.");
+      const message = data.error ?? "Unable to generate WWJD response.";
+      setError(`WWJD request failed (${response.status}): ${message}`);
       setIsLoading(false);
       return;
     }
