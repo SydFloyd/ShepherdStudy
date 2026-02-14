@@ -4,9 +4,18 @@ import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/lib/prisma";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction && !process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET is required in production.");
+}
+
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: isProduction,
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 60 * 60 * 24 * 14
   },
   pages: {
     signIn: "/login"

@@ -24,6 +24,19 @@ export type PendingVerseTurn = {
   passage: NonNullable<StudyResponsePayload["passage"]> | null;
 };
 
+export type StudyThreadSummary = {
+  id: string;
+  title: string;
+  translation: string | null;
+  archivedAt: string | null;
+  updatedAt: string;
+};
+
+export type StudyThreadDetail = {
+  thread: StudyThreadSummary;
+  turns: StudyTurn[];
+};
+
 export type StudyGraphNode = {
   id: string;
   kind: "PROMPT" | "VERSE";
@@ -35,4 +48,3 @@ export type StudyGraphEdge = {
   fromNodeId: string;
   toNodeId: string;
 };
-

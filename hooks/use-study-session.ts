@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { BibleTranslationId } from "@/lib/bible";
 import {
   PassagePreviewPayload,
   PendingVerseTurn,
+  StudyThreadDetail,
+  StudyThreadSummary,
   StudyTurn
 } from "@/lib/study-client-contract";
 import { buildHistory, parseJsonSafe } from "@/lib/study-client-utils";
@@ -17,11 +19,122 @@ type SubmitPromptInput = {
 
 export function useStudySession() {
   const [turns, setTurns] = useState<StudyTurn[]>([]);
+  const [threads, setThreads] = useState<StudyThreadSummary[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [pendingVerseTurn, setPendingVerseTurn] = useState<PendingVerseTurn | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  function upsertThread(summary: StudyThreadSummary) {
+    setThreads((current) => {
+      const next = [summary, ...current.filter((item) => item.id !== summary.id)];
+      next.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      return next;
+    });
+  }
+
+  const loadThreads = useCallback(async () => {
+    setIsHistoryLoading(true);
+    const response = await fetch("/api/study/threads");
+    const data = (await parseJsonSafe(response)) as
+      | { threads: StudyThreadSummary[] }
+      | { error: string };
+
+    if (!response.ok || "error" in data) {
+      setThreads([]);
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    setThreads(data.threads);
+    setIsHistoryLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadThreads();
+  }, [loadThreads]);
+
+  async function loadThread(threadId: string) {
+    setIsHistoryLoading(true);
+    const response = await fetch(`/api/study/threads/${threadId}`);
+    const data = (await parseJsonSafe(response)) as
+      | StudyThreadDetail
+      | { error: string };
+
+    if (!response.ok || "error" in data) {
+      const message =
+        "error" in data ? data.error : "Unable to load study thread.";
+      setError(message);
+      setIsHistoryLoading(false);
+      return false;
+    }
+
+    setTurns(data.turns);
+    setActiveThreadId(data.thread.id);
+    upsertThread(data.thread);
+    setError(null);
+    setIsHistoryLoading(false);
+    return true;
+  }
+
+  async function archiveThread(threadId: string) {
+    const response = await fetch(`/api/study/threads/${threadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archive: true })
+    });
+
+    if (!response.ok) {
+      const data = (await parseJsonSafe(response)) as { error?: string };
+      setError(data.error ?? "Unable to archive study thread.");
+      return false;
+    }
+
+    setThreads((current) => current.filter((item) => item.id !== threadId));
+
+    if (activeThreadId === threadId) {
+      setActiveThreadId(null);
+      setTurns([]);
+    }
+    return true;
+  }
+
+  async function renameThread(threadId: string, title: string) {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+      return false;
+    }
+
+    const response = await fetch(`/api/study/threads/${threadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: normalizedTitle })
+    });
+
+    const data = (await parseJsonSafe(response)) as
+      | { thread: StudyThreadSummary }
+      | { error?: string };
+
+    if (!response.ok || !("thread" in data)) {
+      setError(("error" in data && data.error) || "Unable to rename study thread.");
+      return false;
+    }
+
+    upsertThread(data.thread);
+    if (activeThreadId === data.thread.id) {
+      setActiveThreadId(data.thread.id);
+    }
+    return true;
+  }
+
+  function startNewThread() {
+    setActiveThreadId(null);
+    setTurns([]);
+    setError(null);
+  }
 
   async function submitTurn(input: {
     kind: "prompt" | "verse";
@@ -40,7 +153,10 @@ export function useStudySession() {
         translation: input.translation,
         passage: input.passage,
         prompt: input.prompt,
-        history: buildHistory(turns)
+        history: buildHistory(turns),
+        threadId: activeThreadId ?? undefined,
+        kind: input.kind,
+        userText: input.userText
       })
     });
 
@@ -65,6 +181,16 @@ export function useStudySession() {
         response: data
       }
     ]);
+    if (data.thread) {
+      upsertThread({
+        id: data.thread.id,
+        title: data.thread.title ?? "Untitled Study",
+        translation: input.translation,
+        archivedAt: data.thread.archivedAt,
+        updatedAt: data.thread.updatedAt
+      });
+      setActiveThreadId(data.thread.id);
+    }
     setIsLoading(false);
     return true;
   }
@@ -77,9 +203,11 @@ export function useStudySession() {
       return false;
     }
 
+    const isVerseOnlyStart = !trimmedPrompt && Boolean(initialPassage);
+
     return submitTurn({
-      kind: "prompt",
-      userText: trimmedPrompt || `Explore ${initialPassage}`,
+      kind: isVerseOnlyStart ? "verse" : "prompt",
+      userText: trimmedPrompt || initialPassage,
       passage: initialPassage || undefined,
       prompt: trimmedPrompt || undefined,
       translation: input.translation
@@ -115,7 +243,10 @@ export function useStudySession() {
       body: JSON.stringify({
         translation: input.translation,
         passage: input.reference,
-        history: buildHistory(turns)
+        history: buildHistory(turns),
+        threadId: activeThreadId ?? undefined,
+        kind: "verse",
+        userText
       })
     });
 
@@ -169,6 +300,16 @@ export function useStudySession() {
         response: studyData
       }
     ]);
+    if (studyData.thread) {
+      upsertThread({
+        id: studyData.thread.id,
+        title: studyData.thread.title ?? "Untitled Study",
+        translation: input.translation,
+        archivedAt: studyData.thread.archivedAt,
+        updatedAt: studyData.thread.updatedAt
+      });
+      setActiveThreadId(studyData.thread.id);
+    }
     setPendingVerseTurn((current) =>
       current && current.id === pendingId ? null : current
     );
@@ -178,12 +319,19 @@ export function useStudySession() {
 
   return {
     turns,
+    threads,
+    activeThreadId,
     pendingVerseTurn,
     error,
     isLoading,
+    isHistoryLoading,
     setError,
+    loadThreads,
+    loadThread,
+    archiveThread,
+    renameThread,
+    startNewThread,
     submitPrompt,
     selectRecommendation
   };
 }
-

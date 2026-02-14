@@ -49,4 +49,10 @@ export type StudyResponsePayload = {
     }>;
   };
   saved: boolean;
+  thread?: {
+    id: string;
+    title: string | null;
+    archivedAt: string | null;
+    updatedAt: string;
+  };
 };

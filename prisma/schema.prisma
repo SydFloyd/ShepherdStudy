@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -18,6 +19,11 @@ model User {
   studyGraphSessions StudyGraphSession[]
   studyGraphNodes StudyGraphNode[]
   studyGraphEdges StudyGraphEdge[]
+  dailyQuotaUsages DailyQuotaUsage[]
+  studyThreads StudyThread[]
+  studyMessages StudyMessage[]
+  wwjdThreads  WwjdThread[]
+  wwjdMessages WwjdMessage[]
 }
 
 model StudySession {
@@ -133,4 +139,94 @@ enum StudyGraphNodeKind {
 enum StudyGraphEdgeKind {
   SELECTS
   RECOMMENDS
+}
+
+model DailyQuotaUsage {
+  id           String       @id @default(cuid())
+  actorKey     String
+  userId       String?
+  feature      QuotaFeature
+  day          DateTime
+  requestCount Int          @default(0)
+  tokenCount   Int          @default(0)
+  windowStart  DateTime
+  windowCount  Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([actorKey, feature, day])
+  @@index([userId, day])
+  @@index([feature, day])
+}
+
+enum QuotaFeature {
+  STUDY
+  WWJD
+}
+
+model StudyThread {
+  id          String         @id @default(cuid())
+  userId      String
+  title       String?
+  translation String?
+  archivedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    StudyMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, archivedAt, updatedAt])
+}
+
+model StudyMessage {
+  id          String           @id @default(cuid())
+  threadId    String
+  userId      String
+  role        StudyMessageRole
+  kind        String?
+  content     String
+  translation String?
+  response    Json?
+  createdAt   DateTime         @default(now())
+  thread      StudyThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([userId, createdAt])
+}
+
+enum StudyMessageRole {
+  USER
+  ASSISTANT
+}
+
+model WwjdThread {
+  id          String        @id @default(cuid())
+  userId      String
+  title       String?
+  archivedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    WwjdMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, archivedAt, updatedAt])
+}
+
+model WwjdMessage {
+  id              String           @id @default(cuid())
+  threadId         String
+  userId           String
+  role             StudyMessageRole
+  content          String
+  recommendations  Json?
+  createdAt        DateTime         @default(now())
+  thread           WwjdThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([userId, createdAt])
 }

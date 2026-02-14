@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 
 import {
   BibleTranslationId,
@@ -11,6 +12,7 @@ import { StudyAssistantPanel } from "@/components/study/study-assistant-panel";
 import { StudyGraphPanel } from "@/components/study/study-graph-panel";
 import { StudyPassagePanel } from "@/components/study/study-passage-panel";
 import { StudyRecommendations } from "@/components/study/study-recommendations";
+import { StudyThreadPanel } from "@/components/study/study-thread-panel";
 import { useStudyNavigation } from "@/hooks/use-study-navigation";
 import { useStudySession } from "@/hooks/use-study-session";
 import { buildLocalGraph } from "@/lib/study-client-utils";
@@ -21,12 +23,20 @@ export default function StudyPage() {
   );
   const [startingPassage, setStartingPassage] = useState("");
   const [promptInput, setPromptInput] = useState("");
+  const { status: sessionStatus } = useSession();
 
   const {
     turns,
+    threads,
+    activeThreadId,
     pendingVerseTurn,
     error,
     isLoading,
+    isHistoryLoading,
+    loadThread,
+    archiveThread,
+    renameThread,
+    startNewThread,
     submitPrompt,
     selectRecommendation
   } = useStudySession();
@@ -60,7 +70,29 @@ export default function StudyPage() {
   const graph = buildLocalGraph(turns);
 
   return (
-    <section className="studyWorkspace">
+    <section
+      className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}`}
+    >
+      {sessionStatus === "authenticated" ? (
+        <aside className="studyHistoryRail">
+          <StudyThreadPanel
+            threads={threads}
+            activeThreadId={activeThreadId}
+            isLoading={isHistoryLoading}
+            onNewThread={startNewThread}
+            onSelectThread={(threadId) => {
+              void loadThread(threadId);
+            }}
+            onArchiveThread={(threadId) => {
+              void archiveThread(threadId);
+            }}
+            onRenameThread={(threadId, title) => {
+              void renameThread(threadId, title);
+            }}
+          />
+        </aside>
+      ) : null}
+
       <div className="grid studyChatLayout studyMain">
         <article className="card studyTopSettings">
           <h1>Study Companion</h1>
@@ -192,4 +224,3 @@ export default function StudyPage() {
     </section>
   );
 }
-

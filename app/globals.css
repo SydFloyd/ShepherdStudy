@@ -26,7 +26,7 @@ a {
 }
 
 .shell {
-  max-width: 1024px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 0 16px 40px;
 }
@@ -215,6 +215,16 @@ button:disabled {
   align-items: start;
 }
 
+.studyWorkspace.withHistory {
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(180px, 230px);
+}
+
+.studyHistoryRail {
+  position: sticky;
+  top: 14px;
+  align-self: start;
+}
+
 .studyMain {
   min-width: 0;
 }
@@ -264,6 +274,102 @@ button:disabled {
 .studyGraphPanel {
   display: grid;
   gap: 10px;
+}
+
+.studyThreadPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.studyThreadHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.studyThreadHeader h2 {
+  margin: 0;
+}
+
+.studyThreadNewButton {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.studyThreadList {
+  display: grid;
+  gap: 8px;
+  max-height: min(70vh, 780px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.studyThreadItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.studyThreadSelectButton {
+  background: #f8f4eb;
+  color: var(--ink);
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  gap: 0;
+  text-align: left;
+}
+
+.studyThreadSelectButton.active {
+  outline: 2px solid #bc8f3c;
+  outline-offset: 1px;
+}
+
+.studyThreadActionsButton {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: #f3eee3;
+  color: #6a5b43;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.studyThreadMenu {
+  min-width: 120px;
+  z-index: 20;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  box-shadow: 0 8px 20px rgba(20, 25, 20, 0.12);
+}
+
+.studyThreadMenu.popup {
+  position: fixed;
+}
+
+.studyThreadMenu button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 6px 8px;
+}
+
+.studyThreadMenu button:hover {
+  background: #f4efe4;
 }
 
 .studyGraphHeader {
@@ -369,7 +475,15 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .studyWorkspace.withHistory {
+    grid-template-columns: 1fr;
+  }
+
   .studyRail {
+    position: static;
+  }
+
+  .studyHistoryRail {
     position: static;
   }
 
@@ -389,6 +503,23 @@ button:disabled {
 .wwjdChat {
   display: grid;
   gap: 14px;
+}
+
+.wwjdWorkspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.wwjdWorkspace.withHistory {
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+}
+
+.wwjdHistoryRail {
+  position: sticky;
+  top: 14px;
+  align-self: start;
 }
 
 .wwjdUnified {
@@ -539,4 +670,14 @@ button:disabled {
   display: grid;
   gap: 8px;
   padding-right: 4px;
+}
+
+@media (max-width: 860px) {
+  .wwjdWorkspace.withHistory {
+    grid-template-columns: 1fr;
+  }
+
+  .wwjdHistoryRail {
+    position: static;
+  }
 }

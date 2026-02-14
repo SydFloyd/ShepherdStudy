@@ -9,12 +9,18 @@
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:rbac": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (-not $env:DIRECT_URL -and (Test-Path .env)) { Get-Content .env | ForEach-Object { if ($_ -match '^DIRECT_URL=\"?(.*)\"?$') { $env:DIRECT_URL = $matches[1] } } }; if (-not $env:DIRECT_URL) { throw 'DIRECT_URL is required' }; psql $env:DIRECT_URL -f ops/rbac.sql\"",
+    "db:rbac:defaults": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (-not $env:DIRECT_URL -and (Test-Path .env)) { Get-Content .env | ForEach-Object { if ($_ -match '^DIRECT_URL=\"?(.*)\"?$') { $env:DIRECT_URL = $matches[1] } } }; if (-not $env:DIRECT_URL) { throw 'DIRECT_URL is required' }; psql $env:DIRECT_URL -f ops/rbac-default-privileges.sql\"",
+    "db:rbac:check": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (-not $env:DIRECT_URL -and (Test-Path .env)) { Get-Content .env | ForEach-Object { if ($_ -match '^DIRECT_URL=\"?(.*)\"?$') { $env:DIRECT_URL = $matches[1] } } }; if (-not $env:DIRECT_URL) { throw 'DIRECT_URL is required' }; psql $env:DIRECT_URL -f ops/rbac-check.sql\"",
     "import:bibles": "node scripts/import-public-domain-bibles.mjs",
     "import:web:usfm": "node scripts/import-web-usfm.mjs web",
     "import:usfm": "node scripts/import-web-usfm.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "@sentry/nextjs": "^10.38.0",
     "adm-zip": "^0.5.16",
     "bcryptjs": "^2.4.3",
     "next": "^16.1.6",

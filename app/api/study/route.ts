@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { z } from "zod";
 
+import { authOptions } from "@/lib/auth";
 import {
   BIBLE_TRANSLATION_IDS,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
+import { getRequestMeta, logEvent } from "@/lib/logger";
 import { generateStudyRecommendations } from "@/lib/openai";
+import { consumeQuota } from "@/lib/quota";
+import { getRequestId } from "@/lib/request-context";
 import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
+import { persistStudyTurn } from "@/lib/study-history";
+import { captureServerException } from "@/lib/sentry";
 
 const inputSchema = z
   .object({
@@ -25,7 +32,10 @@ const inputSchema = z
       .default([]),
     translation: z
       .enum(BIBLE_TRANSLATION_IDS)
-      .default(DEFAULT_BIBLE_TRANSLATION)
+      .default(DEFAULT_BIBLE_TRANSLATION),
+    threadId: z.string().trim().cuid().optional(),
+    kind: z.enum(["prompt", "verse"]).optional(),
+    userText: z.string().trim().max(4000).optional().or(z.literal(""))
   })
   .refine((value) => Boolean(value.passage?.trim() || value.prompt?.trim()), {
     message: "Please provide a passage, a prompt, or both.",
@@ -94,9 +104,44 @@ function buildInputPassagePayload(input: {
 }
 
 export async function POST(req: Request) {
+  const requestId = await getRequestId();
+  const requestMeta = getRequestMeta({
+    requestId,
+    route: "/api/study",
+    method: req.method
+  });
+
   try {
+    logEvent("info", "study.start", requestMeta);
     const json = await req.json();
     const input = inputSchema.parse(json);
+    const session = await getServerSession(authOptions);
+    const quotaDecision = await consumeQuota({
+      request: req,
+      userId: session?.user?.id,
+      feature: "STUDY"
+    });
+
+    if (!quotaDecision.allowed) {
+      logEvent("warn", "study.quota_block", {
+        ...requestMeta,
+        reason: quotaDecision.reason
+      });
+      return NextResponse.json(
+        {
+          error:
+            quotaDecision.reason === "daily_limit"
+              ? "Daily study limit reached. Please try again tomorrow."
+              : "Too many study requests in a short period. Please wait and retry.",
+          quota: quotaDecision
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(quotaDecision.retryAfterSeconds) }
+        }
+      );
+    }
+
     const normalizedPassage = input.passage?.trim() || undefined;
     const normalizedPrompt = input.prompt?.trim() || undefined;
     const mode = getStudyMode({
@@ -181,10 +226,46 @@ export async function POST(req: Request) {
       return normalizedReference !== normalizedAnchorReference;
     });
 
-    const saved = false;
     const graph = undefined;
 
-    return NextResponse.json({
+    let thread: {
+      id: string;
+      title: string;
+      translation: string | null;
+      archivedAt: string | null;
+      updatedAt: string;
+    } | null = null;
+
+    if (session?.user?.id) {
+      const turnKind = input.kind ?? (normalizedPrompt ? "prompt" : "verse");
+      const userText =
+        input.userText?.trim() ||
+        (turnKind === "verse"
+          ? `Selected verse: ${normalizedPassage ?? "Unknown passage"}`
+          : normalizedPrompt || normalizedPassage || "Study prompt");
+
+      thread = await persistStudyTurn({
+        userId: session.user.id,
+        threadId: input.threadId,
+        kind: turnKind,
+        userText,
+        passage: normalizedPassage,
+        translation: input.translation,
+        response: {
+          mode,
+          modeName: modeMeta.modeName,
+          assistantBehaviorName: modeMeta.assistantBehaviorName,
+          answer: response.answer,
+          context: response.context,
+          relevance: response.relevance,
+          recommendations,
+          passage: passagePayload,
+          saved: true
+        }
+      });
+    }
+
+    const payload = {
       mode,
       modeName: modeMeta.modeName,
       assistantBehaviorName: modeMeta.assistantBehaviorName,
@@ -193,17 +274,40 @@ export async function POST(req: Request) {
       relevance: response.relevance,
       recommendations,
       passage: passagePayload,
+      quota: quotaDecision,
       graph,
-      saved
+      saved: Boolean(thread),
+      thread:
+        thread && {
+          id: thread.id,
+          title: thread.title,
+          archivedAt: thread.archivedAt,
+          updatedAt: thread.updatedAt
+        }
+    };
+
+    logEvent("info", "study.ok", {
+      ...requestMeta,
+      mode,
+      recommendations: recommendations.length,
+      saved: Boolean(thread)
     });
+
+    return NextResponse.json(payload);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logEvent("warn", "study.invalid_input", requestMeta);
       return NextResponse.json(
         { error: "Invalid study request. Provide a passage, a prompt, or both." },
         { status: 400 }
       );
     }
 
+    captureServerException(error, {
+      route: "/api/study",
+      requestId
+    });
+    logEvent("error", "study.failure", { ...requestMeta, error });
     return NextResponse.json(
       { error: "Unable to generate study recommendations right now." },
       { status: 500 }
