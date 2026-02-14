@@ -18,13 +18,16 @@ export function Nav() {
         <Link href="/study">Study</Link>
         <Link href="/wwjd">WWJD</Link>
         {isAuthenticated ? (
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="linkButton"
-          >
-            Sign out
-          </button>
+          <>
+            <Link href="/account">Account</Link>
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="linkButton"
+            >
+              Sign out
+            </button>
+          </>
         ) : (
           <>
             <Link href="/login">Login</Link>
