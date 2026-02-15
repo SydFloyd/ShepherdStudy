@@ -47,6 +47,7 @@ export default function StudyPage() {
   } = useStudySession();
   const { focusedNodeId, onGraphNodeSelect } = useStudyNavigation(turns);
   const turnsEndRef = useRef<HTMLDivElement | null>(null);
+  const composerFormRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
     turnsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -103,6 +104,9 @@ export default function StudyPage() {
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
+      if (!event.currentTarget.form) {
+        composerFormRef.current?.requestSubmit();
+      }
     }
   }
 
@@ -314,6 +318,7 @@ export default function StudyPage() {
         ) : null}
 
         <form
+          ref={composerFormRef}
           onSubmit={onPromptSubmit}
           className={`card studyComposer${hasStudyContent ? "" : " initial"}`}
         >
