@@ -28,7 +28,7 @@ export default function InfoPage() {
           meaningful original-language deltas and word-level details.
         </p>
         <h3>
-          <Link href="/wwjd">WWJD</Link>
+          <Link href="/wwjd">ShepherdAI</Link>
         </h3>
         <p>
           Ask questions from a Christ-centered perspective and receive

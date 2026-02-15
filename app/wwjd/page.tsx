@@ -148,7 +148,7 @@ export default function WwjdPage() {
       | { error: string };
 
     if (!response.ok || "error" in data) {
-      const message = "error" in data ? data.error : "Unable to load WWJD thread.";
+      const message = "error" in data ? data.error : "Unable to load ShepherdAI thread.";
       setError(message);
       setIsHistoryLoading(false);
       return;
@@ -170,7 +170,7 @@ export default function WwjdPage() {
 
     if (!response.ok) {
       const data = (await parseJsonSafe(response)) as { error?: string };
-      setError(data.error ?? "Unable to archive WWJD thread.");
+      setError(data.error ?? "Unable to archive ShepherdAI thread.");
       return;
     }
 
@@ -197,7 +197,7 @@ export default function WwjdPage() {
       | { thread: WwjdThreadSummary }
       | { error?: string };
     if (!response.ok || !("thread" in data)) {
-      setError(("error" in data && data.error) || "Unable to rename WWJD chat.");
+      setError(("error" in data && data.error) || "Unable to rename ShepherdAI chat.");
       return;
     }
 
@@ -243,8 +243,8 @@ export default function WwjdPage() {
       | { error: string };
 
     if (!response.ok || "error" in data) {
-      const message = data.error ?? "Unable to generate WWJD response.";
-      setError(`WWJD request failed (${response.status}): ${message}`);
+      const message = data.error ?? "Unable to generate ShepherdAI response.";
+      setError(`ShepherdAI request failed (${response.status}): ${message}`);
       setIsLoading(false);
       return;
     }
@@ -291,7 +291,7 @@ export default function WwjdPage() {
       <section className="grid">
       <article className="card wwjdChat wwjdUnified">
         <div className="wwjdHeader">
-          <h1>WWJD</h1>
+          <h1>ShepherdAI</h1>
           <div className="wwjdHeaderActions">
             <label className="inlineVersionSelect">
               Version
@@ -319,9 +319,8 @@ export default function WwjdPage() {
           </div>
         </div>
         <p className="muted">
-          This is an AI emulation of the voice of the Son of God. It may be
-          mistaken and may not reflect what Jesus would truly say or do. Always
-          test responses against Scripture, prayer, and wise pastoral counsel.
+          ShepherdAI is designed to bring a Christ-centered perspective to your
+          questions and serve relevant Scripture for reflection and obedience.
         </p>
 
         <div className="wwjdMessages">
@@ -338,7 +337,7 @@ export default function WwjdPage() {
                 }
               >
                 <p className="wwjdRole">
-                  {message.role === "assistant" ? "WWJD Assistant" : "You"}
+                  {message.role === "assistant" ? "ShepherdAI" : "You"}
                 </p>
                 <p>{message.content}</p>
                 {message.role === "assistant" && message.recommendations ? (

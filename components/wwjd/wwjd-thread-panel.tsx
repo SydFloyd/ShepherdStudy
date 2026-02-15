@@ -58,7 +58,7 @@ export function WwjdThreadPanel({
   return (
     <article className="card studyThreadPanel">
       <div className="studyThreadHeader">
-        <h2>WWJD Chats</h2>
+        <h2>ShepherdAI Chats</h2>
         <button type="button" className="studyThreadNewButton" onClick={onNewThread}>
           New
         </button>
@@ -66,7 +66,7 @@ export function WwjdThreadPanel({
 
       {isLoading ? <p className="muted">Loading history...</p> : null}
       {!isLoading && threads.length === 0 ? (
-        <p className="muted">No saved WWJD chats yet.</p>
+        <p className="muted">No saved ShepherdAI chats yet.</p>
       ) : null}
 
       {threads.length > 0 ? (
@@ -102,7 +102,7 @@ export function WwjdThreadPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      const nextTitle = window.prompt("Rename WWJD chat", menu.title);
+                      const nextTitle = window.prompt("Rename ShepherdAI chat", menu.title);
                       if (nextTitle && nextTitle.trim()) {
                         onRenameThread(menu.threadId, nextTitle.trim());
                       }
