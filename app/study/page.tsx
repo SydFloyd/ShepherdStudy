@@ -9,6 +9,7 @@ import {
 } from "@/lib/bible";
 import { StudyAssistantPanel } from "@/components/study/study-assistant-panel";
 import { StudyGraphPanel } from "@/components/study/study-graph-panel";
+import { StudyOriginalLanguagePanel } from "@/components/study/study-original-language-panel";
 import { StudyPassagePanel } from "@/components/study/study-passage-panel";
 import { StudyRecommendations } from "@/components/study/study-recommendations";
 import { StudyThreadPanel } from "@/components/study/study-thread-panel";
@@ -35,6 +36,7 @@ export default function StudyPage() {
     error,
     isLoading,
     isHistoryLoading,
+    insightLoadingByTurnId,
     loadThread,
     archiveThread,
     renameThread,
@@ -180,6 +182,21 @@ export default function StudyPage() {
                   relevance={turn.response.relevance}
                 />
               </section>
+              {turn.response.originalLanguageInsight ? (
+                <StudyOriginalLanguagePanel insight={turn.response.originalLanguageInsight} />
+              ) : insightLoadingByTurnId[turn.id] ? (
+                <article className="card studyOriginalLensCard">
+                  <div className="loadingRow">
+                    <h3>Original Language Lens</h3>
+                    <span className="loadingSpinner" aria-hidden="true" />
+                  </div>
+                  <div className="skeletonBlock" aria-hidden="true">
+                    <div className="skeletonLine long" />
+                    <div className="skeletonLine medium" />
+                    <div className="skeletonLine long" />
+                  </div>
+                </article>
+              ) : null}
 
               <StudyRecommendations
                 recommendations={turn.response.recommendations}

@@ -27,6 +27,9 @@ export function useStudySession() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [insightLoadingByTurnId, setInsightLoadingByTurnId] = useState<
+    Record<string, boolean>
+  >({});
 
   function upsertThread(summary: StudyThreadSummary) {
     setThreads((current) => {
@@ -134,6 +137,78 @@ export function useStudySession() {
     setActiveThreadId(null);
     setTurns([]);
     setError(null);
+    setInsightLoadingByTurnId({});
+  }
+
+  async function requestOriginalLanguageInsight(input: {
+    translation: BibleTranslationId;
+    passage: NonNullable<StudyResponsePayload["passage"]>;
+  }): Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null> {
+    const response = await fetch("/api/study/original-language-insight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selectedTranslation: input.translation,
+        passage: input.passage
+      })
+    });
+
+    const data = (await parseJsonSafe(response)) as
+      | {
+          insight: NonNullable<StudyResponsePayload["originalLanguageInsight"]>;
+        }
+      | { error: string; details?: Array<{ path: string; message: string }> };
+
+    if (!response.ok || !("insight" in data)) {
+      if (!response.ok && "details" in data && data.details) {
+        console.warn("original-language-insight invalid payload", data.details);
+      }
+      return null;
+    }
+
+    return data.insight;
+  }
+
+  async function hydrateOriginalLanguageInsight(input: {
+    turnId: string;
+    translation: BibleTranslationId;
+    response: StudyResponsePayload;
+  }) {
+    if (!input.response.passage) {
+      return;
+    }
+
+    setInsightLoadingByTurnId((current) => ({
+      ...current,
+      [input.turnId]: true
+    }));
+
+    const insight = await requestOriginalLanguageInsight({
+      translation: input.translation,
+      passage: input.response.passage
+    });
+
+    if (insight) {
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.id === input.turnId
+            ? {
+                ...turn,
+                response: {
+                  ...turn.response,
+                  originalLanguageInsight: insight
+                }
+              }
+            : turn
+        )
+      );
+    }
+
+    setInsightLoadingByTurnId((current) => {
+      const next = { ...current };
+      delete next[input.turnId];
+      return next;
+    });
   }
 
   async function submitTurn(input: {
@@ -182,6 +257,11 @@ export function useStudySession() {
         response: data
       }
     ]);
+    void hydrateOriginalLanguageInsight({
+      turnId,
+      translation: input.translation,
+      response: data
+    });
     if (data.thread) {
       upsertThread({
         id: data.thread.id,
@@ -256,24 +336,35 @@ export function useStudySession() {
       | (PassagePreviewPayload & { error?: undefined })
       | { error: string };
 
+    let prefetchedInsightPromise:
+      | Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null>
+      | null = null;
+
     if (previewResponse.ok && !("error" in previewData)) {
+      const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
+        origin: "input",
+        reference: previewData.reference,
+        chapterReference: previewData.chapterReference,
+        translation: previewData.translation,
+        translationName: previewData.translationName,
+        verses: previewData.verses,
+        chapterPath: previewData.chapterPath,
+        excerpted: previewData.excerpted
+      };
+
       setPendingTurn((current) =>
         current && current.id === pendingId
           ? {
               ...current,
-              passage: {
-                origin: "input",
-                reference: previewData.reference,
-                chapterReference: previewData.chapterReference,
-                translation: previewData.translation,
-                translationName: previewData.translationName,
-                verses: previewData.verses,
-                chapterPath: previewData.chapterPath,
-                excerpted: previewData.excerpted
-              }
+              passage: previewPassage
             }
           : current
       );
+
+      prefetchedInsightPromise = requestOriginalLanguageInsight({
+        translation: input.translation,
+        passage: previewPassage
+      });
     }
 
     const studyResponse = await studyPromise;
@@ -302,6 +393,44 @@ export function useStudySession() {
         response: studyData
       }
     ]);
+    if (prefetchedInsightPromise && studyData.passage) {
+      setInsightLoadingByTurnId((current) => ({
+        ...current,
+        [turnId]: true
+      }));
+      void prefetchedInsightPromise
+        .then((insight) => {
+          if (!insight) {
+            return;
+          }
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === turnId
+                ? {
+                    ...turn,
+                    response: {
+                      ...turn.response,
+                      originalLanguageInsight: insight
+                    }
+                  }
+                : turn
+            )
+          );
+        })
+        .finally(() => {
+          setInsightLoadingByTurnId((current) => {
+            const next = { ...current };
+            delete next[turnId];
+            return next;
+          });
+        });
+    } else {
+      void hydrateOriginalLanguageInsight({
+        turnId,
+        translation: input.translation,
+        response: studyData
+      });
+    }
     if (studyData.thread) {
       upsertThread({
         id: studyData.thread.id,
@@ -362,24 +491,35 @@ export function useStudySession() {
       | (PassagePreviewPayload & { error?: undefined })
       | { error: string };
 
+    let prefetchedInsightPromise:
+      | Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null>
+      | null = null;
+
     if (previewResponse.ok && !("error" in previewData)) {
+      const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
+        origin: "input",
+        reference: previewData.reference,
+        chapterReference: previewData.chapterReference,
+        translation: previewData.translation,
+        translationName: previewData.translationName,
+        verses: previewData.verses,
+        chapterPath: previewData.chapterPath,
+        excerpted: previewData.excerpted
+      };
+
       setPendingTurn((current) =>
         current && current.id === pendingId
           ? {
               ...current,
-              passage: {
-                origin: "input",
-                reference: previewData.reference,
-                chapterReference: previewData.chapterReference,
-                translation: previewData.translation,
-                translationName: previewData.translationName,
-                verses: previewData.verses,
-                chapterPath: previewData.chapterPath,
-                excerpted: previewData.excerpted
-              }
+              passage: previewPassage
             }
           : current
       );
+
+      prefetchedInsightPromise = requestOriginalLanguageInsight({
+        translation: input.translation,
+        passage: previewPassage
+      });
     }
 
     const studyResponse = await studyPromise;
@@ -408,6 +548,44 @@ export function useStudySession() {
         response: studyData
       }
     ]);
+    if (prefetchedInsightPromise && studyData.passage) {
+      setInsightLoadingByTurnId((current) => ({
+        ...current,
+        [turnId]: true
+      }));
+      void prefetchedInsightPromise
+        .then((insight) => {
+          if (!insight) {
+            return;
+          }
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === turnId
+                ? {
+                    ...turn,
+                    response: {
+                      ...turn.response,
+                      originalLanguageInsight: insight
+                    }
+                  }
+                : turn
+            )
+          );
+        })
+        .finally(() => {
+          setInsightLoadingByTurnId((current) => {
+            const next = { ...current };
+            delete next[turnId];
+            return next;
+          });
+        });
+    } else {
+      void hydrateOriginalLanguageInsight({
+        turnId,
+        translation: input.translation,
+        response: studyData
+      });
+    }
     if (studyData.thread) {
       upsertThread({
         id: studyData.thread.id,
@@ -433,6 +611,7 @@ export function useStudySession() {
     error,
     isLoading,
     isHistoryLoading,
+    insightLoadingByTurnId,
     setError,
     loadThreads,
     loadThread,

@@ -583,19 +583,36 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.studyLensList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.studyLensWord {
+  padding: 10px 12px;
+}
+
+.studyLensWord p {
+  margin: 0;
+}
+
 .assistantPanel h3 {
   margin-bottom: 6px;
 }
 
 .studyPassageCard,
 .assistantPanel,
-.studyRecommendationsCard {
+.studyRecommendationsCard,
+.studyOriginalLensCard {
   padding-top: 12px;
 }
 
 .studyPassageCard h2,
 .assistantPanel h2,
-.studyRecommendationsCard h3 {
+.studyRecommendationsCard h3,
+.studyOriginalLensCard h3 {
   margin-top: 0;
   margin-bottom: 8px;
 }

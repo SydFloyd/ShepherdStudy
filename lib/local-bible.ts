@@ -1,5 +1,6 @@
 import {
   getTranslationLabel,
+  isOldTestamentBook,
   isTranslationCompatibleWithBook,
   resolveBibleBookCandidates
 } from "@/lib/bible";
@@ -246,5 +247,78 @@ export async function getChapterFromLocalBible(input: {
       compatibleBooks.length === 0
         ? `${getTranslationLabel(input.translation)} does not include books in this testament.`
         : `No local verses found for translation "${input.translation}" and chapter.`
+  };
+}
+
+export async function getOriginalLanguageSnapshot(input: {
+  chapterReference: string;
+  verses: PassageVerse[];
+}) {
+  const parsed = parseScriptureReference(input.chapterReference);
+  if (!parsed) {
+    return null;
+  }
+
+  const isOt = isOldTestamentBook(parsed.book);
+  const sourceTranslation = isOt ? "uhb" : "ugnt";
+  const verseNumbers = Array.from(new Set(input.verses.map((item) => item.verse)));
+  if (verseNumbers.length === 0) {
+    return null;
+  }
+
+  const verseRows = await prisma.bibleVerse.findMany({
+    where: {
+      translation: sourceTranslation,
+      book: parsed.book,
+      chapter: parsed.chapter,
+      verse: { in: verseNumbers }
+    },
+    orderBy: [{ verse: "asc" }],
+    select: {
+      verse: true,
+      text: true
+    }
+  });
+
+  const wordRows = await prisma.bibleWord.findMany({
+    where: {
+      translation: sourceTranslation,
+      book: parsed.book,
+      chapter: parsed.chapter,
+      verse: { in: verseNumbers }
+    },
+    orderBy: [{ verse: "asc" }, { position: "asc" }],
+    select: {
+      verse: true,
+      position: true,
+      text: true,
+      lemma: true,
+      strong: true,
+      morph: true
+    }
+  });
+
+  const wordsByVerse = new Map<number, typeof wordRows>();
+  for (const row of wordRows) {
+    const list = wordsByVerse.get(row.verse) ?? [];
+    list.push(row);
+    wordsByVerse.set(row.verse, list);
+  }
+
+  return {
+    sourceTranslation,
+    sourceTranslationName: getTranslationLabel(sourceTranslation),
+    chapterReference: `${parsed.book} ${parsed.chapter}`,
+    verses: verseRows.map((row) => ({
+      verse: row.verse,
+      text: row.text,
+      words: (wordsByVerse.get(row.verse) ?? []).map((word) => ({
+        position: word.position,
+        text: word.text,
+        lemma: word.lemma,
+        strong: word.strong,
+        morph: word.morph
+      }))
+    }))
   };
 }
