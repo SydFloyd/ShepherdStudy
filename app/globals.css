@@ -153,7 +153,7 @@ a {
 
 .infoPageGrid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
 }
 
 .infoHeroCard {
@@ -168,8 +168,7 @@ a {
   grid-column: span 1;
 }
 
-.infoPageGrid > .card:nth-child(4),
-.infoPageGrid > .card:nth-child(5) {
+.infoLicenseCard {
   grid-column: 1 / -1;
 }
 
@@ -177,6 +176,11 @@ a {
 .infoFreeCard h2,
 .infoHeroCard h1 {
   margin-top: 0;
+}
+
+.infoFeaturesCard,
+.infoFreeCard {
+  height: 100%;
 }
 
 .infoFeaturesCard h3 {
@@ -190,8 +194,7 @@ a {
 
   .infoFeaturesCard,
   .infoFreeCard,
-  .infoPageGrid > .card:nth-child(4),
-  .infoPageGrid > .card:nth-child(5) {
+  .infoLicenseCard {
     grid-column: auto;
   }
 }
@@ -954,6 +957,18 @@ button:disabled {
   padding-right: 4px;
 }
 
+.studyPreviewActions {
+  display: grid;
+  gap: 10px;
+}
+
+.studyPreviewActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 @media (max-width: 860px) {
   .wwjdWorkspace.withHistory {
     grid-template-columns: 1fr;
@@ -961,5 +976,10 @@ button:disabled {
 
   .wwjdHistoryRail {
     position: static;
+  }
+
+  .studyPreviewActionRow {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

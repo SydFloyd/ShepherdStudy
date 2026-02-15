@@ -8,7 +8,7 @@ type Props = {
   sourceNodeId?: string | null;
   isOpen?: boolean;
   onToggleOpen?: (open: boolean) => void;
-  onSelectRecommendation?: (
+  onPreviewRecommendation?: (
     reference: string,
     selectionTranslation?: string,
     sourceNodeId?: string
@@ -21,7 +21,7 @@ export function StudyRecommendations({
   sourceNodeId,
   isOpen = true,
   onToggleOpen,
-  onSelectRecommendation
+  onPreviewRecommendation
 }: Props) {
   function getSelectionTranslation(reference: string): string {
     const parsed = parseScriptureReference(reference);
@@ -66,12 +66,12 @@ export function StudyRecommendations({
               <div key={`${item.reference}-${summary}`} className="card studyRecoItem">
                 <p className="studyRecoInline">
                   <strong className="studyRecoRef">
-                    {onSelectRecommendation ? (
+                    {onPreviewRecommendation ? (
                       <button
                         type="button"
                         className="recoLinkButton"
                         onClick={() =>
-                          onSelectRecommendation(
+                          onPreviewRecommendation(
                             item.reference,
                             selectionTranslation,
                             sourceNodeId ?? undefined

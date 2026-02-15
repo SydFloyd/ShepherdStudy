@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function InfoPage() {
   return (
     <section className="grid infoPageGrid">
@@ -10,18 +12,24 @@ export default function InfoPage() {
         <p>
           Our mission is to make faithful, accessible, and meaningful study of
           God&apos;s Word available to anyone by combining trustworthy Scripture
-          data with thoughtful AI assistance.
+          data with thoughtful AI assistance. Bible versions are stored directly
+          by Shepherd Study, independent of third-party APIs, and are not
+          subject to outside changes.
         </p>
       </article>
 
       <article className="card infoFeaturesCard">
         <h2>Features</h2>
-        <h3>Study</h3>
+        <h3>
+          <Link href="/study">Study</Link>
+        </h3>
         <p>
           Explore passages, receive context and recommendations, and analyze
           meaningful original-language deltas and word-level details.
         </p>
-        <h3>WWJD</h3>
+        <h3>
+          <Link href="/wwjd">WWJD</Link>
+        </h3>
         <p>
           Ask questions from a Christ-centered perspective and receive
           Scripture-grounded responses with recommended verses for reflection.
@@ -33,16 +41,12 @@ export default function InfoPage() {
         <p>
           Shepherd Study is free to use. For expanded access, please contact us.
         </p>
-      </article>
-
-      <article className="card">
-        <h2>Contact Us</h2>
         <p>
           <a href="mailto:shepstudy@gmail.com">shepstudy@gmail.com</a>
         </p>
       </article>
 
-      <article className="card">
+      <article className="card infoLicenseCard">
         <h2>Sources & Licensing</h2>
         <p className="muted">
           Original-language options are powered by unfoldingWord resources.

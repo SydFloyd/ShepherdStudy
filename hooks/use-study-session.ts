@@ -136,13 +136,14 @@ export function useStudySession() {
     return true;
   }
 
-  function startNewThread() {
+  const startNewThread = useCallback(() => {
     setActiveThreadId(null);
     setTurns([]);
+    setPendingTurn(null);
     setError(null);
     setInsightLoadingByTurnId({});
     setInsightUnavailableByTurnId({});
-  }
+  }, []);
 
   async function requestOriginalLanguageInsight(input: {
     translation: BibleTranslationId;
@@ -484,12 +485,17 @@ export function useStudySession() {
   async function selectRecommendation(input: {
     reference: string;
     translation: BibleTranslationId;
+    prompt?: string;
   }) {
     const pendingId = `pending-${Date.now()}`;
-    const userText = `Selected verse: ${input.reference}`;
+    const trimmedPrompt = input.prompt?.trim() ?? "";
+    const userText = trimmedPrompt
+      ? `Selected verse: ${input.reference}\nQuestion: ${trimmedPrompt}`
+      : `Selected verse: ${input.reference}`;
+    const kind: "prompt" | "verse" = trimmedPrompt ? "prompt" : "verse";
     setPendingTurn({
       id: pendingId,
-      kind: "verse",
+      kind,
       userText,
       passage: null
     });
@@ -511,9 +517,10 @@ export function useStudySession() {
       body: JSON.stringify({
         translation: input.translation,
         passage: input.reference,
+        prompt: trimmedPrompt || undefined,
         history: buildHistory(turns),
         threadId: activeThreadId ?? undefined,
-        kind: "verse",
+        kind,
         userText
       })
     });
@@ -574,7 +581,7 @@ export function useStudySession() {
       ...current,
       {
         id: turnId,
-        kind: "verse",
+        kind,
         userText,
         graphNodeId: studyData.graph?.nodeId ?? `local-${turnId}`,
         response: studyData

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
@@ -8,6 +9,7 @@ import { useAuthStatus } from "@/hooks/use-auth-status";
 
 export function Nav() {
   const { status } = useAuthStatus();
+  const pathname = usePathname();
   const isAuthenticated = status === "authenticated";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -38,13 +40,15 @@ export function Nav() {
     };
   }, []);
 
+  const studyHref = pathname === "/study" ? "/study?new=1" : "/study";
+
   return (
     <nav className="nav">
-      <Link href="/study" className="brand">
+      <Link href={studyHref} className="brand">
         Shepherd Study
       </Link>
       <div className="navLinks">
-        <Link href="/study">Study</Link>
+        <Link href={studyHref}>Study</Link>
         <Link href="/wwjd">WWJD</Link>
         {isAuthenticated ? (
           <div className="navAccountMenu" ref={menuRef}>

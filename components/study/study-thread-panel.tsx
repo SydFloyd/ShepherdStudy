@@ -34,8 +34,14 @@ export function StudyThreadPanel({
       if (!menuRef.current) {
         return;
       }
-      const target = event.target as Node | null;
-      if (target && menuRef.current.contains(target)) {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        return;
+      }
+      if (menuRef.current.contains(target)) {
+        return;
+      }
+      if (target.closest(".studyThreadActionsButton")) {
         return;
       }
       setMenu(null);
