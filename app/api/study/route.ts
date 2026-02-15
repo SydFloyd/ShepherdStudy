@@ -168,7 +168,7 @@ export async function POST(req: Request) {
       }
 
       passagePayload = buildInputPassagePayload({
-        reference: normalizedPassage,
+        reference: resolution.resolvedReference,
         chapterReference: resolution.chapterReference,
         translation: input.translation,
         translationName: resolution.translationName,
@@ -200,7 +200,7 @@ export async function POST(req: Request) {
 
         passagePayload = {
           origin: "anchor",
-          reference: recommendation.reference,
+          reference: anchor.resolvedReference,
           chapterReference: anchor.chapterReference,
           translation: input.translation,
           translationName: anchor.translationName,
@@ -241,7 +241,7 @@ export async function POST(req: Request) {
       const userText =
         input.userText?.trim() ||
         (turnKind === "verse"
-          ? `Selected verse: ${normalizedPassage ?? "Unknown passage"}`
+          ? `Selected verse: ${passagePayload?.reference ?? normalizedPassage ?? "Unknown passage"}`
           : normalizedPrompt || normalizedPassage || "Study prompt");
 
       thread = await persistStudyTurn({
@@ -249,7 +249,7 @@ export async function POST(req: Request) {
         threadId: input.threadId,
         kind: turnKind,
         userText,
-        passage: normalizedPassage,
+        passage: passagePayload?.reference ?? normalizedPassage,
         translation: input.translation,
         response: {
           mode,

@@ -47,6 +47,7 @@ export type PassageResolutionResult =
       ok: true;
       parsed: ParsedReference;
       resolvedBook: string;
+      resolvedReference: string;
       chapterVerses: PassageVerse[];
       selectedVerses: PassageVerse[];
       chapterReference: string;
@@ -73,6 +74,13 @@ function formatReferenceForPath(
     ? `${parsed.verseStart}-${parsed.verseEnd}`
     : `${parsed.verseStart}`;
   return `${book} ${parsed.chapter}:${verseRange}`;
+}
+
+export function formatResolvedReference(
+  book: string,
+  parsed: ParsedReference
+): string {
+  return formatReferenceForPath(book, parsed);
 }
 
 export async function resolvePassageFromLocalBible(input: {
@@ -153,8 +161,9 @@ export async function resolvePassageFromLocalBible(input: {
       : chapterVerses;
 
     const chapterReference = `${book} ${parsed.chapter}`;
+    const resolvedReference = formatResolvedReference(book, parsed);
     const chapterPath = buildPassagePath(
-      formatReferenceForPath(book, parsed),
+      resolvedReference,
       input.translation
     );
 
@@ -162,6 +171,7 @@ export async function resolvePassageFromLocalBible(input: {
       ok: true,
       parsed,
       resolvedBook: book,
+      resolvedReference,
       chapterVerses,
       selectedVerses,
       chapterReference,

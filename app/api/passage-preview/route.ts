@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
     logEvent("info", "passage_preview.ok", requestMeta);
     return NextResponse.json({
-      reference: input.reference,
+      reference: resolution.resolvedReference,
       chapterReference: resolution.chapterReference,
       translation: input.translation,
       translationName: resolution.translationName,
