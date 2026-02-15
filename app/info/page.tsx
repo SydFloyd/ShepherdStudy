@@ -1,36 +1,45 @@
-import Link from "next/link";
-
 export default function InfoPage() {
   return (
-    <section className="grid two">
-      <article className="card">
+    <section className="grid infoPageGrid">
+      <article className="card infoHeroCard">
         <h1>Shepherd Study</h1>
         <p className="muted">
-          A Christ-centered study companion built to help you explore Scripture,
-          understand context, and continue meaningful study over time.
+          A Christ-centered Bible study companion designed to help people engage
+          Scripture with clarity, humility, and practical obedience.
         </p>
         <p>
-          <Link href="/study">Start studying</Link>
+          Our mission is to make faithful, accessible, and meaningful study of
+          God&apos;s Word available to anyone by combining trustworthy Scripture
+          data with thoughtful AI assistance.
+        </p>
+      </article>
+
+      <article className="card infoFeaturesCard">
+        <h2>Features</h2>
+        <h3>Study</h3>
+        <p>
+          Explore passages, receive context and recommendations, and analyze
+          meaningful original-language deltas and word-level details.
+        </p>
+        <h3>WWJD</h3>
+        <p>
+          Ask questions from a Christ-centered perspective and receive
+          Scripture-grounded responses with recommended verses for reflection.
+        </p>
+      </article>
+
+      <article className="card infoFreeCard">
+        <h2>Free To Use</h2>
+        <p>
+          Shepherd Study is free to use. For expanded access, please contact us.
         </p>
       </article>
 
       <article className="card">
-        <h2>What You Can Do</h2>
-        <ul>
-          <li>Study passages with AI-generated context and recommendations</li>
-          <li>Ask WWJD-style questions with Scripture recommendations</li>
-          <li>Save and resume your Study and WWJD history</li>
-          <li>Use multiple Bible versions in a clean reading interface</li>
-        </ul>
-      </article>
-
-      <article className="card">
-        <h2>Free Tier</h2>
-        <ul>
-          <li>Study: up to 40 requests per day</li>
-          <li>WWJD: up to 80 requests per day</li>
-          <li>Burst protection: short per-minute request limits</li>
-        </ul>
+        <h2>Contact Us</h2>
+        <p>
+          <a href="mailto:shepstudy@gmail.com">shepstudy@gmail.com</a>
+        </p>
       </article>
 
       <article className="card">

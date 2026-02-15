@@ -151,6 +151,51 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.infoPageGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.infoHeroCard {
+  grid-column: 1 / -1;
+}
+
+.infoFeaturesCard {
+  grid-column: span 2;
+}
+
+.infoFreeCard {
+  grid-column: span 1;
+}
+
+.infoPageGrid > .card:nth-child(4),
+.infoPageGrid > .card:nth-child(5) {
+  grid-column: 1 / -1;
+}
+
+.infoFeaturesCard h2,
+.infoFreeCard h2,
+.infoHeroCard h1 {
+  margin-top: 0;
+}
+
+.infoFeaturesCard h3 {
+  margin: 12px 0 6px;
+}
+
+@media (max-width: 860px) {
+  .infoPageGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .infoFeaturesCard,
+  .infoFreeCard,
+  .infoPageGrid > .card:nth-child(4),
+  .infoPageGrid > .card:nth-child(5) {
+    grid-column: auto;
+  }
+}
+
 label {
   display: grid;
   gap: 8px;
