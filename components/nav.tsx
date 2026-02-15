@@ -59,6 +59,7 @@ export function Nav() {
         <Link href={studyHref} onClick={triggerNewStudyIfOnStudy}>
           Study
         </Link>
+        <Link href="/word-lens">Interlinear</Link>
         <Link href="/wwjd">ShepherdAI</Link>
         {isAuthenticated ? (
           <div className="navAccountMenu" ref={menuRef}>

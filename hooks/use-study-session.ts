@@ -21,18 +21,10 @@ export function useStudySession() {
   const [turns, setTurns] = useState<StudyTurn[]>([]);
   const [threads, setThreads] = useState<StudyThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [pendingTurn, setPendingTurn] = useState<PendingStudyTurn | null>(
-    null
-  );
+  const [pendingTurn, setPendingTurn] = useState<PendingStudyTurn | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [insightLoadingByTurnId, setInsightLoadingByTurnId] = useState<
-    Record<string, boolean>
-  >({});
-  const [insightUnavailableByTurnId, setInsightUnavailableByTurnId] = useState<
-    Record<string, boolean>
-  >({});
 
   function upsertThread(summary: StudyThreadSummary) {
     setThreads((current) => {
@@ -141,164 +133,7 @@ export function useStudySession() {
     setTurns([]);
     setPendingTurn(null);
     setError(null);
-    setInsightLoadingByTurnId({});
-    setInsightUnavailableByTurnId({});
   }, []);
-
-  async function requestOriginalLanguageInsight(input: {
-    translation: BibleTranslationId;
-    passage: NonNullable<StudyResponsePayload["passage"]>;
-  }): Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null> {
-    const response = await fetch("/api/study/original-language-insight", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        selectedTranslation: input.translation,
-        passage: input.passage
-      })
-    });
-
-    const data = (await parseJsonSafe(response)) as
-      | {
-          insight: NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null;
-          reason?: string;
-        }
-      | { error: string; details?: Array<{ path: string; message: string }> };
-
-    if (!response.ok || !("insight" in data)) {
-      if (!response.ok && "details" in data && data.details) {
-        console.warn("original-language-insight invalid payload", data.details);
-      }
-      return null;
-    }
-    if (!data.insight && data.reason) {
-      console.warn("original-language-insight unavailable", data.reason);
-    }
-
-    return data.insight ?? null;
-  }
-
-  async function hydrateOriginalLanguageInsight(input: {
-    turnId: string;
-    translation: BibleTranslationId;
-    response: StudyResponsePayload;
-  }) {
-    if (!input.response.passage) {
-      return;
-    }
-
-    setInsightLoadingByTurnId((current) => ({
-      ...current,
-      [input.turnId]: true
-    }));
-
-    const insight = await requestOriginalLanguageInsight({
-      translation: input.translation,
-      passage: input.response.passage
-    });
-
-    if (insight) {
-      setTurns((current) =>
-        current.map((turn) =>
-          turn.id === input.turnId
-            ? {
-                ...turn,
-                response: {
-                  ...turn.response,
-                  originalLanguageInsight: insight
-                }
-              }
-            : turn
-        )
-      );
-      setInsightUnavailableByTurnId((current) => {
-        const next = { ...current };
-        delete next[input.turnId];
-        return next;
-      });
-    } else {
-      setInsightUnavailableByTurnId((current) => ({
-        ...current,
-        [input.turnId]: true
-      }));
-    }
-
-    setInsightLoadingByTurnId((current) => {
-      const next = { ...current };
-      delete next[input.turnId];
-      return next;
-    });
-  }
-
-  async function submitTurn(input: {
-    kind: "prompt" | "verse";
-    userText: string;
-    passage?: string;
-    prompt?: string;
-    translation: BibleTranslationId;
-  }) {
-    setIsLoading(true);
-    setError(null);
-
-    const response = await fetch("/api/study", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        translation: input.translation,
-        passage: input.passage,
-        prompt: input.prompt,
-        history: buildHistory(turns),
-        threadId: activeThreadId ?? undefined,
-        kind: input.kind,
-        userText: input.userText
-      })
-    });
-
-    const data = (await parseJsonSafe(response)) as
-      | (StudyResponsePayload & { error?: undefined })
-      | { error: string };
-
-    if (!response.ok || "error" in data) {
-      const message = data.error ?? "Unable to generate recommendations.";
-      setError(`Study request failed (${response.status}): ${message}`);
-      setIsLoading(false);
-      return false;
-    }
-
-    const turnId = `${Date.now()}-${turns.length}`;
-    setTurns((current) => [
-      ...current,
-      {
-        id: turnId,
-        kind: input.kind,
-        userText: input.userText,
-        graphNodeId: data.graph?.nodeId ?? `local-${turnId}`,
-        response: data
-      }
-    ]);
-    setInsightUnavailableByTurnId((current) => {
-      const next = { ...current };
-      delete next[turnId];
-      return next;
-    });
-    void hydrateOriginalLanguageInsight({
-      turnId,
-      translation: input.translation,
-      response: data
-    });
-    if (data.thread) {
-      upsertThread({
-        id: data.thread.id,
-        title: data.thread.title ?? "Untitled Study",
-        translation: input.translation,
-        archivedAt: data.thread.archivedAt,
-        updatedAt: data.thread.updatedAt
-      });
-      setActiveThreadId(data.thread.id);
-    }
-    setIsLoading(false);
-    return true;
-  }
 
   async function submitPrompt(input: SubmitPromptInput) {
     const trimmedPrompt = input.promptInput.trim();
@@ -313,13 +148,58 @@ export function useStudySession() {
     const userText = trimmedPrompt || initialPassage;
 
     if (!initialPassage) {
-      return submitTurn({
-        kind,
-        userText,
-        passage: undefined,
-        prompt: trimmedPrompt || undefined,
-        translation: input.translation
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/study", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          translation: input.translation,
+          prompt: trimmedPrompt || undefined,
+          history: buildHistory(turns),
+          threadId: activeThreadId ?? undefined,
+          kind,
+          userText
+        })
       });
+
+      const data = (await parseJsonSafe(response)) as
+        | (StudyResponsePayload & { error?: undefined })
+        | { error: string };
+
+      if (!response.ok || "error" in data) {
+        const message = data.error ?? "Unable to generate recommendations.";
+        setError(`Study request failed (${response.status}): ${message}`);
+        setIsLoading(false);
+        return false;
+      }
+
+      const turnId = `${Date.now()}-${turns.length}`;
+      setTurns((current) => [
+        ...current,
+        {
+          id: turnId,
+          kind,
+          userText,
+          graphNodeId: data.graph?.nodeId ?? `local-${turnId}`,
+          response: data
+        }
+      ]);
+
+      if (data.thread) {
+        upsertThread({
+          id: data.thread.id,
+          title: data.thread.title ?? "Untitled Study",
+          translation: input.translation,
+          archivedAt: data.thread.archivedAt,
+          updatedAt: data.thread.updatedAt
+        });
+        setActiveThreadId(data.thread.id);
+      }
+
+      setIsLoading(false);
+      return true;
     }
 
     const pendingId = `pending-${Date.now()}`;
@@ -360,10 +240,6 @@ export function useStudySession() {
       | (PassagePreviewPayload & { error?: undefined })
       | { error: string };
 
-    let prefetchedInsightPromise:
-      | Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null>
-      | null = null;
-
     if (previewResponse.ok && !("error" in previewData)) {
       const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
         origin: "input",
@@ -384,11 +260,6 @@ export function useStudySession() {
             }
           : current
       );
-
-      prefetchedInsightPromise = requestOriginalLanguageInsight({
-        translation: input.translation,
-        passage: previewPassage
-      });
     }
 
     const studyResponse = await studyPromise;
@@ -417,53 +288,7 @@ export function useStudySession() {
         response: studyData
       }
     ]);
-    if (prefetchedInsightPromise && studyData.passage) {
-      setInsightLoadingByTurnId((current) => ({
-        ...current,
-        [turnId]: true
-      }));
-      void prefetchedInsightPromise
-        .then((insight) => {
-          if (!insight) {
-            setInsightUnavailableByTurnId((current) => ({
-              ...current,
-              [turnId]: true
-            }));
-            return;
-          }
-          setTurns((current) =>
-            current.map((turn) =>
-              turn.id === turnId
-                ? {
-                    ...turn,
-                    response: {
-                      ...turn.response,
-                      originalLanguageInsight: insight
-                    }
-                  }
-                : turn
-            )
-          );
-          setInsightUnavailableByTurnId((current) => {
-            const next = { ...current };
-            delete next[turnId];
-            return next;
-          });
-        })
-        .finally(() => {
-          setInsightLoadingByTurnId((current) => {
-            const next = { ...current };
-            delete next[turnId];
-            return next;
-          });
-        });
-    } else {
-      void hydrateOriginalLanguageInsight({
-        turnId,
-        translation: input.translation,
-        response: studyData
-      });
-    }
+
     if (studyData.thread) {
       upsertThread({
         id: studyData.thread.id,
@@ -493,6 +318,7 @@ export function useStudySession() {
       ? `Selected verse: ${input.reference}\nQuestion: ${trimmedPrompt}`
       : `Selected verse: ${input.reference}`;
     const kind: "prompt" | "verse" = trimmedPrompt ? "prompt" : "verse";
+
     setPendingTurn({
       id: pendingId,
       kind,
@@ -530,10 +356,6 @@ export function useStudySession() {
       | (PassagePreviewPayload & { error?: undefined })
       | { error: string };
 
-    let prefetchedInsightPromise:
-      | Promise<NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null>
-      | null = null;
-
     if (previewResponse.ok && !("error" in previewData)) {
       const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
         origin: "input",
@@ -554,11 +376,6 @@ export function useStudySession() {
             }
           : current
       );
-
-      prefetchedInsightPromise = requestOriginalLanguageInsight({
-        translation: input.translation,
-        passage: previewPassage
-      });
     }
 
     const studyResponse = await studyPromise;
@@ -587,58 +404,7 @@ export function useStudySession() {
         response: studyData
       }
     ]);
-    setInsightUnavailableByTurnId((current) => {
-      const next = { ...current };
-      delete next[turnId];
-      return next;
-    });
-    if (prefetchedInsightPromise && studyData.passage) {
-      setInsightLoadingByTurnId((current) => ({
-        ...current,
-        [turnId]: true
-      }));
-      void prefetchedInsightPromise
-        .then((insight) => {
-          if (!insight) {
-            setInsightUnavailableByTurnId((current) => ({
-              ...current,
-              [turnId]: true
-            }));
-            return;
-          }
-          setTurns((current) =>
-            current.map((turn) =>
-              turn.id === turnId
-                ? {
-                    ...turn,
-                    response: {
-                      ...turn.response,
-                      originalLanguageInsight: insight
-                    }
-                  }
-                : turn
-            )
-          );
-          setInsightUnavailableByTurnId((current) => {
-            const next = { ...current };
-            delete next[turnId];
-            return next;
-          });
-        })
-        .finally(() => {
-          setInsightLoadingByTurnId((current) => {
-            const next = { ...current };
-            delete next[turnId];
-            return next;
-          });
-        });
-    } else {
-      void hydrateOriginalLanguageInsight({
-        turnId,
-        translation: input.translation,
-        response: studyData
-      });
-    }
+
     if (studyData.thread) {
       upsertThread({
         id: studyData.thread.id,
@@ -649,6 +415,7 @@ export function useStudySession() {
       });
       setActiveThreadId(studyData.thread.id);
     }
+
     setPendingTurn((current) =>
       current && current.id === pendingId ? null : current
     );
@@ -664,8 +431,6 @@ export function useStudySession() {
     error,
     isLoading,
     isHistoryLoading,
-    insightLoadingByTurnId,
-    insightUnavailableByTurnId,
     setError,
     loadThreads,
     loadThread,

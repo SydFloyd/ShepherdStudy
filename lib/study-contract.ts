@@ -6,34 +6,6 @@ export type StudyRecommendation = {
   confidence?: number;
 };
 
-export type OriginalLanguageWord = {
-  position: number;
-  text: string;
-  lemma: string | null;
-  strong: string | null;
-  morph: string | null;
-};
-
-export type OriginalLanguageVerse = {
-  verse: number;
-  text: string;
-  words: OriginalLanguageWord[];
-};
-
-export type OriginalLanguageInsight = {
-  panelName: string;
-  sourceTranslation: string;
-  sourceTranslationName: string;
-  translationDeltas: string[];
-  wordHighlights: Array<{
-    term: string;
-    note: string;
-    lemma: string | null;
-    strong: string | null;
-    morph: string | null;
-  }>;
-};
-
 export type StudyMode = "passage_only" | "prompt_only" | "passage_and_prompt";
 
 export type PassageFootnote = {
@@ -68,7 +40,6 @@ export type StudyResponsePayload = {
   context: string;
   relevance: string;
   passage: StudyPassageResult | null;
-  originalLanguageInsight?: OriginalLanguageInsight | null;
   recommendations: StudyRecommendation[];
   graph?: {
     sessionId: string;

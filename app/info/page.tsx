@@ -24,8 +24,15 @@ export default function InfoPage() {
           <Link href="/study">Study</Link>
         </h3>
         <p>
-          Explore passages, receive context and recommendations, and analyze
-          meaningful original-language deltas and word-level details.
+          Explore passages and receive context with recommendations for deeper
+          study and practical application.
+        </p>
+        <h3>
+          <Link href="/word-lens">Interlinear</Link>
+        </h3>
+        <p>
+          Analyze one verse at a time in original language with AI-assisted
+          word-by-word transliteration, translation, and morphology support.
         </p>
         <h3>
           <Link href="/wwjd">ShepherdAI</Link>

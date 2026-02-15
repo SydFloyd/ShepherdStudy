@@ -650,21 +650,144 @@ button:disabled {
   margin: 0;
 }
 
+.wordLensCard {
+  display: grid;
+  gap: 10px;
+}
+
+.wordLensTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.wordLensTopRow .muted {
+  margin: 0;
+}
+
+.wordLensSearchForm {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wordLensVerseBlock {
+  width: min(760px, 100%);
+}
+
+.wordLensHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wordLensHeader h2 {
+  margin: 0;
+}
+
+.wordLensNav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wordLensOriginalText {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.wordLensOriginalText.rtl {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+
+.wordLensSourceLabel {
+  margin-top: 0;
+  font-size: 0.9rem;
+}
+
+.wordLensSourceLabel.rtl {
+  text-align: right;
+}
+
+.wordLensTranslationText {
+  margin: 6px 0 2px;
+  font-size: 0.98rem;
+  font-weight: 400;
+}
+
+.wordLensTranslationLabel {
+  margin-top: 0;
+  font-size: 0.86rem;
+}
+
+.wordLensVersionField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+}
+
+.wordLensVersionField select {
+  width: auto;
+}
+
+.wordLensOriginalToken {
+  transition: background-color 0.12s ease;
+  border-radius: 4px;
+}
+
+.wordLensOriginalToken.hovered {
+  background: #fff2c7;
+}
+
+.wordLensTableWrap {
+  overflow-x: auto;
+}
+
+.wordLensTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wordLensTable th,
+.wordLensTable td {
+  border-bottom: 1px solid var(--stroke);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wordLensRow {
+  cursor: pointer;
+}
+
+.wordLensRow:hover {
+  background: #f8f4eb;
+}
+
+.wordLensDetails td {
+  background: #f9f7f1;
+}
+
 .assistantPanel h3 {
   margin-bottom: 6px;
 }
 
 .studyPassageCard,
 .assistantPanel,
-.studyRecommendationsCard,
-.studyOriginalLensCard {
+.studyRecommendationsCard {
   padding-top: 12px;
 }
 
 .studyPassageCard h2,
 .assistantPanel h2,
-.studyRecommendationsCard h3,
-.studyOriginalLensCard h3 {
+.studyRecommendationsCard h3 {
   margin-top: 0;
   margin-bottom: 8px;
 }
@@ -984,6 +1107,15 @@ button:disabled {
   .studyPreviewActionRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .wordLensTopRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wordLensSearchForm {
+    grid-template-columns: 1fr auto;
   }
 
   .wwjdMessage.user {
