@@ -10,7 +10,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Shepherd Study",
-  description: "Personalized Bible study companion with OpenAI recommendations."
+  description: "Personalized Bible study companion with OpenAI recommendations.",
+  icons: {
+    icon: "/branding/shepherdstudy_small.png",
+    shortcut: "/branding/shepherdstudy_small.png",
+    apple: "/branding/shepherdstudy_small.png"
+  }
 };
 
 type Props = {
