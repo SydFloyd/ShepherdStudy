@@ -1,14 +1,10 @@
 type Props = {
-  modeName: string;
-  behaviorName: string;
   answer: string;
   context: string;
   relevance: string;
 };
 
 export function StudyAssistantPanel({
-  modeName,
-  behaviorName,
   answer,
   context,
   relevance
@@ -16,14 +12,15 @@ export function StudyAssistantPanel({
   return (
     <article className="card assistantPanel">
       <h2>Assistant</h2>
-      <p className="muted">
-        {modeName} | {behaviorName}
-      </p>
       <p>{answer}</p>
-      <h3>Context</h3>
-      <p>{context}</p>
-      <h3>Relevance</h3>
-      <p>{relevance}</p>
+      <details className="assistantDetail">
+        <summary>Context</summary>
+        <p>{context}</p>
+      </details>
+      <details className="assistantDetail">
+        <summary>Relevance</summary>
+        <p>{relevance}</p>
+      </details>
     </article>
   );
 }

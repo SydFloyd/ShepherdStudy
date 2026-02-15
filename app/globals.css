@@ -308,12 +308,27 @@ button:disabled {
 
 .studyTopSettings h1 {
   margin-top: 0;
+  margin-bottom: 0;
 }
 
-.studyTopRow {
-  display: grid;
-  grid-template-columns: 1fr 1.618fr;
+.studyTopHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
+}
+
+.studyVersionField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.studyVersionField select {
+  min-width: 0;
 }
 
 .studyTurns {
@@ -543,8 +558,131 @@ button:disabled {
   text-decoration: underline;
 }
 
+.studyRecoItem {
+  padding: 10px 12px;
+}
+
+.studyRecoSummaryRow {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.studyRecoInline {
+  margin: 0;
+  display: inline;
+  line-height: 1.45;
+}
+
+.studyRecoRef {
+  margin-right: 6px;
+}
+
+.studyRecoSummary {
+  overflow-wrap: anywhere;
+}
+
 .assistantPanel h3 {
   margin-bottom: 6px;
+}
+
+.studyPassageCard,
+.assistantPanel,
+.studyRecommendationsCard {
+  padding-top: 12px;
+}
+
+.studyPassageCard h2,
+.assistantPanel h2,
+.studyRecommendationsCard h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.assistantDetail {
+  border-top: 1px solid var(--stroke);
+  padding-top: 8px;
+  margin-top: 10px;
+}
+
+.assistantDetail summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.assistantDetail p {
+  margin: 8px 0 0;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loadingRow h2,
+.loadingRow h3 {
+  margin: 0;
+}
+
+.loadingSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #b9c7b8;
+  border-top-color: #4d7a52;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.85s linear infinite;
+}
+
+.skeletonBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.skeletonRecoCard {
+  display: grid;
+  gap: 8px;
+}
+
+.skeletonLine {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ece6da 25%, #f6f2e9 50%, #ece6da 75%);
+  background-size: 220% 100%;
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+
+.skeletonLine.short {
+  width: 34%;
+}
+
+.skeletonLine.medium {
+  width: 66%;
+}
+
+.skeletonLine.long {
+  width: 92%;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 @media (max-width: 860px) {
@@ -572,8 +710,9 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .studyTopRow {
+  .studyTopHeader {
     grid-template-columns: 1fr;
+    display: grid;
   }
 }
 

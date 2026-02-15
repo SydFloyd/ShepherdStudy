@@ -192,6 +192,48 @@ function stripNotes(text) {
   return text.replace(/\\f\s+[\s\S]*?\\f\*/g, " ").replace(/\\x\s+[\s\S]*?\\x\*/g, " ");
 }
 
+function parseWordAttributes(rawAttributes) {
+  const attributes = {};
+  const pattern = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
+  let match;
+  while ((match = pattern.exec(rawAttributes)) !== null) {
+    attributes[match[1]] = match[2];
+  }
+  return attributes;
+}
+
+function extractWordsFromVerseText(text, context) {
+  const words = [];
+  const pattern = /\\\+?w\s+([^\\|]+?)\|([^\\]*?)\\\+?w\*/g;
+  let match;
+  let position = 1;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const token = cleanUsfmText(match[1] ?? "");
+    if (!token) {
+      continue;
+    }
+
+    const attributes = parseWordAttributes(match[2] ?? "");
+    words.push({
+      translation: context.translation,
+      bookCode: context.bookCode,
+      book: context.book,
+      bookOrder: context.bookOrder,
+      chapter: context.chapter,
+      verse: context.verse,
+      position,
+      text: token,
+      lemma: attributes.lemma ?? null,
+      strong: attributes.strong ?? null,
+      morph: attributes["x-morph"] ?? null
+    });
+    position += 1;
+  }
+
+  return words;
+}
+
 async function ensureSourceFiles(source) {
   await mkdir(DOWNLOAD_DIR, { recursive: true });
   const sourceDir = path.join(SOURCE_ROOT, source.sourceDir);
@@ -236,6 +278,7 @@ function parseUsfmFile(content, translation) {
   const lines = content.split(/\r?\n/);
   const verses = [];
   const notes = [];
+  const words = [];
 
   let bookCode = "";
   let book = "";
@@ -251,6 +294,17 @@ function parseUsfmFile(content, translation) {
 
     const cleaned = cleanUsfmText(stripNotes(currentVerse.rawText));
     if (cleaned) {
+      words.push(
+        ...extractWordsFromVerseText(currentVerse.rawText, {
+          translation,
+          bookCode,
+          book,
+          bookOrder,
+          chapter,
+          verse: currentVerse.verse
+        })
+      );
+
       verses.push({
         translation,
         bookCode,
@@ -359,8 +413,13 @@ function parseUsfmFile(content, translation) {
         continue;
       }
 
-      if (currentVerse && remainder) {
-        currentVerse.rawText += ` ${remainder}`;
+      if (currentVerse) {
+        if (marker === "w" || marker === "+w") {
+          const markerText = remainder ? `\\${marker} ${remainder}` : `\\${marker}`;
+          currentVerse.rawText += ` ${markerText}`;
+        } else if (remainder) {
+          currentVerse.rawText += ` ${remainder}`;
+        }
       }
       continue;
     }
@@ -371,7 +430,7 @@ function parseUsfmFile(content, translation) {
   }
 
   flushCurrentVerse();
-  return { verses, notes };
+  return { verses, notes, words };
 }
 
 async function importTranslationFromUsfm(source) {
@@ -380,12 +439,14 @@ async function importTranslationFromUsfm(source) {
 
   const allVerses = [];
   const allNotes = [];
+  const allWords = [];
 
   for (const file of files) {
     const raw = await readFile(file, "utf8");
     const parsed = parseUsfmFile(raw.replace(/^\uFEFF/, ""), source.translation);
     allVerses.push(...parsed.verses);
     allNotes.push(...parsed.notes);
+    allWords.push(...parsed.words);
   }
 
   console.log(
@@ -394,7 +455,11 @@ async function importTranslationFromUsfm(source) {
   console.log(
     `Parsed ${source.translation.toUpperCase()} USFM notes: ${allNotes.length}`
   );
+  console.log(
+    `Parsed ${source.translation.toUpperCase()} USFM words: ${allWords.length}`
+  );
 
+  await prisma.bibleWord.deleteMany({ where: { translation: source.translation } });
   await prisma.bibleFootnote.deleteMany({ where: { translation: source.translation } });
   await prisma.bibleVerse.deleteMany({ where: { translation: source.translation } });
 
@@ -408,6 +473,12 @@ async function importTranslationFromUsfm(source) {
   for (let index = 0; index < allNotes.length; index += chunkSize) {
     await prisma.bibleFootnote.createMany({
       data: allNotes.slice(index, index + chunkSize)
+    });
+  }
+
+  for (let index = 0; index < allWords.length; index += chunkSize) {
+    await prisma.bibleWord.createMany({
+      data: allWords.slice(index, index + chunkSize)
     });
   }
 

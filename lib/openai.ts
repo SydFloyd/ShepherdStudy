@@ -5,9 +5,7 @@ import { StudyMode } from "@/lib/study-contract";
 
 const recommendationSchema = z.object({
   reference: z.string().min(1),
-  reason: z.string().min(1),
-  application: z.string().min(1),
-  confidence: z.number().min(0).max(1)
+  summary: z.string().min(1)
 });
 
 const studyResponseSchema = z.object({
@@ -30,9 +28,7 @@ Return only valid JSON with this shape:
   "recommendations": [
     {
       "reference": "Book Chapter:Verse",
-      "reason": "why this connects",
-      "application": "practical faith application",
-      "confidence": 0.0
+      "summary": "one concise sentence: why this verse fits and how to apply it"
     }
   ]
 }
@@ -40,7 +36,6 @@ Return only valid JSON with this shape:
 Rules:
 - Keep references orthodox and scripture-focused.
 - Avoid speculative claims.
-- Confidence is between 0 and 1.
 - Keep answer/context/relevance concise and practical.
 - Provide 5 recommendations.
 `.trim();

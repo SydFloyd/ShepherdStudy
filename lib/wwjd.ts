@@ -5,9 +5,7 @@ import { StudyRecommendation } from "@/lib/study-contract";
 
 const recommendationSchema = z.object({
   reference: z.string().min(1),
-  reason: z.string().min(1),
-  application: z.string().min(1),
-  confidence: z.number().min(0).max(1)
+  summary: z.string().min(1)
 });
 
 const wwjdResponseSchema = z.object({
@@ -37,9 +35,7 @@ Return only valid JSON with shape:
   "recommendations": [
     {
       "reference": "Book Chapter:Verse",
-      "reason": "why this passage applies",
-      "application": "practical response",
-      "confidence": 0.0
+      "summary": "one concise sentence: why this verse applies and how to respond"
     }
   ]
 }

@@ -9,21 +9,21 @@ datasource db {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  studySessions StudySession[]
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  passwordHash       String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  studySessions      StudySession[]
   studyGraphSessions StudyGraphSession[]
-  studyGraphNodes StudyGraphNode[]
-  studyGraphEdges StudyGraphEdge[]
-  dailyQuotaUsages DailyQuotaUsage[]
-  studyThreads StudyThread[]
-  studyMessages StudyMessage[]
-  wwjdThreads  WwjdThread[]
-  wwjdMessages WwjdMessage[]
+  studyGraphNodes    StudyGraphNode[]
+  studyGraphEdges    StudyGraphEdge[]
+  dailyQuotaUsages   DailyQuotaUsage[]
+  studyThreads       StudyThread[]
+  studyMessages      StudyMessage[]
+  wwjdThreads        WwjdThread[]
+  wwjdMessages       WwjdMessage[]
 }
 
 model StudySession {
@@ -54,7 +54,7 @@ model BibleVerse {
 }
 
 model BibleFootnote {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   translation String
   bookCode    String
   book        String
@@ -69,8 +69,28 @@ model BibleFootnote {
   @@index([translation, bookOrder, chapter, verse])
 }
 
+model BibleWord {
+  id          Int     @id @default(autoincrement())
+  translation String
+  bookCode    String
+  book        String
+  bookOrder   Int
+  chapter     Int
+  verse       Int
+  position    Int
+  text        String
+  lemma       String?
+  strong      String?
+  morph       String?
+
+  @@unique([translation, bookOrder, chapter, verse, position])
+  @@index([translation, book, chapter, verse])
+  @@index([translation, strong])
+  @@index([translation, lemma])
+}
+
 model StudyGraphNode {
-  id            String            @id @default(cuid())
+  id            String             @id @default(cuid())
   userId        String
   sessionId     String
   kind          StudyGraphNodeKind
@@ -79,43 +99,43 @@ model StudyGraphNode {
   promptText    String?
   normalizedKey String?
   translation   String?
-  isUserInput   Boolean           @default(false)
+  isUserInput   Boolean            @default(false)
   answer        String?
   context       String?
   relevance     String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  session       StudyGraphSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  outgoingEdges StudyGraphEdge[]  @relation("StudyGraphEdgeFrom")
-  incomingEdges StudyGraphEdge[]  @relation("StudyGraphEdgeTo")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  session       StudyGraphSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outgoingEdges StudyGraphEdge[]   @relation("StudyGraphEdgeFrom")
+  incomingEdges StudyGraphEdge[]   @relation("StudyGraphEdgeTo")
 
+  @@unique([sessionId, kind, translation, normalizedKey])
   @@index([userId, sessionId, createdAt])
   @@index([userId, sessionId, kind, normalizedKey])
-  @@unique([sessionId, kind, translation, normalizedKey])
 }
 
 model StudyGraphEdge {
-  id          String           @id @default(cuid())
-  userId      String
-  sessionId   String
-  fromNodeId  String
-  toNodeId    String
-  kind        StudyGraphEdgeKind
+  id            String             @id @default(cuid())
+  userId        String
+  sessionId     String
+  fromNodeId    String
+  toNodeId      String
+  kind          StudyGraphEdgeKind
   selectionKind String?
-  stepIndex   Int
-  reason      String?
-  application String?
-  confidence  Float?
-  createdAt   DateTime         @default(now())
-  session     StudyGraphSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fromNode    StudyGraphNode   @relation("StudyGraphEdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
-  toNode      StudyGraphNode   @relation("StudyGraphEdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  stepIndex     Int
+  reason        String?
+  application   String?
+  confidence    Float?
+  createdAt     DateTime           @default(now())
+  session       StudyGraphSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromNode      StudyGraphNode     @relation("StudyGraphEdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode        StudyGraphNode     @relation("StudyGraphEdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
 
+  @@unique([fromNodeId, toNodeId, kind, stepIndex])
   @@index([userId, sessionId, createdAt])
   @@index([fromNodeId, kind, createdAt])
-  @@unique([fromNodeId, toNodeId, kind, stepIndex])
 }
 
 model StudyGraphSession {
@@ -203,14 +223,14 @@ enum StudyMessageRole {
 }
 
 model WwjdThread {
-  id          String        @id @default(cuid())
-  userId      String
-  title       String?
-  archivedAt  DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages    WwjdMessage[]
+  id         String        @id @default(cuid())
+  userId     String
+  title      String?
+  archivedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   WwjdMessage[]
 
   @@index([userId, updatedAt])
   @@index([userId, archivedAt, updatedAt])
@@ -218,14 +238,14 @@ model WwjdThread {
 
 model WwjdMessage {
   id              String           @id @default(cuid())
-  threadId         String
-  userId           String
-  role             StudyMessageRole
-  content          String
-  recommendations  Json?
-  createdAt        DateTime         @default(now())
-  thread           WwjdThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadId        String
+  userId          String
+  role            StudyMessageRole
+  content         String
+  recommendations Json?
+  createdAt       DateTime         @default(now())
+  thread          WwjdThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
   @@index([userId, createdAt])

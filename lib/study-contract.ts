@@ -1,8 +1,9 @@
 export type StudyRecommendation = {
   reference: string;
-  reason: string;
-  application: string;
-  confidence: number;
+  summary: string;
+  reason?: string;
+  application?: string;
+  confidence?: number;
 };
 
 export type StudyMode = "passage_only" | "prompt_only" | "passage_and_prompt";

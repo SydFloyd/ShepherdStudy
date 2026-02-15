@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BibleTranslationId } from "@/lib/bible";
 import {
   PassagePreviewPayload,
-  PendingVerseTurn,
+  PendingStudyTurn,
   StudyThreadDetail,
   StudyThreadSummary,
   StudyTurn
@@ -21,7 +21,7 @@ export function useStudySession() {
   const [turns, setTurns] = useState<StudyTurn[]>([]);
   const [threads, setThreads] = useState<StudyThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [pendingVerseTurn, setPendingVerseTurn] = useState<PendingVerseTurn | null>(
+  const [pendingTurn, setPendingTurn] = useState<PendingStudyTurn | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
@@ -205,14 +205,119 @@ export function useStudySession() {
     }
 
     const isVerseOnlyStart = !trimmedPrompt && Boolean(initialPassage);
+    const kind: "prompt" | "verse" = isVerseOnlyStart ? "verse" : "prompt";
+    const userText = trimmedPrompt || initialPassage;
 
-    return submitTurn({
-      kind: isVerseOnlyStart ? "verse" : "prompt",
-      userText: trimmedPrompt || initialPassage,
-      passage: initialPassage || undefined,
-      prompt: trimmedPrompt || undefined,
-      translation: input.translation
+    if (!initialPassage) {
+      return submitTurn({
+        kind,
+        userText,
+        passage: undefined,
+        prompt: trimmedPrompt || undefined,
+        translation: input.translation
+      });
+    }
+
+    const pendingId = `pending-${Date.now()}`;
+    setPendingTurn({
+      id: pendingId,
+      kind,
+      userText,
+      passage: null
     });
+    setError(null);
+    setIsLoading(true);
+
+    const previewPromise = fetch("/api/passage-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference: initialPassage,
+        translation: input.translation
+      })
+    });
+
+    const studyPromise = fetch("/api/study", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        translation: input.translation,
+        passage: initialPassage,
+        prompt: trimmedPrompt || undefined,
+        history: buildHistory(turns),
+        threadId: activeThreadId ?? undefined,
+        kind,
+        userText
+      })
+    });
+
+    const previewResponse = await previewPromise;
+    const previewData = (await parseJsonSafe(previewResponse)) as
+      | (PassagePreviewPayload & { error?: undefined })
+      | { error: string };
+
+    if (previewResponse.ok && !("error" in previewData)) {
+      setPendingTurn((current) =>
+        current && current.id === pendingId
+          ? {
+              ...current,
+              passage: {
+                origin: "input",
+                reference: previewData.reference,
+                chapterReference: previewData.chapterReference,
+                translation: previewData.translation,
+                translationName: previewData.translationName,
+                verses: previewData.verses,
+                chapterPath: previewData.chapterPath,
+                excerpted: previewData.excerpted
+              }
+            }
+          : current
+      );
+    }
+
+    const studyResponse = await studyPromise;
+    const studyData = (await parseJsonSafe(studyResponse)) as
+      | (StudyResponsePayload & { error?: undefined })
+      | { error: string };
+
+    if (!studyResponse.ok || "error" in studyData) {
+      const message = studyData.error ?? "Unable to generate recommendations.";
+      setError(`Study request failed (${studyResponse.status}): ${message}`);
+      setPendingTurn((current) =>
+        current && current.id === pendingId ? null : current
+      );
+      setIsLoading(false);
+      return false;
+    }
+
+    const turnId = `${Date.now()}-${turns.length}`;
+    setTurns((current) => [
+      ...current,
+      {
+        id: turnId,
+        kind,
+        userText,
+        graphNodeId: studyData.graph?.nodeId ?? `local-${turnId}`,
+        response: studyData
+      }
+    ]);
+    if (studyData.thread) {
+      upsertThread({
+        id: studyData.thread.id,
+        title: studyData.thread.title ?? "Untitled Study",
+        translation: input.translation,
+        archivedAt: studyData.thread.archivedAt,
+        updatedAt: studyData.thread.updatedAt
+      });
+      setActiveThreadId(studyData.thread.id);
+    }
+
+    setPendingTurn((current) =>
+      current && current.id === pendingId ? null : current
+    );
+    setIsLoading(false);
+    return true;
   }
 
   async function selectRecommendation(input: {
@@ -221,8 +326,9 @@ export function useStudySession() {
   }) {
     const pendingId = `pending-${Date.now()}`;
     const userText = `Selected verse: ${input.reference}`;
-    setPendingVerseTurn({
+    setPendingTurn({
       id: pendingId,
+      kind: "verse",
       userText,
       passage: null
     });
@@ -257,7 +363,7 @@ export function useStudySession() {
       | { error: string };
 
     if (previewResponse.ok && !("error" in previewData)) {
-      setPendingVerseTurn((current) =>
+      setPendingTurn((current) =>
         current && current.id === pendingId
           ? {
               ...current,
@@ -284,7 +390,7 @@ export function useStudySession() {
     if (!studyResponse.ok || "error" in studyData) {
       const message = studyData.error ?? "Unable to generate recommendations.";
       setError(`Study request failed (${studyResponse.status}): ${message}`);
-      setPendingVerseTurn((current) =>
+      setPendingTurn((current) =>
         current && current.id === pendingId ? null : current
       );
       setIsLoading(false);
@@ -312,7 +418,7 @@ export function useStudySession() {
       });
       setActiveThreadId(studyData.thread.id);
     }
-    setPendingVerseTurn((current) =>
+    setPendingTurn((current) =>
       current && current.id === pendingId ? null : current
     );
     setIsLoading(false);
@@ -323,7 +429,7 @@ export function useStudySession() {
     turns,
     threads,
     activeThreadId,
-    pendingVerseTurn,
+    pendingTurn,
     error,
     isLoading,
     isHistoryLoading,

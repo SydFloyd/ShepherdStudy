@@ -15,9 +15,7 @@ const appendSchema = z.object({
   recommendations: z.array(
     z.object({
       reference: z.string().min(1),
-      reason: z.string().min(1),
-      application: z.string().min(1),
-      confidence: z.number().min(0).max(1)
+      summary: z.string().min(1)
     })
   )
 });

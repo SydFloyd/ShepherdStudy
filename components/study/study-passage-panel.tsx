@@ -23,7 +23,7 @@ export function StudyPassagePanel({ passage }: Props) {
   }, []);
 
   return (
-    <article className="card">
+    <article className="card studyPassageCard">
       <h2>{passage.reference}</h2>
       <p className="muted">
         {passage.translationName} |{" "}

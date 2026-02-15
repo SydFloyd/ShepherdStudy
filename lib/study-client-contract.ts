@@ -18,8 +18,9 @@ export type PassagePreviewPayload = {
   excerpted: boolean;
 };
 
-export type PendingVerseTurn = {
+export type PendingStudyTurn = {
   id: string;
+  kind: "prompt" | "verse";
   userText: string;
   passage: NonNullable<StudyResponsePayload["passage"]> | null;
 };
