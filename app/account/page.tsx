@@ -46,6 +46,16 @@ export default function AccountPage() {
       const response = await fetch("/api/account", { cache: "no-store" });
       const data = (await parseJsonSafe(response)) as AccountPayload | { error?: string };
 
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (response.status === 404) {
+        await signOut({ callbackUrl: "/login" });
+        return;
+      }
+
       if (!response.ok || !("account" in data)) {
         setError(("error" in data && data.error) || "Unable to load account.");
         setIsLoading(false);
@@ -142,6 +152,15 @@ export default function AccountPage() {
       <section className="card">
         <h1>Account</h1>
         <p className="muted">Loading account...</p>
+      </section>
+    );
+  }
+
+  if (status !== "authenticated") {
+    return (
+      <section className="card">
+        <h1>Account</h1>
+        <p className="muted">Please sign in to access account settings.</p>
       </section>
     );
   }
