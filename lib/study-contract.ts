@@ -24,9 +24,7 @@ export type OriginalLanguageInsight = {
   panelName: string;
   sourceTranslation: string;
   sourceTranslationName: string;
-  summary: string;
-  nuances: string[];
-  translationNotes: string[];
+  translationDeltas: string[];
   wordHighlights: Array<{
     term: string;
     note: string;

@@ -19,9 +19,7 @@ export type StudyRecommendation = z.infer<typeof recommendationSchema>;
 export type StudyResponse = z.infer<typeof studyResponseSchema>;
 
 const originalLanguageInsightSchema = z.object({
-  summary: z.string().min(1),
-  nuances: z.array(z.string().min(1)).default([]),
-  translationNotes: z.array(z.string().min(1)).default([]),
+  translationDeltas: z.array(z.string().min(1)).default([]),
   wordHighlights: z
     .array(
       z.object({
@@ -61,13 +59,13 @@ const originalLanguageSystemPrompt = `
 You are a biblical language assistant helping users compare an English translation with original-language source text.
 Return only valid JSON with this shape:
 {
-  "summary": "concise high-value interpretation note",
-  "nuances": ["translation nuance or semantic force", "..."],
-  "translationNotes": ["possible alternate rendering or clarity note", "..."],
+  "translationDeltas": [
+    "only non-obvious insights that require original-language analysis"
+  ],
   "wordHighlights": [
     {
       "term": "surface original term",
-      "note": "brief explanation",
+      "note": "brief original-language-based explanation",
       "lemma": "lemma if available",
       "strong": "Strong code if available",
       "morph": "morph tag if available"
@@ -77,9 +75,13 @@ Return only valid JSON with this shape:
 
 Rules:
 - Be faithful to orthodox Christian interpretation and textual context.
-- Prefer clarity over jargon, but use technical terms when necessary.
+- Include ONLY insights that cannot be inferred from the translation alone.
+- Do NOT restate obvious meaning already clear in the selected translation.
 - Do not invent lexical data.
-- Keep each bullet concise and useful for study.
+- Keep each bullet concise and evidence-based.
+- If there are no meaningful deltas, return:
+  "translationDeltas": []
+  "wordHighlights": []
 `.trim();
 
 function getClient(): OpenAI {
@@ -203,16 +205,13 @@ ${JSON.stringify(sourceVerses)}
   }
 
   const parsed = originalLanguageInsightSchema.parse(JSON.parse(content));
-  const nuanceItems = parsed.nuances.slice(0, 6);
-  const translationNoteItems = parsed.translationNotes.slice(0, 6);
+  const translationDeltas = parsed.translationDeltas.slice(0, 6);
   const wordHighlights = parsed.wordHighlights.slice(0, 6);
   return {
     panelName: "Original Language Lens",
     sourceTranslation: input.sourceTranslation,
     sourceTranslationName: input.sourceTranslationName,
-    summary: parsed.summary,
-    nuances: nuanceItems,
-    translationNotes: translationNoteItems,
+    translationDeltas,
     wordHighlights: wordHighlights.map((item) => ({
       term: item.term,
       note: item.note,
