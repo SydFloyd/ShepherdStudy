@@ -11,12 +11,13 @@ export function Nav() {
 
   return (
     <nav className="nav">
-      <Link href="/" className="brand">
+      <Link href="/study" className="brand">
         Shepherd Study
       </Link>
       <div className="navLinks">
         <Link href="/study">Study</Link>
         <Link href="/wwjd">WWJD</Link>
+        <Link href="/info">Info</Link>
         {isAuthenticated ? (
           <>
             <Link href="/account">Account</Link>

@@ -5,6 +5,7 @@ export function Footer() {
     <footer className="footer">
       <span className="muted">Shepherd Study</span>
       <div className="footerLinks">
+        <Link href="/info">Info</Link>
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
       </div>

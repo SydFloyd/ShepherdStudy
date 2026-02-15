@@ -504,28 +504,6 @@ button:disabled {
   margin-bottom: 6px;
 }
 
-.feedbackRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.feedbackButton {
-  background: #f3eee3;
-  color: var(--ink);
-  border: 1px solid var(--stroke);
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-}
-
-.feedbackButton.active {
-  background: #dae9d7;
-  border-color: #9db99f;
-}
-
 @media (max-width: 860px) {
   .studyWorkspace {
     grid-template-columns: 1fr;
