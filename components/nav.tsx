@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 
 import { useAuthStatus } from "@/hooks/use-auth-status";
 
@@ -42,13 +42,23 @@ export function Nav() {
 
   const studyHref = pathname === "/study" ? "/study?new=1" : "/study";
 
+  function triggerNewStudyIfOnStudy(event: ReactMouseEvent<HTMLAnchorElement>) {
+    if (pathname !== "/study") {
+      return;
+    }
+    event.preventDefault();
+    window.dispatchEvent(new CustomEvent("study:new"));
+  }
+
   return (
     <nav className="nav">
-      <Link href={studyHref} className="brand">
+      <Link href={studyHref} className="brand" onClick={triggerNewStudyIfOnStudy}>
         Shepherd Study
       </Link>
       <div className="navLinks">
-        <Link href={studyHref}>Study</Link>
+        <Link href={studyHref} onClick={triggerNewStudyIfOnStudy}>
+          Study
+        </Link>
         <Link href="/wwjd">WWJD</Link>
         {isAuthenticated ? (
           <div className="navAccountMenu" ref={menuRef}>

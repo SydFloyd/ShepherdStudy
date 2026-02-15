@@ -61,6 +61,17 @@ export default function StudyPage() {
   const { focusedNodeId, onGraphNodeSelect } = useStudyNavigation(turns);
   const composerFormRef = useRef<HTMLFormElement | null>(null);
 
+  function resetStudyView() {
+    setStartingPassage("");
+    setPromptInput("");
+    setPreviewSelection(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setPreviewPrompt("");
+    startNewThread();
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -69,16 +80,24 @@ export default function StudyPage() {
     if (params.get("new") !== "1") {
       return;
     }
-    setStartingPassage("");
-    setPromptInput("");
-    setPreviewSelection(null);
-    setPreviewData(null);
-    setPreviewError(null);
-    setPreviewPrompt("");
-    startNewThread();
+    resetStudyView();
     router.replace("/study", { scroll: false });
-    window.scrollTo({ top: 0, behavior: "auto" });
   }, [router, startNewThread]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function onNewStudyEvent() {
+      resetStudyView();
+    }
+
+    window.addEventListener("study:new", onNewStudyEvent);
+    return () => {
+      window.removeEventListener("study:new", onNewStudyEvent);
+    };
+  }, [startNewThread]);
 
   useEffect(() => {
     if (turns.length === 0) {
