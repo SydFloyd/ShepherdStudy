@@ -12,13 +12,13 @@ import { PassageVerse } from "@/lib/study-contract";
 const verseSchema = z.object({
   verse: z.number().int().positive(),
   paragraph: z.number().int().nonnegative(),
-  text: z.string().min(1),
+  text: z.string(),
   notes: z
     .array(
       z.object({
-        kind: z.string().min(1),
+        kind: z.string(),
         caller: z.string().nullable().optional(),
-        text: z.string().min(1)
+        text: z.string().optional().default("")
       })
     )
     .default([])
@@ -43,17 +43,26 @@ export async function POST(req: Request) {
   });
 
   try {
-    const input = inputSchema.parse(await req.json());
+    const parsedInput = inputSchema.safeParse(await req.json());
+    if (!parsedInput.success) {
+      logEvent("warn", "study.original_language_insight.invalid_input", {
+        ...requestMeta,
+        issues: parsedInput.error.issues
+      });
+      return NextResponse.json({ insight: null });
+    }
+    const input = parsedInput.data;
+
     const normalizedVerses: PassageVerse[] = input.passage.verses.map((verse) => ({
       verse: verse.verse,
       paragraph: verse.paragraph,
-      text: verse.text,
+      text: verse.text ?? "",
       notes: verse.notes
         .filter((note) => note.kind === "footnote" || note.kind === "crossref")
         .map((note) => ({
           kind: note.kind as "footnote" | "crossref",
           caller: note.caller ?? null,
-          text: note.text
+          text: note.text ?? ""
         }))
     }));
 
@@ -63,10 +72,7 @@ export async function POST(req: Request) {
     });
 
     if (!original) {
-      return NextResponse.json(
-        { error: "Original-language source unavailable for this passage." },
-        { status: 404 }
-      );
+      return NextResponse.json({ insight: null });
     }
 
     const insight = await generateOriginalLanguageInsight({
@@ -84,23 +90,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ insight });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      logEvent("warn", "study.original_language_insight.invalid_input", {
-        ...requestMeta,
-        issues: error.issues
-      });
-      return NextResponse.json(
-        {
-          error: "Invalid original-language insight request.",
-          details: error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message
-          }))
-        },
-        { status: 400 }
-      );
-    }
-
     captureServerException(error, {
       route: "/api/study/original-language-insight",
       requestId
@@ -109,9 +98,6 @@ export async function POST(req: Request) {
       ...requestMeta,
       error
     });
-    return NextResponse.json(
-      { error: "Unable to generate original-language insight right now." },
-      { status: 500 }
-    );
+    return NextResponse.json({ insight: null });
   }
 }

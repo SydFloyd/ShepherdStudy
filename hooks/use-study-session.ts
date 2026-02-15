@@ -155,7 +155,7 @@ export function useStudySession() {
 
     const data = (await parseJsonSafe(response)) as
       | {
-          insight: NonNullable<StudyResponsePayload["originalLanguageInsight"]>;
+          insight: NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null;
         }
       | { error: string; details?: Array<{ path: string; message: string }> };
 
@@ -166,7 +166,7 @@ export function useStudySession() {
       return null;
     }
 
-    return data.insight;
+    return data.insight ?? null;
   }
 
   async function hydrateOriginalLanguageInsight(input: {
