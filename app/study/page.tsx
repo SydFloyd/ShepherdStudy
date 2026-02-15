@@ -37,6 +37,7 @@ export default function StudyPage() {
     isLoading,
     isHistoryLoading,
     insightLoadingByTurnId,
+    insightUnavailableByTurnId,
     loadThread,
     archiveThread,
     renameThread,
@@ -196,6 +197,13 @@ export default function StudyPage() {
                     <div className="skeletonLine long" />
                   </div>
                 </article>
+              ) : insightUnavailableByTurnId[turn.id] ? (
+                <article className="card studyOriginalLensCard">
+                  <h3>Original Language Lens</h3>
+                  <p className="muted">
+                    Lens unavailable for this turn. Try another verse selection.
+                  </p>
+                </article>
               ) : null}
 
               <StudyRecommendations
@@ -242,6 +250,19 @@ export default function StudyPage() {
                   </div>
                 </article>
               </section>
+              {pendingTurn.passage ? (
+                <article className="card studyOriginalLensCard">
+                  <div className="loadingRow">
+                    <h3>Original Language Lens</h3>
+                    <span className="loadingSpinner" aria-hidden="true" />
+                  </div>
+                  <div className="skeletonBlock" aria-hidden="true">
+                    <div className="skeletonLine long" />
+                    <div className="skeletonLine medium" />
+                    <div className="skeletonLine long" />
+                  </div>
+                </article>
+              ) : null}
               <article className="card">
                 <div className="loadingRow">
                   <h3>Recommended verses</h3>

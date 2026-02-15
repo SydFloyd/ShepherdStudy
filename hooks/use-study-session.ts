@@ -30,6 +30,9 @@ export function useStudySession() {
   const [insightLoadingByTurnId, setInsightLoadingByTurnId] = useState<
     Record<string, boolean>
   >({});
+  const [insightUnavailableByTurnId, setInsightUnavailableByTurnId] = useState<
+    Record<string, boolean>
+  >({});
 
   function upsertThread(summary: StudyThreadSummary) {
     setThreads((current) => {
@@ -138,6 +141,7 @@ export function useStudySession() {
     setTurns([]);
     setError(null);
     setInsightLoadingByTurnId({});
+    setInsightUnavailableByTurnId({});
   }
 
   async function requestOriginalLanguageInsight(input: {
@@ -202,6 +206,16 @@ export function useStudySession() {
             : turn
         )
       );
+      setInsightUnavailableByTurnId((current) => {
+        const next = { ...current };
+        delete next[input.turnId];
+        return next;
+      });
+    } else {
+      setInsightUnavailableByTurnId((current) => ({
+        ...current,
+        [input.turnId]: true
+      }));
     }
 
     setInsightLoadingByTurnId((current) => {
@@ -257,6 +271,11 @@ export function useStudySession() {
         response: data
       }
     ]);
+    setInsightUnavailableByTurnId((current) => {
+      const next = { ...current };
+      delete next[turnId];
+      return next;
+    });
     void hydrateOriginalLanguageInsight({
       turnId,
       translation: input.translation,
@@ -401,6 +420,10 @@ export function useStudySession() {
       void prefetchedInsightPromise
         .then((insight) => {
           if (!insight) {
+            setInsightUnavailableByTurnId((current) => ({
+              ...current,
+              [turnId]: true
+            }));
             return;
           }
           setTurns((current) =>
@@ -416,6 +439,11 @@ export function useStudySession() {
                 : turn
             )
           );
+          setInsightUnavailableByTurnId((current) => {
+            const next = { ...current };
+            delete next[turnId];
+            return next;
+          });
         })
         .finally(() => {
           setInsightLoadingByTurnId((current) => {
@@ -548,6 +576,11 @@ export function useStudySession() {
         response: studyData
       }
     ]);
+    setInsightUnavailableByTurnId((current) => {
+      const next = { ...current };
+      delete next[turnId];
+      return next;
+    });
     if (prefetchedInsightPromise && studyData.passage) {
       setInsightLoadingByTurnId((current) => ({
         ...current,
@@ -556,6 +589,10 @@ export function useStudySession() {
       void prefetchedInsightPromise
         .then((insight) => {
           if (!insight) {
+            setInsightUnavailableByTurnId((current) => ({
+              ...current,
+              [turnId]: true
+            }));
             return;
           }
           setTurns((current) =>
@@ -571,6 +608,11 @@ export function useStudySession() {
                 : turn
             )
           );
+          setInsightUnavailableByTurnId((current) => {
+            const next = { ...current };
+            delete next[turnId];
+            return next;
+          });
         })
         .finally(() => {
           setInsightLoadingByTurnId((current) => {
@@ -612,6 +654,7 @@ export function useStudySession() {
     isLoading,
     isHistoryLoading,
     insightLoadingByTurnId,
+    insightUnavailableByTurnId,
     setError,
     loadThreads,
     loadThread,
