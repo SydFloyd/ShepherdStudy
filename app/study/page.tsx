@@ -62,6 +62,7 @@ export default function StudyPage() {
 
   async function onPromptSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const isFirstTurn = turns.length === 0;
     const ok = await submitPrompt({
       translation,
       promptInput,
@@ -70,6 +71,9 @@ export default function StudyPage() {
 
     if (ok) {
       setPromptInput("");
+      if (isFirstTurn) {
+        setStartingPassage("");
+      }
     }
   }
 
@@ -89,8 +93,18 @@ export default function StudyPage() {
   }
 
   const graph = buildLocalGraph(turns);
+  const hasStudyContent = turns.length > 0 || Boolean(pendingTurn);
   const versionSelectWidthCh =
     Math.max(...BIBLE_TRANSLATIONS.map((item) => item.label.length), 8) + 2;
+
+  function onInputSubmitShortcut(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  }
 
   return (
     <section className={`studyWorkspace${sessionStatus === "authenticated" ? " withHistory" : ""}`}>
@@ -100,8 +114,13 @@ export default function StudyPage() {
             threads={threads}
             activeThreadId={activeThreadId}
             isLoading={isHistoryLoading}
-            onNewThread={startNewThread}
+            onNewThread={() => {
+              setStartingPassage("");
+              setPromptInput("");
+              startNewThread();
+            }}
             onSelectThread={(threadId) => {
+              setStartingPassage("");
               void loadThread(threadId);
             }}
             onArchiveThread={(threadId) => {
@@ -148,154 +167,161 @@ export default function StudyPage() {
                 placeholder="Example: Matthew 6:25-34"
                 value={startingPassage}
                 onChange={(event) => setStartingPassage(event.target.value)}
+                onKeyDown={onInputSubmitShortcut}
               />
             </label>
           </article>
         ) : null}
 
-        <div className="studyTurns">
-          {turns.map((turn) => (
-            <section
-              key={turn.id}
-              id={`study-turn-${turn.id}`}
-              data-graph-node-id={turn.graphNodeId}
-              className="studyTurnBlock"
-            >
-              <article className="card studyUserBubble">
-                <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
-                <p>{turn.userText}</p>
-              </article>
-
-              <section className="studyResultGrid">
-                {turn.response.passage ? (
-                  <StudyPassagePanel passage={turn.response.passage} />
-                ) : (
-                  <article className="card">
-                    <h2>No Anchor Passage</h2>
-                    <p className="muted">
-                      This response did not resolve to a single anchor verse.
-                    </p>
-                  </article>
-                )}
-                <StudyAssistantPanel
-                  answer={turn.response.answer}
-                  context={turn.response.context}
-                  relevance={turn.response.relevance}
-                />
-              </section>
-              {turn.response.originalLanguageInsight ? (
-                <StudyOriginalLanguagePanel insight={turn.response.originalLanguageInsight} />
-              ) : insightLoadingByTurnId[turn.id] ? (
-                <article className="card studyOriginalLensCard">
-                  <div className="loadingRow">
-                    <h3>Original Language Lens</h3>
-                    <span className="loadingSpinner" aria-hidden="true" />
-                  </div>
-                  <div className="skeletonBlock" aria-hidden="true">
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine medium" />
-                    <div className="skeletonLine long" />
-                  </div>
+        {hasStudyContent ? (
+          <div className="studyTurns">
+            {turns.map((turn) => (
+              <section
+                key={turn.id}
+                id={`study-turn-${turn.id}`}
+                data-graph-node-id={turn.graphNodeId}
+                className="studyTurnBlock"
+              >
+                <article className="card studyUserBubble">
+                  <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
+                  <p>{turn.userText}</p>
                 </article>
-              ) : insightUnavailableByTurnId[turn.id] ? (
-                <article className="card studyOriginalLensCard">
-                  <h3>Original Language Lens</h3>
-                  <p className="muted">
-                    Lens unavailable for this turn. Try another verse selection.
-                  </p>
-                </article>
-              ) : null}
 
-              <StudyRecommendations
-                recommendations={turn.response.recommendations}
-                translation={turn.response.passage?.translation ?? translation}
-                sourceNodeId={turn.graphNodeId}
-                isOpen={expandedRecommendationsTurnId === turn.id}
-                onToggleOpen={(open) => {
-                  setExpandedRecommendationsTurnId(open ? turn.id : null);
-                }}
-                onSelectRecommendation={onRecommendationSelect}
-              />
-            </section>
-          ))}
-          {pendingTurn ? (
-            <section className="studyTurnBlock">
-              <article className="card studyUserBubble">
-                <p className="muted">
-                  {pendingTurn.kind === "verse" ? "Verse Selection" : "Prompt"}
-                </p>
-                <p>{pendingTurn.userText}</p>
-              </article>
-              <section className="studyResultGrid">
-                {pendingTurn.passage ? (
-                  <StudyPassagePanel passage={pendingTurn.passage} />
-                ) : (
-                  <article className="card">
+                <section className="studyResultGrid">
+                  {turn.response.passage ? (
+                    <StudyPassagePanel passage={turn.response.passage} />
+                  ) : (
+                    <article className="card">
+                      <h2>No Anchor Passage</h2>
+                      <p className="muted">
+                        This response did not resolve to a single anchor verse.
+                      </p>
+                    </article>
+                  )}
+                  <StudyAssistantPanel
+                    answer={turn.response.answer}
+                    context={turn.response.context}
+                    relevance={turn.response.relevance}
+                  />
+                </section>
+                {turn.response.originalLanguageInsight ? (
+                  <StudyOriginalLanguagePanel insight={turn.response.originalLanguageInsight} />
+                ) : insightLoadingByTurnId[turn.id] ? (
+                  <article className="card studyOriginalLensCard">
                     <div className="loadingRow">
+                      <h3>Original Language Lens</h3>
                       <span className="loadingSpinner" aria-hidden="true" />
-                      <h2>Loading verse...</h2>
+                    </div>
+                    <div className="skeletonBlock" aria-hidden="true">
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine medium" />
+                      <div className="skeletonLine long" />
                     </div>
                   </article>
-                )}
-                <article className="card assistantPanel">
+                ) : insightUnavailableByTurnId[turn.id] ? (
+                  <article className="card studyOriginalLensCard">
+                    <h3>Original Language Lens</h3>
+                    <p className="muted">
+                      Lens unavailable for this turn. Try another verse selection.
+                    </p>
+                  </article>
+                ) : null}
+
+                <StudyRecommendations
+                  recommendations={turn.response.recommendations}
+                  translation={turn.response.passage?.translation ?? translation}
+                  sourceNodeId={turn.graphNodeId}
+                  isOpen={expandedRecommendationsTurnId === turn.id}
+                  onToggleOpen={(open) => {
+                    setExpandedRecommendationsTurnId(open ? turn.id : null);
+                  }}
+                  onSelectRecommendation={onRecommendationSelect}
+                />
+              </section>
+            ))}
+            {pendingTurn ? (
+              <section className="studyTurnBlock">
+                <article className="card studyUserBubble">
+                  <p className="muted">
+                    {pendingTurn.kind === "verse" ? "Verse Selection" : "Prompt"}
+                  </p>
+                  <p>{pendingTurn.userText}</p>
+                </article>
+                <section className="studyResultGrid">
+                  {pendingTurn.passage ? (
+                    <StudyPassagePanel passage={pendingTurn.passage} />
+                  ) : (
+                    <article className="card">
+                      <div className="loadingRow">
+                        <span className="loadingSpinner" aria-hidden="true" />
+                        <h2>Loading verse...</h2>
+                      </div>
+                    </article>
+                  )}
+                  <article className="card assistantPanel">
+                    <div className="loadingRow">
+                      <h2>Assistant</h2>
+                      <span className="loadingSpinner" aria-hidden="true" />
+                    </div>
+                    <div className="skeletonBlock" aria-hidden="true">
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine" />
+                      <div className="skeletonLine medium" />
+                      <div className="skeletonLine long" />
+                    </div>
+                  </article>
+                </section>
+                {pendingTurn.passage ? (
+                  <article className="card studyOriginalLensCard">
+                    <div className="loadingRow">
+                      <h3>Original Language Lens</h3>
+                      <span className="loadingSpinner" aria-hidden="true" />
+                    </div>
+                    <div className="skeletonBlock" aria-hidden="true">
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine medium" />
+                      <div className="skeletonLine long" />
+                    </div>
+                  </article>
+                ) : null}
+                <article className="card">
                   <div className="loadingRow">
-                    <h2>Assistant</h2>
+                    <h3>Recommended verses</h3>
                     <span className="loadingSpinner" aria-hidden="true" />
                   </div>
-                  <div className="skeletonBlock" aria-hidden="true">
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine" />
-                    <div className="skeletonLine medium" />
-                    <div className="skeletonLine long" />
+                  <div className="list" aria-hidden="true">
+                    <div className="card skeletonRecoCard">
+                      <div className="skeletonLine short" />
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine medium" />
+                    </div>
+                    <div className="card skeletonRecoCard">
+                      <div className="skeletonLine short" />
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine medium" />
+                    </div>
+                    <div className="card skeletonRecoCard">
+                      <div className="skeletonLine short" />
+                      <div className="skeletonLine long" />
+                      <div className="skeletonLine medium" />
+                    </div>
                   </div>
                 </article>
               </section>
-              {pendingTurn.passage ? (
-                <article className="card studyOriginalLensCard">
-                  <div className="loadingRow">
-                    <h3>Original Language Lens</h3>
-                    <span className="loadingSpinner" aria-hidden="true" />
-                  </div>
-                  <div className="skeletonBlock" aria-hidden="true">
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine medium" />
-                    <div className="skeletonLine long" />
-                  </div>
-                </article>
-              ) : null}
-              <article className="card">
-                <div className="loadingRow">
-                  <h3>Recommended verses</h3>
-                  <span className="loadingSpinner" aria-hidden="true" />
-                </div>
-                <div className="list" aria-hidden="true">
-                  <div className="card skeletonRecoCard">
-                    <div className="skeletonLine short" />
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine medium" />
-                  </div>
-                  <div className="card skeletonRecoCard">
-                    <div className="skeletonLine short" />
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine medium" />
-                  </div>
-                  <div className="card skeletonRecoCard">
-                    <div className="skeletonLine short" />
-                    <div className="skeletonLine long" />
-                    <div className="skeletonLine medium" />
-                  </div>
-                </div>
-              </article>
-            </section>
-          ) : null}
-          <div ref={turnsEndRef} />
-        </div>
+            ) : null}
+            <div ref={turnsEndRef} />
+          </div>
+        ) : null}
 
-        <form onSubmit={onPromptSubmit} className="card studyComposer">
+        <form
+          onSubmit={onPromptSubmit}
+          className={`card studyComposer${hasStudyContent ? "" : " initial"}`}
+        >
           <div className="studyComposerRow">
             <input
               value={promptInput}
               onChange={(event) => setPromptInput(event.target.value)}
+              onKeyDown={onInputSubmitShortcut}
               placeholder="Ask a question"
             />
             <button type="submit" disabled={isLoading}>

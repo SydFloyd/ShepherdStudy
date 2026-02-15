@@ -351,6 +351,10 @@ button:disabled {
   z-index: 10;
 }
 
+.studyComposer.initial {
+  position: static;
+}
+
 .studyComposerRow {
   display: grid;
   grid-template-columns: 1fr auto;
