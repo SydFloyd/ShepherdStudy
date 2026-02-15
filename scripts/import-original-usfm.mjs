@@ -153,6 +153,10 @@ function cleanUsfmText(input) {
   // Remove remaining generic USFM markers.
   text = text.replace(/\\[a-z0-9+*-]+\b/g, "");
 
+  // Remove unfoldingWord inline lexical attribute payloads such as:
+  // word|lemma="..." strong="..." x-morph="..."*
+  text = text.replace(/\|[^*]*\*/g, "");
+
   // Remove orphaned attribute pipes from milestones.
   text = text.replace(/\|x-[^\s]+/g, "");
 
