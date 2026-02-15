@@ -75,6 +75,49 @@ a {
   gap: 14px;
 }
 
+.navAccountMenu {
+  position: relative;
+}
+
+.navAccountButton {
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: #f3eee3;
+  color: var(--ink);
+}
+
+.navAccountDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 130px;
+  z-index: 90;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  box-shadow: 0 8px 20px rgba(20, 25, 20, 0.12);
+}
+
+.navAccountDropdown a,
+.navAccountSignout {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.navAccountDropdown a:hover,
+.navAccountSignout:hover {
+  background: #f4efe4;
+}
+
 .linkButton {
   border: 0;
   background: none;
