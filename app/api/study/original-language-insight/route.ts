@@ -41,17 +41,28 @@ export async function POST(req: Request) {
     route: "/api/study/original-language-insight",
     method: req.method
   });
+  const startedAt = Date.now();
 
   try {
+    logEvent("info", "study.original_language_insight.start", requestMeta);
     const parsedInput = inputSchema.safeParse(await req.json());
     if (!parsedInput.success) {
       logEvent("warn", "study.original_language_insight.invalid_input", {
         ...requestMeta,
         issues: parsedInput.error.issues
       });
-      return NextResponse.json({ insight: null });
+      return NextResponse.json({
+        insight: null,
+        reason: "invalid_input"
+      });
     }
     const input = parsedInput.data;
+    logEvent("info", "study.original_language_insight.input_ok", {
+      ...requestMeta,
+      chapterReference: input.passage.chapterReference,
+      selectedTranslation: input.selectedTranslation,
+      verseCount: input.passage.verses.length
+    });
 
     const normalizedVerses: PassageVerse[] = input.passage.verses.map((verse) => ({
       verse: verse.verse,
@@ -72,22 +83,60 @@ export async function POST(req: Request) {
     });
 
     if (!original) {
-      return NextResponse.json({ insight: null });
+      logEvent("warn", "study.original_language_insight.snapshot_unavailable", {
+        ...requestMeta,
+        chapterReference: input.passage.chapterReference
+      });
+      return NextResponse.json({
+        insight: null,
+        reason: "snapshot_unavailable"
+      });
     }
-
-    const insight = await generateOriginalLanguageInsight({
-      selectedTranslation: input.selectedTranslation,
-      selectedTranslationName: getTranslationLabel(input.selectedTranslation),
-      chapterReference: input.passage.chapterReference,
-      selectedVerses: input.passage.verses.map((verse) => ({
-        verse: verse.verse,
-        text: verse.text
-      })),
+    const sourceWordCount = original.verses.reduce(
+      (total, verse) => total + verse.words.length,
+      0
+    );
+    logEvent("info", "study.original_language_insight.snapshot_ok", {
+      ...requestMeta,
       sourceTranslation: original.sourceTranslation,
-      sourceTranslationName: original.sourceTranslationName,
-      sourceVerses: original.verses
+      sourceVerseCount: original.verses.length,
+      sourceWordCount
     });
 
+    let insight: Awaited<ReturnType<typeof generateOriginalLanguageInsight>>;
+    try {
+      insight = await generateOriginalLanguageInsight({
+        selectedTranslation: input.selectedTranslation,
+        selectedTranslationName: getTranslationLabel(input.selectedTranslation),
+        chapterReference: input.passage.chapterReference,
+        selectedVerses: input.passage.verses.map((verse) => ({
+          verse: verse.verse,
+          text: verse.text
+        })),
+        sourceTranslation: original.sourceTranslation,
+        sourceTranslationName: original.sourceTranslationName,
+        sourceVerses: original.verses
+      });
+    } catch (error) {
+      captureServerException(error, {
+        route: "/api/study/original-language-insight",
+        requestId
+      });
+      logEvent("error", "study.original_language_insight.llm_failure", {
+        ...requestMeta,
+        error
+      });
+      return NextResponse.json({
+        insight: null,
+        reason: "llm_failure"
+      });
+    }
+
+    logEvent("info", "study.original_language_insight.ok", {
+      ...requestMeta,
+      sourceTranslation: original.sourceTranslation,
+      elapsedMs: Date.now() - startedAt
+    });
     return NextResponse.json({ insight });
   } catch (error) {
     captureServerException(error, {
@@ -98,6 +147,9 @@ export async function POST(req: Request) {
       ...requestMeta,
       error
     });
-    return NextResponse.json({ insight: null });
+    return NextResponse.json({
+      insight: null,
+      reason: "unexpected_failure"
+    });
   }
 }

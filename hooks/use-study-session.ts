@@ -160,6 +160,7 @@ export function useStudySession() {
     const data = (await parseJsonSafe(response)) as
       | {
           insight: NonNullable<StudyResponsePayload["originalLanguageInsight"]> | null;
+          reason?: string;
         }
       | { error: string; details?: Array<{ path: string; message: string }> };
 
@@ -168,6 +169,9 @@ export function useStudySession() {
         console.warn("original-language-insight invalid payload", data.details);
       }
       return null;
+    }
+    if (!data.insight && data.reason) {
+      console.warn("original-language-insight unavailable", data.reason);
     }
 
     return data.insight ?? null;

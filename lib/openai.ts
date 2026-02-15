@@ -20,8 +20,8 @@ export type StudyResponse = z.infer<typeof studyResponseSchema>;
 
 const originalLanguageInsightSchema = z.object({
   summary: z.string().min(1),
-  nuances: z.array(z.string().min(1)).min(1).max(6),
-  translationNotes: z.array(z.string().min(1)).min(1).max(6),
+  nuances: z.array(z.string().min(1)).default([]),
+  translationNotes: z.array(z.string().min(1)).default([]),
   wordHighlights: z
     .array(
       z.object({
@@ -32,7 +32,7 @@ const originalLanguageInsightSchema = z.object({
         morph: z.string().min(1).nullable().optional()
       })
     )
-    .max(6)
+    .default([])
 });
 
 const systemPrompt = `
@@ -203,14 +203,17 @@ ${JSON.stringify(sourceVerses)}
   }
 
   const parsed = originalLanguageInsightSchema.parse(JSON.parse(content));
+  const nuanceItems = parsed.nuances.slice(0, 6);
+  const translationNoteItems = parsed.translationNotes.slice(0, 6);
+  const wordHighlights = parsed.wordHighlights.slice(0, 6);
   return {
     panelName: "Original Language Lens",
     sourceTranslation: input.sourceTranslation,
     sourceTranslationName: input.sourceTranslationName,
     summary: parsed.summary,
-    nuances: parsed.nuances,
-    translationNotes: parsed.translationNotes,
-    wordHighlights: parsed.wordHighlights.map((item) => ({
+    nuances: nuanceItems,
+    translationNotes: translationNoteItems,
+    wordHighlights: wordHighlights.map((item) => ({
       term: item.term,
       note: item.note,
       lemma: item.lemma ?? null,
