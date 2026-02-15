@@ -23,6 +23,7 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 - Clickable references that open chapter view with highlighted verses
 - Fuzzy/alias book matching (e.g. `corinthians`, `corinthans`)
 - Translation selector in study and passage views
+- Optional original-language versions: UHB (Hebrew OT), UGNT (Greek NT)
 - Save study sessions for authenticated users
 - Dashboard showing recent sessions
 
@@ -49,6 +50,7 @@ npx prisma generate
 npx prisma migrate dev --name init
 npm run import:bibles
 npm run import:usfm
+npm run import:original
 ```
 
 4. Run the app:
@@ -72,6 +74,9 @@ Open `http://localhost:3000`.
   - `WEB` (default)
   - `KJV`
   - `ASV`
+- `npm run import:original` downloads and imports:
+  - `UHB` (Hebrew Old Testament)
+  - `UGNT` (Greek New Testament)
 - `npm run import:usfm` upgrades WEB/KJV/ASV imports to USFM-backed structure:
   - paragraph grouping
   - verse-level footnotes and cross-references
@@ -79,6 +84,10 @@ Open `http://localhost:3000`.
 - Translation is preserved in links via `&translation=...`.
 - Approximate or ambiguous book names are resolved using aliases/fuzzy matching.
 - If a reference cannot be parsed, the app falls back to an external `bible-api.com` link.
+- Testament compatibility is enforced for original-language versions:
+  - `UHB` supports Old Testament books
+  - `UGNT` supports New Testament books
+- UHB/UGNT source attribution: unfoldingWord resources (CC BY-SA 4.0).
 
 ## Notes
 

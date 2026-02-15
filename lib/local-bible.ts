@@ -1,4 +1,8 @@
-import { getTranslationLabel, resolveBibleBookCandidates } from "@/lib/bible";
+import {
+  getTranslationLabel,
+  isTranslationCompatibleWithBook,
+  resolveBibleBookCandidates
+} from "@/lib/bible";
 import { prisma } from "@/lib/prisma";
 import {
   buildPassagePath,
@@ -86,8 +90,21 @@ export async function resolvePassageFromLocalBible(input: {
   const bookCandidates = Array.from(
     new Set([parsed.book, ...resolveBibleBookCandidates(parsed.book)])
   );
+  const compatibleCandidates = bookCandidates.filter((candidate) =>
+    isTranslationCompatibleWithBook(input.translation, candidate)
+  );
+  if (compatibleCandidates.length === 0) {
+    const requestedRange = input.translation === "uhb" ? "Old Testament" : "New Testament";
+    return {
+      ok: false,
+      reason: "not_found",
+      message: `${getTranslationLabel(input.translation)} only includes ${requestedRange} books.`,
+      parsed,
+      bookCandidates
+    };
+  }
 
-  for (const book of bookCandidates) {
+  for (const book of compatibleCandidates) {
     const rows = await prisma.bibleVerse.findMany({
       where: {
         translation: input.translation,
@@ -157,7 +174,7 @@ export async function resolvePassageFromLocalBible(input: {
     reason: "not_found",
     message: "Passage not found in local Bible text for this version.",
     parsed,
-    bookCandidates
+    bookCandidates: compatibleCandidates
   };
 }
 
@@ -170,7 +187,10 @@ export async function getChapterFromLocalBible(input: {
   resolvedBook?: string;
   error?: string;
 }> {
-  for (const book of input.books) {
+  const compatibleBooks = input.books.filter((book) =>
+    isTranslationCompatibleWithBook(input.translation, book)
+  );
+  for (const book of compatibleBooks) {
     const rows = await prisma.bibleVerse.findMany({
       where: {
         translation: input.translation,
@@ -222,6 +242,9 @@ export async function getChapterFromLocalBible(input: {
 
   return {
     data: null,
-    error: `No local verses found for translation "${input.translation}" and chapter.`
+    error:
+      compatibleBooks.length === 0
+        ? `${getTranslationLabel(input.translation)} does not include books in this testament.`
+        : `No local verses found for translation "${input.translation}" and chapter.`
   };
 }

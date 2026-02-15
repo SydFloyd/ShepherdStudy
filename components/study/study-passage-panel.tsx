@@ -1,10 +1,12 @@
 import { StudyPassageResult } from "@/lib/study-contract";
+import { isRtlTranslation } from "@/lib/bible";
 
 type Props = {
   passage: StudyPassageResult;
 };
 
 export function StudyPassagePanel({ passage }: Props) {
+  const isRtl = isRtlTranslation(passage.translation);
   const paragraphGroups = passage.verses.reduce<
     Array<{
       paragraph: number;
@@ -37,7 +39,11 @@ export function StudyPassagePanel({ passage }: Props) {
           {passage.excerpted ? " Showing a short chapter excerpt." : ""}
         </p>
       ) : null}
-      <div className="paragraphList">
+      <div
+        className="paragraphList"
+        dir={isRtl ? "rtl" : "ltr"}
+        lang={isRtl ? "he" : undefined}
+      >
         {paragraphGroups.map((group) => (
           <p className="paragraphText" key={group.paragraph}>
             {group.verses.map((verse) => (

@@ -1,11 +1,13 @@
-export const BIBLE_TRANSLATION_IDS = ["web", "kjv", "asv"] as const;
+export const BIBLE_TRANSLATION_IDS = ["web", "kjv", "asv", "uhb", "ugnt"] as const;
 export type BibleTranslationId = (typeof BIBLE_TRANSLATION_IDS)[number];
 export const DEFAULT_BIBLE_TRANSLATION: BibleTranslationId = "web";
 
 export const BIBLE_TRANSLATIONS = [
   { value: "web", label: "WEB (default)" },
   { value: "kjv", label: "KJV" },
-  { value: "asv", label: "ASV" }
+  { value: "asv", label: "ASV" },
+  { value: "uhb", label: "UHB (Hebrew OT)" },
+  { value: "ugnt", label: "UGNT (Greek NT)" }
 ] as const;
 
 export const BIBLE_TRANSLATION_BY_ID = Object.fromEntries(
@@ -14,6 +16,46 @@ export const BIBLE_TRANSLATION_BY_ID = Object.fromEntries(
 
 export function getTranslationLabel(translation: string): string {
   return BIBLE_TRANSLATION_BY_ID[translation] ?? translation.toUpperCase();
+}
+
+export function getBookOrderByName(book: string): number | null {
+  const normalized = normalizeForMatch(book);
+  const index = CANONICAL_BOOKS.findIndex(
+    (candidate) => normalizeForMatch(candidate) === normalized
+  );
+  if (index === -1) {
+    return null;
+  }
+  return index + 1;
+}
+
+export function isOldTestamentBook(book: string): boolean | null {
+  const order = getBookOrderByName(book);
+  if (!order) {
+    return null;
+  }
+  return order <= 39;
+}
+
+export function isTranslationCompatibleWithBook(
+  translation: string,
+  book: string
+): boolean {
+  const isOt = isOldTestamentBook(book);
+  if (isOt === null) {
+    return true;
+  }
+  if (translation === "uhb") {
+    return isOt;
+  }
+  if (translation === "ugnt") {
+    return !isOt;
+  }
+  return true;
+}
+
+export function isRtlTranslation(translation: string): boolean {
+  return translation === "uhb";
 }
 
 const CANONICAL_BOOKS = [

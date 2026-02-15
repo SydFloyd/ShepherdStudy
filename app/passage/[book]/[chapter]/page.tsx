@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PassageVersionSelect } from "@/components/passage-version-select";
 import {
   DEFAULT_BIBLE_TRANSLATION,
+  isRtlTranslation,
   resolveBibleBookCandidates
 } from "@/lib/bible";
 import { getChapterFromLocalBible } from "@/lib/local-bible";
@@ -121,6 +122,7 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
   const chapterResult = await getChapter(allCandidates, chapter, translation);
   const chapterData = chapterResult.data;
   const highlightedBook = chapterResult.resolvedBook ?? book;
+  const isRtl = isRtlTranslation(translation);
 
   if (!chapterData) {
     return (
@@ -198,7 +200,11 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
 
       <article className="card">
         <h2>Chapter text</h2>
-        <div className="paragraphList">
+        <div
+          className="paragraphList"
+          dir={isRtl ? "rtl" : "ltr"}
+          lang={isRtl ? "he" : undefined}
+        >
           {paragraphGroups.map((group) => (
             <p className="paragraphText" key={group.paragraph}>
               {group.verses.map((verse) => {

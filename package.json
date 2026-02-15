@@ -27,7 +27,8 @@
     "db:rbac:check": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (-not $env:DIRECT_URL -and (Test-Path .env)) { Get-Content .env | ForEach-Object { if ($_ -match '^DIRECT_URL=\"?(.*)\"?$') { $env:DIRECT_URL = $matches[1] } } }; if (-not $env:DIRECT_URL) { throw 'DIRECT_URL is required' }; psql $env:DIRECT_URL -f ops/rbac-check.sql\"",
     "import:bibles": "node scripts/import-public-domain-bibles.mjs",
     "import:web:usfm": "node scripts/import-web-usfm.mjs web",
-    "import:usfm": "node scripts/import-web-usfm.mjs"
+    "import:usfm": "node scripts/import-web-usfm.mjs",
+    "import:original": "node scripts/import-original-usfm.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

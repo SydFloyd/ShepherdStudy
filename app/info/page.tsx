@@ -32,6 +32,29 @@ export default function InfoPage() {
           <li>Burst protection: short per-minute request limits</li>
         </ul>
       </article>
+
+      <article className="card">
+        <h2>Sources & Licensing</h2>
+        <p className="muted">
+          Original-language options are powered by unfoldingWord resources.
+        </p>
+        <ul>
+          <li>
+            UHB (Hebrew Old Testament): unfoldingWord Hebrew Bible
+          </li>
+          <li>
+            UGNT (Greek New Testament): unfoldingWord Greek New Testament
+          </li>
+          <li>
+            License: CC BY-SA 4.0
+          </li>
+        </ul>
+        <p>
+          <a href="https://unfoldingword.org/for-translators/content">
+            Source and license details
+          </a>
+        </p>
+      </article>
     </section>
   );
 }
