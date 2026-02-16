@@ -40,7 +40,10 @@ export async function GET(req: Request) {
     studyActive7d,
     wwjdActive7d,
     studyActive30d,
-    wwjdActive30d
+    wwjdActive30d,
+    recentRegistrations,
+    recentStudyMessages,
+    recentWwjdMessages
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
@@ -65,6 +68,32 @@ export async function GET(req: Request) {
       where: { createdAt: { gte: thirtyDaysAgo } },
       distinct: ["userId"],
       select: { userId: true }
+    }),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true
+      }
+    }),
+    prisma.studyMessage.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 120,
+      select: {
+        userId: true,
+        createdAt: true
+      }
+    }),
+    prisma.wwjdMessage.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 120,
+      select: {
+        userId: true,
+        createdAt: true
+      }
     })
   ]);
 
@@ -76,6 +105,72 @@ export async function GET(req: Request) {
     ...studyActive30d.map((x) => x.userId),
     ...wwjdActive30d.map((x) => x.userId)
   ]).size;
+
+  const latestStudyByUser = new Map<string, Date>();
+  for (const row of recentStudyMessages) {
+    const existing = latestStudyByUser.get(row.userId);
+    if (!existing || row.createdAt > existing) {
+      latestStudyByUser.set(row.userId, row.createdAt);
+    }
+  }
+
+  const latestWwjdByUser = new Map<string, Date>();
+  for (const row of recentWwjdMessages) {
+    const existing = latestWwjdByUser.get(row.userId);
+    if (!existing || row.createdAt > existing) {
+      latestWwjdByUser.set(row.userId, row.createdAt);
+    }
+  }
+
+  const activityUserIds = new Set<string>([
+    ...latestStudyByUser.keys(),
+    ...latestWwjdByUser.keys()
+  ]);
+  const missingUserIds = Array.from(activityUserIds).filter(
+    (id) => !recentRegistrations.some((user) => user.id === id)
+  );
+  const missingUsers =
+    missingUserIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: missingUserIds } },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            createdAt: true
+          }
+        })
+      : [];
+
+  const usersById = new Map(
+    [...recentRegistrations, ...missingUsers].map((user) => [user.id, user])
+  );
+
+  const recentUsers = Array.from(usersById.values())
+    .map((user) => {
+      const studyAt = latestStudyByUser.get(user.id);
+      const wwjdAt = latestWwjdByUser.get(user.id);
+      const lastActivityAt =
+        studyAt && wwjdAt ? (studyAt > wwjdAt ? studyAt : wwjdAt) : studyAt ?? wwjdAt ?? null;
+      const sortAt =
+        lastActivityAt && lastActivityAt > user.createdAt
+          ? lastActivityAt
+          : user.createdAt;
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt.toISOString(),
+        lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+        lastStudyAt: studyAt ? studyAt.toISOString() : null,
+        lastShepherdAiAt: wwjdAt ? wwjdAt.toISOString() : null,
+        sortAt
+      };
+    })
+    .sort((a, b) => b.sortAt.getTime() - a.sortAt.getTime())
+    .slice(0, 10)
+    .map(({ sortAt, ...row }) => row);
 
   logEvent("info", "retention.ok", requestMeta);
   return NextResponse.json({
@@ -89,6 +184,7 @@ export async function GET(req: Request) {
     engagement: {
       studyThreads,
       wwjdThreads
-    }
+    },
+    recentUsers
   });
 }
