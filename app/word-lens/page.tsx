@@ -17,6 +17,9 @@ type WordLensRow = {
   note: string;
   lemma: string | null;
   strong: string | null;
+  strongNormalized: string | null;
+  strongsDef: string;
+  kjvDef: string;
   morph: string | null;
   partOfSpeech: string;
   type: string;
@@ -122,7 +125,7 @@ export default function WordLensPage() {
 
     setIsLoading(true);
     setError(null);
-    const response = await fetch("/api/passage-preview", {
+    const response = await fetch("/api/word-lens/map", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -136,7 +139,8 @@ export default function WordLensPage() {
           reference: string;
           translation: string;
           translationName: string;
-          verses: Array<{ verse: number; text: string }>;
+          selectedVerse: { verse: number; text: string };
+          rows: Array<{ position: number; aiTranslation: string }>;
           error?: undefined;
         }
       | { error: string };
@@ -150,7 +154,9 @@ export default function WordLensPage() {
       return;
     }
 
-    const selectedVerseText = payload.verses[0]?.text ?? "";
+    const mapByPosition = new Map(
+      payload.rows.map((row) => [row.position, row.aiTranslation])
+    );
     setData((current) =>
       current
         ? {
@@ -159,8 +165,12 @@ export default function WordLensPage() {
             translationName: payload.translationName,
             selectedVerse: {
               ...current.selectedVerse,
-              text: selectedVerseText
-            }
+              text: payload.selectedVerse.text
+            },
+            rows: current.rows.map((row) => ({
+              ...row,
+              aiTranslation: mapByPosition.get(row.position) ?? row.aiTranslation
+            }))
           }
         : current
     );
@@ -321,6 +331,17 @@ export default function WordLensPage() {
                               </p>
                               <p>
                                 <strong>Strong:</strong> {row.strong || "-"}
+                              </p>
+                              <p>
+                                <strong>Strong (normalized):</strong>{" "}
+                                {row.strongNormalized || "-"}
+                              </p>
+                              <p>
+                                <strong>Strong definition:</strong>{" "}
+                                {row.strongsDef || "-"}
+                              </p>
+                              <p>
+                                <strong>KJV glossary:</strong> {row.kjvDef || "-"}
                               </p>
                               <p>
                                 <strong>Morph:</strong> {row.morph || "-"}

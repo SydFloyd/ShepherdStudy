@@ -27,7 +27,7 @@ const inputSchema = z
           content: z.string().trim().min(1).max(4000)
         })
       )
-      .max(24)
+      .max(200)
       .optional()
       .default([]),
     translation: z

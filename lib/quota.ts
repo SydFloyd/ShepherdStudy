@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 const DAILY_LIMITS: Record<QuotaFeature, number> = {
   STUDY: Number(process.env.STUDY_DAILY_LIMIT ?? 40),
-  WWJD: Number(process.env.WWJD_DAILY_LIMIT ?? 80)
+  WWJD: Number(process.env.WWJD_DAILY_LIMIT ?? 80),
+  INTERLINEAR: Number(process.env.INTERLINEAR_DAILY_LIMIT ?? 120)
 };
 
 const BURST_PER_MINUTE: Record<QuotaFeature, number> = {
   STUDY: Number(process.env.STUDY_BURST_PER_MINUTE ?? 8),
-  WWJD: Number(process.env.WWJD_BURST_PER_MINUTE ?? 12)
+  WWJD: Number(process.env.WWJD_BURST_PER_MINUTE ?? 12),
+  INTERLINEAR: Number(process.env.INTERLINEAR_BURST_PER_MINUTE ?? 20)
 };
 
 type QuotaDecision =

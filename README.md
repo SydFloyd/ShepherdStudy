@@ -51,6 +51,7 @@ npx prisma migrate dev --name init
 npm run import:bibles
 npm run import:usfm
 npm run import:original
+npm run import:lexicon
 ```
 
 4. Run the app:
@@ -77,6 +78,9 @@ Open `http://localhost:3000`.
 - `npm run import:original` downloads and imports:
   - `UHB` (Hebrew Old Testament)
   - `UGNT` (Greek New Testament)
+- `npm run import:lexicon` downloads and imports:
+  - OpenScriptures Strong's Hebrew dictionary
+  - OpenScriptures Strong's Greek dictionary
 - `npm run import:usfm` upgrades WEB/KJV/ASV imports to USFM-backed structure:
   - paragraph grouping
   - verse-level footnotes and cross-references

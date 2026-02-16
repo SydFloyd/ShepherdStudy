@@ -89,6 +89,23 @@ model BibleWord {
   @@index([translation, lemma])
 }
 
+model BibleLexicon {
+  id          Int      @id @default(autoincrement())
+  strong      String   @unique
+  language    String
+  lemma       String
+  translit    String?
+  pronunciation String?
+  derivation  String?
+  strongsDef  String?
+  kjvDef      String?
+  source      String
+  importedAt  DateTime @default(now())
+
+  @@index([language])
+  @@index([lemma])
+}
+
 model StudyGraphNode {
   id            String             @id @default(cuid())
   userId        String
@@ -183,6 +200,7 @@ model DailyQuotaUsage {
 enum QuotaFeature {
   STUDY
   WWJD
+  INTERLINEAR
 }
 
 model StudyThread {

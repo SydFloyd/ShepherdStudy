@@ -38,6 +38,7 @@ Rules:
 - Avoid speculative claims.
 - Keep answer/context/relevance concise and practical.
 - Provide 5 recommendations.
+- When prior study-step history is provided, maintain continuity with it and avoid contradicting previous guidance unless correcting an error.
 `.trim();
 
 function getClient(): OpenAI {

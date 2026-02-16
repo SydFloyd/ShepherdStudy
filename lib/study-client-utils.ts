@@ -24,13 +24,102 @@ export async function parseJsonSafe(response: Response): Promise<unknown> {
 }
 
 export function buildHistory(turns: StudyTurn[]) {
-  return turns.flatMap((turn) => [
-    { role: "user" as const, content: turn.userText },
-    {
-      role: "assistant" as const,
-      content: `${turn.response.answer}\n\n${turn.response.context}\n\n${turn.response.relevance}`
+  const configuredRecentTurns = Number(
+    process.env.NEXT_PUBLIC_STUDY_HISTORY_RECENT_TURNS ?? 8
+  );
+  const RECENT_FULL_TURNS = Number.isFinite(configuredRecentTurns)
+    ? Math.min(24, Math.max(2, Math.floor(configuredRecentTurns)))
+    : 8;
+
+  function truncate(input: string, max = 3800) {
+    if (input.length <= max) {
+      return input;
     }
-  ]);
+    return `${input.slice(0, max - 1)}...`;
+  }
+
+  function extractPromptText(turn: StudyTurn) {
+    if (turn.kind !== "prompt") {
+      return "";
+    }
+    const match = turn.userText.match(/Question:\s*([\s\S]+)/i);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+    return turn.userText.trim();
+  }
+
+  function buildFullTurnMessages(turn: StudyTurn, index: number) {
+    const promptText = extractPromptText(turn);
+    const anchorReference = turn.response.passage?.reference ?? "";
+    const userContent = truncate(
+      [
+        `Study Step ${index + 1}`,
+        promptText ? `User prompt: ${promptText}` : null,
+        anchorReference ? `Selected/anchor verse: ${anchorReference}` : null
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+
+    const assistantContent = truncate(
+      [
+        `Study Step ${index + 1} assistant output`,
+        `Answer: ${turn.response.answer}`,
+        `Context: ${turn.response.context}`,
+        `Relevance: ${turn.response.relevance}`
+      ].join("\n\n")
+    );
+
+    return [
+      { role: "user" as const, content: userContent },
+      { role: "assistant" as const, content: assistantContent }
+    ];
+  }
+
+  function buildCompressedHistoryMessages(olderTurns: StudyTurn[]) {
+    if (olderTurns.length === 0) {
+      return [] as Array<{ role: "user" | "assistant"; content: string }>;
+    }
+
+    const userLines = olderTurns.map((turn, index) => {
+      const promptText = extractPromptText(turn);
+      const anchorReference = turn.response.passage?.reference ?? "";
+      return `Step ${index + 1}: prompt=${promptText || "(none)"} | verse=${anchorReference || "(none)"}`;
+    });
+
+    const assistantLines = olderTurns.map((turn, index) => {
+      return `Step ${index + 1}: answer=${turn.response.answer} | context=${turn.response.context} | relevance=${turn.response.relevance}`;
+    });
+
+    return [
+      {
+        role: "user" as const,
+        content: truncate(
+          `Compressed prior study steps (${olderTurns.length}):\n${userLines.join("\n")}`
+        )
+      },
+      {
+        role: "assistant" as const,
+        content: truncate(
+          `Compressed prior assistant outputs (${olderTurns.length}):\n${assistantLines.join("\n")}`
+        )
+      }
+    ];
+  }
+
+  if (turns.length <= RECENT_FULL_TURNS) {
+    return turns.flatMap((turn, index) => buildFullTurnMessages(turn, index));
+  }
+
+  const olderTurns = turns.slice(0, turns.length - RECENT_FULL_TURNS);
+  const recentTurns = turns.slice(turns.length - RECENT_FULL_TURNS);
+  const compressed = buildCompressedHistoryMessages(olderTurns);
+  const recentMessages = recentTurns.flatMap((turn, idx) =>
+    buildFullTurnMessages(turn, olderTurns.length + idx)
+  );
+
+  return [...compressed, ...recentMessages];
 }
 
 export function buildLocalGraph(turns: StudyTurn[]): {
@@ -94,4 +183,3 @@ export function buildLocalGraph(turns: StudyTurn[]): {
 
   return { nodes, edges };
 }
-

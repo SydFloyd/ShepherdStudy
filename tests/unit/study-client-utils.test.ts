@@ -28,10 +28,11 @@ describe("study client utils", () => {
     ];
     const history = buildHistory(turns);
     expect(history).toEqual([
-      { role: "user", content: "Ask" },
+      { role: "user", content: "Study Step 1\nUser prompt: Ask" },
       {
         role: "assistant",
-        content: "Answer text\n\nContext text\n\nRelevance text"
+        content:
+          "Study Step 1 assistant output\n\nAnswer: Answer text\n\nContext: Context text\n\nRelevance: Relevance text"
       }
     ]);
   });
@@ -76,6 +77,41 @@ describe("study client utils", () => {
       { fromNodeId: "p1", toNodeId: "1-anchor-verse" },
       { fromNodeId: "p1", toNodeId: "v1" }
     ]);
+  });
+
+  it("compresses older turns and keeps recent turns expanded", () => {
+    const turns: StudyTurn[] = Array.from({ length: 10 }, (_, index) =>
+      makeTurn({
+        id: String(index + 1),
+        kind: "prompt",
+        userText: `Prompt ${index + 1}`,
+        graphNodeId: `n${index + 1}`,
+        response: {
+          mode: "prompt_only",
+          modeName: "Topical Discovery",
+          assistantBehaviorName: "Topical Scout",
+          answer: `Answer ${index + 1}`,
+          context: `Context ${index + 1}`,
+          relevance: `Relevance ${index + 1}`,
+          recommendations: [],
+          saved: false,
+          passage: {
+            origin: "anchor",
+            reference: `John 1:${index + 1}`,
+            chapterReference: "John 1",
+            translation: "web",
+            translationName: "WEB",
+            verses: [],
+            chapterPath: null
+          }
+        }
+      })
+    );
+
+    const history = buildHistory(turns);
+    expect(history[0]?.content).toContain("Compressed prior study steps (2)");
+    expect(history[1]?.content).toContain("Compressed prior assistant outputs (2)");
+    expect(history).toHaveLength(18);
   });
 
   it("returns structured error for invalid json payload", async () => {

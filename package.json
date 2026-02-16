@@ -29,7 +29,8 @@
     "import:bibles": "node scripts/import-public-domain-bibles.mjs",
     "import:web:usfm": "node scripts/import-web-usfm.mjs web",
     "import:usfm": "node scripts/import-web-usfm.mjs",
-    "import:original": "node scripts/import-original-usfm.mjs"
+    "import:original": "node scripts/import-original-usfm.mjs",
+    "import:lexicon": "node scripts/import-strongs-lexicon.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

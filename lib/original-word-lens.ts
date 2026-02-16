@@ -1,11 +1,23 @@
 import OpenAI from "openai";
 import { z } from "zod";
 
-const rowSchema = z.object({
-  position: z.number().int().positive(),
-  aiTranslation: z.string().trim().max(80).default(""),
-  transliteration: z.string().trim().max(120).default(""),
-  note: z.string().trim().max(220).default(""),
+const interlinearMapRowSchema = z.object({
+  position: z.coerce.number().int().nonnegative(),
+  aiTranslation: z.string().trim().max(80).default("")
+});
+
+const transliterationRowSchema = z.object({
+  position: z.coerce.number().int().nonnegative(),
+  transliteration: z.string().trim().max(120).default("")
+});
+
+const noteRowSchema = z.object({
+  position: z.coerce.number().int().nonnegative(),
+  note: z.string().trim().max(220).default("")
+});
+
+const morphologyRowSchema = z.object({
+  position: z.coerce.number().int().nonnegative(),
   partOfSpeech: z.string().trim().max(64).default(""),
   type: z.string().trim().max(64).default(""),
   gender: z.string().trim().max(32).default(""),
@@ -14,11 +26,22 @@ const rowSchema = z.object({
   long: z.string().trim().max(120).default("")
 });
 
-const responseSchema = z.object({
-  rows: z.array(rowSchema).default([])
+const rowEnvelopeSchema = z.object({
+  rows: z.array(z.unknown()).default([])
 });
 
-export type OriginalWordLensAiRow = z.infer<typeof rowSchema>;
+export type WordLensToken = {
+  position: number;
+  text: string;
+  lemma: string | null;
+  strong: string | null;
+  morph: string | null;
+};
+
+export type WordLensInterlinearMapRow = z.infer<typeof interlinearMapRowSchema>;
+export type WordLensTransliterationRow = z.infer<typeof transliterationRowSchema>;
+export type WordLensNoteRow = z.infer<typeof noteRowSchema>;
+export type WordLensMorphologyRow = z.infer<typeof morphologyRowSchema>;
 
 function getClient() {
   if (!process.env.OPENAI_API_KEY) {
@@ -32,87 +55,203 @@ function getClient() {
   });
 }
 
-const systemPrompt = `
-You are a biblical languages assistant.
-Given one verse in original language and one English verse translation, produce row-level lexical help.
-
-Return only valid JSON with shape:
-{
-  "rows": [
-    {
-      "position": 1,
-      "aiTranslation": "short gloss for this token",
-      "transliteration": "latin transliteration for pronunciation",
-      "note": "optional notable nuance; blank if nothing notable",
-      "partOfSpeech": "noun/verb/etc if inferable",
-      "type": "type/classification if inferable",
-      "gender": "gender if inferable",
-      "number": "singular/plural/etc if inferable",
-      "state": "state/aspect if inferable",
-      "long": "compact expanded parse from morph tag"
-    }
-  ]
+function getModel() {
+  return process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
 }
 
-Rules:
-- Use blank string for unknown/unclear fields.
-- Keep aiTranslation short (usually 1-4 English words).
-- Keep note blank unless there is a meaningful nuance not obvious from English translation.
-- Never invent theology; this is lexical support only.
-`.trim();
-
-export async function generateOriginalWordLensRows(input: {
-  reference: string;
-  sourceTranslationName: string;
-  sourceVerseText: string;
-  words: Array<{
-    position: number;
-    text: string;
-    lemma: string | null;
-    strong: string | null;
-    morph: string | null;
-  }>;
+async function callRows<S extends z.ZodTypeAny>(input: {
+  systemPrompt: string;
+  userPayload: object;
+  rowSchema: S;
 }) {
   const client = getClient();
-  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-
   const completion = await client.chat.completions.create({
-    model,
+    model: getModel(),
     response_format: { type: "json_object" },
     temperature: 0.1,
     messages: [
-      { role: "system", content: systemPrompt },
-      {
-        role: "user",
-        content: JSON.stringify(
-          {
-            reference: input.reference,
-            sourceTranslationName: input.sourceTranslationName,
-            sourceVerseText: input.sourceVerseText,
-            words: input.words.map((word) => ({
-              position: word.position,
-              text: word.text,
-              lemma: word.lemma,
-              strong: word.strong,
-              morph: word.morph
-            }))
-          },
-          null,
-          2
-        )
-      }
+      { role: "system", content: input.systemPrompt },
+      { role: "user", content: JSON.stringify(input.userPayload, null, 2) }
     ]
   });
 
   const content = completion.choices[0]?.message?.content;
   if (!content) {
-    return [] as OriginalWordLensAiRow[];
+    return [] as Array<z.output<S>>;
   }
 
-  const parsed = responseSchema.safeParse(JSON.parse(content));
-  if (!parsed.success) {
-    return [] as OriginalWordLensAiRow[];
-  }
+  const parsedJson = JSON.parse(content) as { rows?: unknown };
+  const rawRows = rowEnvelopeSchema.parse(parsedJson).rows;
 
-  return parsed.data.rows;
+  return rawRows
+    .map((row) => input.rowSchema.safeParse(row))
+    .filter((result) => result.success)
+    .map((result) => result.data as z.output<S>);
+}
+
+const interlinearMapSystemPrompt = `
+You produce interlinear mapping from original-language tokens to a selected English verse translation.
+
+Return only valid JSON:
+{
+  "rows": [
+    {
+      "position": 1,
+      "aiTranslation": "lexical gloss mapped to the selected English version"
+    }
+  ]
+}
+
+Rules:
+- Return one row for every input token.
+- Use exact input position values (1-based).
+- Keep aiTranslation short (usually 1-6 words).
+- Prefer lexical sense over polished paraphrase.
+- If uncertain, use blank string instead of guessing.
+- Keep output language English.
+`.trim();
+
+const transliterationSystemPrompt = `
+You transliterate biblical Greek or Hebrew tokens into Latin script for pronunciation.
+
+Return only valid JSON:
+{
+  "rows": [
+    {
+      "position": 1,
+      "transliteration": "latin transliteration"
+    }
+  ]
+}
+
+Rules:
+- Return one row for every input token.
+- Use exact input position values (1-based).
+- transliteration should be plain ASCII where possible.
+- If uncertain, use blank string.
+`.trim();
+
+const notesSystemPrompt = `
+You produce concise lexical notes for original-language Bible tokens.
+
+Return only valid JSON:
+{
+  "rows": [
+    {
+      "position": 1,
+      "note": "optional notable nuance"
+    }
+  ]
+}
+
+Rules:
+- Return one row for every input token.
+- Use exact input position values (1-based).
+- Keep note blank unless there is a meaningful lexical/grammatical nuance not obvious in the selected English translation.
+- No devotional commentary; lexical support only.
+- Keep notes brief.
+`.trim();
+
+const morphologySystemPrompt = `
+You convert Bible token morphology tags into compact grammatical fields.
+
+Return only valid JSON:
+{
+  "rows": [
+    {
+      "position": 1,
+      "partOfSpeech": "",
+      "type": "",
+      "gender": "",
+      "number": "",
+      "state": "",
+      "long": ""
+    }
+  ]
+}
+
+Rules:
+- Return one row for every input token.
+- Use exact input position values (1-based).
+- Fill fields only when inferable from the given token data.
+- Use blank string for unknown fields.
+- Keep "long" compact and factual.
+`.trim();
+
+export async function generateWordLensInterlinearMap(input: {
+  reference: string;
+  sourceTranslationName: string;
+  sourceVerseText: string;
+  targetTranslationName: string;
+  targetVerseText: string;
+  words: WordLensToken[];
+}) {
+  const rows = await callRows({
+    systemPrompt: interlinearMapSystemPrompt,
+    rowSchema: interlinearMapRowSchema,
+    userPayload: {
+      reference: input.reference,
+      sourceTranslationName: input.sourceTranslationName,
+      sourceVerseText: input.sourceVerseText,
+      targetTranslationName: input.targetTranslationName,
+      targetVerseText: input.targetVerseText,
+      words: input.words
+    }
+  });
+
+  return rows;
+}
+
+export async function generateWordLensTransliterations(input: {
+  reference: string;
+  sourceTranslationName: string;
+  words: WordLensToken[];
+}) {
+  return callRows({
+    systemPrompt: transliterationSystemPrompt,
+    rowSchema: transliterationRowSchema,
+    userPayload: {
+      reference: input.reference,
+      sourceTranslationName: input.sourceTranslationName,
+      words: input.words
+    }
+  });
+}
+
+export async function generateWordLensNotes(input: {
+  reference: string;
+  sourceTranslationName: string;
+  sourceVerseText: string;
+  targetTranslationName: string;
+  targetVerseText: string;
+  words: WordLensToken[];
+}) {
+  return callRows({
+    systemPrompt: notesSystemPrompt,
+    rowSchema: noteRowSchema,
+    userPayload: {
+      reference: input.reference,
+      sourceTranslationName: input.sourceTranslationName,
+      sourceVerseText: input.sourceVerseText,
+      targetTranslationName: input.targetTranslationName,
+      targetVerseText: input.targetVerseText,
+      words: input.words
+    }
+  });
+}
+
+export async function generateWordLensMorphology(input: {
+  reference: string;
+  sourceTranslationName: string;
+  words: WordLensToken[];
+}) {
+  return callRows({
+    systemPrompt: morphologySystemPrompt,
+    rowSchema: morphologyRowSchema,
+    userPayload: {
+      reference: input.reference,
+      sourceTranslationName: input.sourceTranslationName,
+      words: input.words
+    }
+  });
 }

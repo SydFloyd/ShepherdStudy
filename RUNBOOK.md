@@ -11,8 +11,11 @@ Quick operational reference for local development, deploys, and production check
 - `OPENAI_MODEL` (default: `gpt-4.1-mini`)
 - `STUDY_DAILY_LIMIT`
 - `WWJD_DAILY_LIMIT`
+- `INTERLINEAR_DAILY_LIMIT`
 - `STUDY_BURST_PER_MINUTE`
 - `WWJD_BURST_PER_MINUTE`
+- `INTERLINEAR_BURST_PER_MINUTE`
+- `NEXT_PUBLIC_STUDY_HISTORY_RECENT_TURNS`
 - `ADMIN_METRICS_KEY`
 
 Optional/observability:
@@ -34,6 +37,7 @@ Database admin/migrations:
 - Build check: `npm run build`
 - Unit + integration tests: `npm test`
 - E2E tests: `npm run test:e2e`
+- Import lexicon dictionaries: `npm run import:lexicon`
 
 ## Database Operations
 - Generate client: `npm run db:generate`
@@ -71,3 +75,4 @@ Database admin/migrations:
 - Anonymous users are quota-limited by actor key derived from IP + user agent.
 - Favicon/icon caching can be sticky in browsers; use hard refresh after brand updates.
 - Interlinear uses one-verse focus; multi-verse input defaults to first verse.
+- Interlinear deterministic fallback now depends on `BibleLexicon` data (`npm run import:lexicon`).
