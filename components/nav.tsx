@@ -62,11 +62,7 @@ export function Nav() {
   return (
     <nav className="nav">
       <Link href={studyHref} className="brand" onClick={triggerNewStudyIfOnStudy}>
-        <img
-          src="/branding/shepherdstudy_full.png"
-          alt="Shepherd Study"
-          className="brandLogo"
-        />
+        <span className="brandText">Shepherd Study</span>
       </Link>
       <div className="navMobileMenu" ref={mobileMenuRef}>
         <button

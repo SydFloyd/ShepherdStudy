@@ -69,12 +69,17 @@ a {
   align-items: center;
   line-height: 1;
   color: var(--ink);
+  padding: 4px 0;
 }
 
-.brandLogo {
+.brandText {
   display: block;
-  height: 40px;
-  width: auto;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: #6f5a3c;
 }
 
 .navLinks {
@@ -960,9 +965,11 @@ button:disabled {
     gap: 8px;
   }
 
-  .brandLogo {
-    height: 34px;
-    max-width: min(62vw, 240px);
+  .brandText {
+    font-size: 1rem;
+    max-width: min(62vw, 210px);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .navLinks {
