@@ -47,6 +47,105 @@ type WordLensResponse = {
   nextReference: string | null;
 };
 
+function toTitleCase(input: string) {
+  return input
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function normalizeToken(input: string) {
+  return input.trim().toLowerCase().replace(/[_\s-]+/g, "");
+}
+
+function formatMorphField(
+  field: "partOfSpeech" | "type" | "gender" | "number" | "state",
+  value: string
+) {
+  const raw = value.trim();
+  if (!raw) {
+    return "-";
+  }
+
+  const token = normalizeToken(raw);
+  const dictionaries: Record<string, Record<string, string>> = {
+    partOfSpeech: {
+      n: "Noun",
+      noun: "Noun",
+      v: "Verb",
+      verb: "Verb",
+      adj: "Adjective",
+      adjective: "Adjective",
+      adv: "Adverb",
+      adverb: "Adverb",
+      prep: "Preposition",
+      preposition: "Preposition",
+      pron: "Pronoun",
+      pronoun: "Pronoun",
+      conj: "Conjunction",
+      conjunction: "Conjunction",
+      art: "Article",
+      article: "Article",
+      interj: "Interjection",
+      interjection: "Interjection",
+      part: "Particle",
+      particle: "Particle"
+    },
+    type: {
+      proper: "Proper",
+      common: "Common",
+      personal: "Personal",
+      demonstrative: "Demonstrative",
+      relative: "Relative",
+      interrogative: "Interrogative",
+      infinitive: "Infinitive",
+      participle: "Participle",
+      imperative: "Imperative"
+    },
+    gender: {
+      m: "Masculine",
+      masc: "Masculine",
+      masculine: "Masculine",
+      f: "Feminine",
+      fem: "Feminine",
+      feminine: "Feminine",
+      n: "Neuter",
+      neut: "Neuter",
+      neuter: "Neuter",
+      c: "Common",
+      common: "Common"
+    },
+    number: {
+      s: "Singular",
+      sg: "Singular",
+      singular: "Singular",
+      p: "Plural",
+      pl: "Plural",
+      plural: "Plural",
+      d: "Dual",
+      dual: "Dual"
+    },
+    state: {
+      abs: "Absolute",
+      absolute: "Absolute",
+      construct: "Construct",
+      cstr: "Construct",
+      emphatic: "Emphatic",
+      emph: "Emphatic",
+      determined: "Determined",
+      indeterminate: "Indeterminate"
+    }
+  };
+
+  const mapped = dictionaries[field][token];
+  if (mapped) {
+    return mapped;
+  }
+
+  return toTitleCase(raw.replace(/[_-]+/g, " "));
+}
+
 export default function WordLensPage() {
   const [referenceInput, setReferenceInput] = useState("");
   const [translation, setTranslation] = useState<BibleTranslationId>(
@@ -298,7 +397,7 @@ export default function WordLensPage() {
                   <th>AI translation</th>
                   <th>Original</th>
                   <th>Transliteration</th>
-                  <th>AI note</th>
+                  <th className="wordLensNoteCol">AI note</th>
                 </tr>
               </thead>
               <tbody>
@@ -320,12 +419,15 @@ export default function WordLensPage() {
                         <td>{row.aiTranslation || "-"}</td>
                         <td>{row.original}</td>
                         <td>{row.transliteration || "-"}</td>
-                        <td>{row.note || ""}</td>
+                        <td className="wordLensNoteCol">{row.note || ""}</td>
                       </tr>
                       {expanded ? (
                         <tr className="wordLensDetails">
                           <td colSpan={4}>
                             <div className="grid two">
+                              <p className="wordLensNoteDetail">
+                                <strong>AI note:</strong> {row.note || "-"}
+                              </p>
                               <p>
                                 <strong>Lemma:</strong> {row.lemma || "-"}
                               </p>
@@ -347,19 +449,20 @@ export default function WordLensPage() {
                                 <strong>Morph:</strong> {row.morph || "-"}
                               </p>
                               <p>
-                                <strong>Part of speech:</strong> {row.partOfSpeech || "-"}
+                                <strong>Part of speech:</strong>{" "}
+                                {formatMorphField("partOfSpeech", row.partOfSpeech)}
                               </p>
                               <p>
-                                <strong>Type:</strong> {row.type || "-"}
+                                <strong>Type:</strong> {formatMorphField("type", row.type)}
                               </p>
                               <p>
-                                <strong>Gender:</strong> {row.gender || "-"}
+                                <strong>Gender:</strong> {formatMorphField("gender", row.gender)}
                               </p>
                               <p>
-                                <strong>Number:</strong> {row.number || "-"}
+                                <strong>Number:</strong> {formatMorphField("number", row.number)}
                               </p>
                               <p>
-                                <strong>State:</strong> {row.state || "-"}
+                                <strong>State:</strong> {formatMorphField("state", row.state)}
                               </p>
                               <p>
                                 <strong>Long:</strong> {row.long || "-"}
