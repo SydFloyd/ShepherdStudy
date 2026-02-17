@@ -47,6 +47,21 @@ type WordLensResponse = {
   nextReference: string | null;
 };
 
+function buildWordAnalyticsHref(
+  row: WordLensRow,
+  sourceTranslation: string
+): string | null {
+  if (row.strongNormalized) {
+    return `/word-analytics?strong=${encodeURIComponent(row.strongNormalized)}`;
+  }
+  if (row.lemma) {
+    return `/word-analytics?lemma=${encodeURIComponent(row.lemma)}&sourceTranslation=${encodeURIComponent(
+      sourceTranslation
+    )}`;
+  }
+  return null;
+}
+
 function toTitleCase(input: string) {
   return input
     .split(/\s+/)
@@ -403,6 +418,10 @@ export default function WordLensPage() {
               <tbody>
                 {data.rows.map((row) => {
                   const expanded = Boolean(expandedRows[row.position]);
+                  const analyticsHref = buildWordAnalyticsHref(
+                    row,
+                    data.sourceTranslation
+                  );
                   return (
                     <Fragment key={row.position}>
                       <tr
@@ -417,7 +436,19 @@ export default function WordLensPage() {
                         }
                       >
                         <td>{row.aiTranslation || "-"}</td>
-                        <td>{row.original}</td>
+                        <td>
+                          {analyticsHref ? (
+                            <a
+                              className="wordLensInlineLink"
+                              href={analyticsHref}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {row.original}
+                            </a>
+                          ) : (
+                            <div>{row.original}</div>
+                          )}
+                        </td>
                         <td>{row.transliteration || "-"}</td>
                         <td className="wordLensNoteCol">{row.note || ""}</td>
                       </tr>
@@ -427,14 +458,35 @@ export default function WordLensPage() {
                             <div className="wordLensDetailsGrid">
                               <div className="wordLensDetailsCol">
                                 <p>
-                                  <strong>Lemma:</strong> {row.lemma || "-"}
+                                  <strong>Lemma:</strong>{" "}
+                                  {row.lemma ? (
+                                    <a
+                                      href={`/word-analytics?lemma=${encodeURIComponent(row.lemma)}&sourceTranslation=${encodeURIComponent(
+                                        data.sourceTranslation
+                                      )}`}
+                                    >
+                                      {row.lemma}
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
                                 </p>
                                 <p>
                                   <strong>Strong:</strong> {row.strong || "-"}
                                 </p>
                                 <p>
                                   <strong>Strong (normalized):</strong>{" "}
-                                  {row.strongNormalized || "-"}
+                                  {row.strongNormalized ? (
+                                    <a
+                                      href={`/word-analytics?strong=${encodeURIComponent(
+                                        row.strongNormalized
+                                      )}`}
+                                    >
+                                      {row.strongNormalized}
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
                                 </p>
                                 <p>
                                   <strong>Morph:</strong> {row.morph || "-"}

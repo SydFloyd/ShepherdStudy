@@ -158,19 +158,21 @@ export async function GET(req: Request) {
           : user.createdAt;
 
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt.toISOString(),
-        lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
-        lastStudyAt: studyAt ? studyAt.toISOString() : null,
-        lastShepherdAiAt: wwjdAt ? wwjdAt.toISOString() : null,
+        row: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          createdAt: user.createdAt.toISOString(),
+          lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+          lastStudyAt: studyAt ? studyAt.toISOString() : null,
+          lastShepherdAiAt: wwjdAt ? wwjdAt.toISOString() : null
+        },
         sortAt
       };
     })
     .sort((a, b) => b.sortAt.getTime() - a.sortAt.getTime())
     .slice(0, 10)
-    .map(({ sortAt, ...row }) => row);
+    .map((item) => item.row);
 
   logEvent("info", "retention.ok", requestMeta);
   return NextResponse.json({

@@ -828,6 +828,12 @@ button:disabled {
   background: #f8f4eb;
 }
 
+.wordLensInlineLink {
+  display: inline;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
 .wordLensDetails td {
   background: #f9f7f1;
   padding-top: 6px;
@@ -852,6 +858,70 @@ button:disabled {
 
 .wordLensDetailsCol p {
   margin: 0;
+}
+
+.wordAnalyticsSearch {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(120px, 150px) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.wordAnalyticsSummary h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.wordAnalyticsSummary p {
+  margin: 4px 0;
+}
+
+.wordAnalyticsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.wordAnalyticsTableWrap {
+  overflow-x: auto;
+}
+
+.wordAnalyticsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wordAnalyticsTable th,
+.wordAnalyticsTable td {
+  border-bottom: 1px solid var(--stroke);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wordAnalyticsOccurrenceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.wordAnalyticsOccurrenceItem {
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #faf7f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wordAnalyticsPager {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .assistantPanel h3 {
@@ -1214,6 +1284,19 @@ button:disabled {
   .wordLensTopRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .wordAnalyticsSearch {
+    grid-template-columns: 1fr;
+  }
+
+  .wordAnalyticsLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .wordAnalyticsOccurrenceItem {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .wordLensSearchForm {
