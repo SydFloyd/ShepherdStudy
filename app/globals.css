@@ -83,6 +83,50 @@ a {
   gap: 14px;
 }
 
+.navMobileMenu {
+  display: none;
+  position: relative;
+}
+
+.navMobileToggle {
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: #f3eee3;
+  color: var(--ink);
+}
+
+.navMobileDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 170px;
+  z-index: 90;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  box-shadow: 0 8px 20px rgba(20, 25, 20, 0.12);
+}
+
+.navMobileDropdown a,
+.navMobileDropdown button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.navMobileDropdown a:hover,
+.navMobileDropdown button:hover {
+  background: #f4efe4;
+}
+
 .navAccountMenu {
   position: relative;
 }
@@ -886,6 +930,27 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
+  .shell {
+    padding: 0 14px 28px;
+  }
+
+  .nav {
+    gap: 8px;
+  }
+
+  .brandLogo {
+    height: 34px;
+    max-width: min(62vw, 240px);
+  }
+
+  .navLinks {
+    display: none;
+  }
+
+  .navMobileMenu {
+    display: block;
+  }
+
   .studyWorkspace {
     grid-template-columns: 1fr;
   }
