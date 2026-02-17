@@ -16,6 +16,7 @@ Quick operational reference for local development, deploys, and production check
 - `WWJD_BURST_PER_MINUTE`
 - `INTERLINEAR_BURST_PER_MINUTE`
 - `NEXT_PUBLIC_STUDY_HISTORY_RECENT_TURNS`
+- `WORD_LENS_CACHE_TTL_HOURS`
 - `ADMIN_METRICS_KEY`
 
 Optional/observability:

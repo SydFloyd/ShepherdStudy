@@ -30,7 +30,8 @@
     "import:web:usfm": "node scripts/import-web-usfm.mjs web",
     "import:usfm": "node scripts/import-web-usfm.mjs",
     "import:original": "node scripts/import-original-usfm.mjs",
-    "import:lexicon": "node scripts/import-strongs-lexicon.mjs"
+    "import:lexicon": "node scripts/import-strongs-lexicon.mjs",
+    "prewarm:word-lens": "node scripts/prewarm-word-lens-cache.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

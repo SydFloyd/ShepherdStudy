@@ -10,138 +10,70 @@ import {
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   generateWordLensInterlinearMap,
-  generateWordLensMorphology,
-  generateWordLensNotes,
-  generateWordLensTransliterations
+  generateWordLensNotes
 } from "@/lib/original-word-lens";
+import { prisma } from "@/lib/prisma";
+import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 import { extractStrongCandidates } from "@/lib/strongs";
+import {
+  buildWordLensCacheKey,
+  getWordLensPromptVersion,
+  readWordLensCache,
+  writeWordLensCache
+} from "@/lib/word-lens-cache";
+import {
+  parseMorphFields,
+  transliterateToken
+} from "@/lib/word-lens-deterministic";
 import { resolveWordLensContext } from "@/lib/word-lens-data";
-import { prisma } from "@/lib/prisma";
-import { consumeQuota } from "@/lib/quota";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
   translation: z.enum(BIBLE_TRANSLATION_IDS).default(DEFAULT_BIBLE_TRANSLATION)
 });
 
-function stripDiacritics(input: string) {
-  return input
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function stripHebrewMarks(input: string) {
-  return input.replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "");
-}
-
-function transliterateGreek(input: string) {
-  const map: Record<string, string> = {
-    "\u03b1": "a",
-    "\u03b2": "b",
-    "\u03b3": "g",
-    "\u03b4": "d",
-    "\u03b5": "e",
-    "\u03b6": "z",
-    "\u03b7": "e",
-    "\u03b8": "th",
-    "\u03b9": "i",
-    "\u03ba": "k",
-    "\u03bb": "l",
-    "\u03bc": "m",
-    "\u03bd": "n",
-    "\u03be": "x",
-    "\u03bf": "o",
-    "\u03c0": "p",
-    "\u03c1": "r",
-    "\u03c3": "s",
-    "\u03c2": "s",
-    "\u03c4": "t",
-    "\u03c5": "u",
-    "\u03c6": "ph",
-    "\u03c7": "ch",
-    "\u03c8": "ps",
-    "\u03c9": "o"
-  };
-
-  const normalized = stripDiacritics(input).toLowerCase();
-  let out = "";
-  for (const char of normalized) {
-    if (char === " ") {
-      out += " ";
-      continue;
-    }
-    out += map[char] ?? char;
-  }
-  return out.trim();
-}
-
-function transliterateHebrew(input: string) {
-  const map: Record<string, string> = {
-    "\u05d0": "a",
-    "\u05d1": "b",
-    "\u05d2": "g",
-    "\u05d3": "d",
-    "\u05d4": "h",
-    "\u05d5": "v",
-    "\u05d6": "z",
-    "\u05d7": "ch",
-    "\u05d8": "t",
-    "\u05d9": "y",
-    "\u05db": "k",
-    "\u05da": "k",
-    "\u05dc": "l",
-    "\u05de": "m",
-    "\u05dd": "m",
-    "\u05e0": "n",
-    "\u05df": "n",
-    "\u05e1": "s",
-    "\u05e2": "a",
-    "\u05e4": "p",
-    "\u05e3": "p",
-    "\u05e6": "ts",
-    "\u05e5": "ts",
-    "\u05e7": "q",
-    "\u05e8": "r",
-    "\u05e9": "sh",
-    "\u05ea": "t"
-  };
-
-  const normalized = stripHebrewMarks(input);
-  let out = "";
-  for (const char of normalized) {
-    if (char === " ") {
-      out += " ";
-      continue;
-    }
-    out += map[char] ?? "";
-  }
-  return out.trim();
-}
-
-function transliterateToken(input: {
+type WordLensPayload = {
+  reference: string;
+  chapterReference: string;
+  translation: string;
+  translationName: string;
+  selectedVerse: { verse: number; text: string };
   sourceTranslation: string;
-  tokenText: string;
-  lemma: string | null;
-}) {
-  const source = input.sourceTranslation;
-  const sourceText = input.tokenText.trim();
-  const sourceLemma = input.lemma?.trim() ?? "";
-  const value = sourceLemma || sourceText;
+  sourceTranslationName: string;
+  sourceText: string;
+  rows: Array<{
+    position: number;
+    original: string;
+    aiTranslation: string;
+    transliteration: string;
+    note: string;
+    lemma: string | null;
+    strong: string | null;
+    strongNormalized: string | null;
+    strongsDef: string;
+    kjvDef: string;
+    morph: string | null;
+    partOfSpeech: string;
+    type: string;
+    gender: string;
+    number: string;
+    state: string;
+    long: string;
+  }>;
+  notice: string | null;
+  previousReference: string | null;
+  nextReference: string | null;
+};
 
-  if (!value) {
-    return "";
-  }
-
-  if (source === "ugnt") {
-    return transliterateGreek(value);
-  }
-  if (source === "uhb") {
-    return transliterateHebrew(value);
-  }
-  return value;
-}
+type WordLensMapPayload = {
+  reference: string;
+  translation: string;
+  translationName: string;
+  selectedVerse: { verse: number; text: string };
+  rows: Array<{ position: number; aiTranslation: string }>;
+};
 
 function compactGloss(input: string | null | undefined) {
   if (!input) {
@@ -195,6 +127,38 @@ export async function POST(req: Request) {
     }
 
     const context = contextResult.data;
+    const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+    const promptVersion = getWordLensPromptVersion();
+    const cacheKey = buildWordLensCacheKey({
+      kind: "full",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+    const mapCacheKey = buildWordLensCacheKey({
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+
+    const cached = await readWordLensCache<WordLensPayload>({ cacheKey });
+    if (cached) {
+      logEvent("info", "word_lens.cache_hit", {
+        ...requestMeta,
+        reference: context.reference
+      });
+      return NextResponse.json({
+        ...cached,
+        quota: quotaDecision,
+        cached: true
+      });
+    }
+
     const strongCodes = Array.from(
       new Set(
         context.sourceWords
@@ -239,55 +203,33 @@ export async function POST(req: Request) {
       targetTranslation: context.translation
     });
 
-    const [mapResult, translitResult, notesResult, morphologyResult] =
-      await Promise.allSettled([
-        generateWordLensInterlinearMap({
-          reference: context.reference,
-          sourceTranslationName: context.sourceTranslationName,
-          sourceVerseText: context.sourceText,
-          targetTranslationName: context.translationName,
-          targetVerseText: context.selectedVerse.text,
-          words: context.sourceWords
-        }),
-        generateWordLensTransliterations({
-          reference: context.reference,
-          sourceTranslationName: context.sourceTranslationName,
-          words: context.sourceWords
-        }),
-        generateWordLensNotes({
-          reference: context.reference,
-          sourceTranslationName: context.sourceTranslationName,
-          sourceVerseText: context.sourceText,
-          targetTranslationName: context.translationName,
-          targetVerseText: context.selectedVerse.text,
-          words: context.sourceWords
-        }),
-        generateWordLensMorphology({
-          reference: context.reference,
-          sourceTranslationName: context.sourceTranslationName,
-          words: context.sourceWords
-        })
-      ]);
+    const [mapResult, notesResult] = await Promise.allSettled([
+      generateWordLensInterlinearMap({
+        reference: context.reference,
+        sourceTranslationName: context.sourceTranslationName,
+        sourceVerseText: context.sourceText,
+        targetTranslationName: context.translationName,
+        targetVerseText: context.selectedVerse.text,
+        words: context.sourceWords
+      }),
+      generateWordLensNotes({
+        reference: context.reference,
+        sourceTranslationName: context.sourceTranslationName,
+        sourceVerseText: context.sourceText,
+        targetTranslationName: context.translationName,
+        targetVerseText: context.selectedVerse.text,
+        words: context.sourceWords
+      })
+    ]);
 
     const mapRows = mapResult.status === "fulfilled" ? mapResult.value : [];
-    const transliterationRows =
-      translitResult.status === "fulfilled" ? translitResult.value : [];
     const noteRows = notesResult.status === "fulfilled" ? notesResult.value : [];
-    const morphologyRows =
-      morphologyResult.status === "fulfilled" ? morphologyResult.value : [];
 
     if (mapResult.status === "rejected") {
       logEvent("warn", "word_lens.map_fallback", {
         ...requestMeta,
         reference: context.reference,
         error: mapResult.reason
-      });
-    }
-    if (translitResult.status === "rejected") {
-      logEvent("warn", "word_lens.transliteration_fallback", {
-        ...requestMeta,
-        reference: context.reference,
-        error: translitResult.reason
       });
     }
     if (notesResult.status === "rejected") {
@@ -297,66 +239,31 @@ export async function POST(req: Request) {
         error: notesResult.reason
       });
     }
-    if (morphologyResult.status === "rejected") {
-      logEvent("warn", "word_lens.morphology_fallback", {
-        ...requestMeta,
-        reference: context.reference,
-        error: morphologyResult.reason
-      });
-    }
 
     const mapByPosition = new Map(mapRows.map((row) => [row.position, row]));
-    const transliterationByPosition = new Map(
-      transliterationRows.map((row) => [row.position, row])
-    );
     const notesByPosition = new Map(noteRows.map((row) => [row.position, row]));
-    const morphologyByPosition = new Map(
-      morphologyRows.map((row) => [row.position, row])
-    );
-
-    const missingMap = context.sourceWords.filter((word) => {
-      const row = mapByPosition.get(word.position);
-      return !row?.aiTranslation?.trim();
-    });
-    const missingTransliteration = context.sourceWords.filter((word) => {
-      const row = transliterationByPosition.get(word.position);
-      return !row?.transliteration?.trim();
-    });
-
-    if (missingMap.length > 0 || missingTransliteration.length > 0) {
-      logEvent("warn", "word_lens.ai_missing_fields", {
-        ...requestMeta,
-        reference: context.reference,
-        missingMapCount: missingMap.length,
-        missingTransliterationCount: missingTransliteration.length,
-        missingMapPositions: missingMap.slice(0, 20).map((word) => word.position),
-        missingTransliterationPositions: missingTransliteration
-          .slice(0, 20)
-          .map((word) => word.position)
-      });
-    }
 
     const rows = context.sourceWords.map((word) => {
       const mapRow = mapByPosition.get(word.position);
-      const translitRow = transliterationByPosition.get(word.position);
       const noteRow = notesByPosition.get(word.position);
-      const morphRow = morphologyByPosition.get(word.position);
       const primaryStrong = extractStrongCandidates(word.strong)[0] ?? null;
       const lexicon = primaryStrong ? lexiconByStrong.get(primaryStrong) : null;
       const lexiconGloss = compactGloss(lexicon?.kjvDef ?? lexicon?.strongsDef ?? null);
+      const morph = parseMorphFields({
+        sourceTranslation: context.sourceTranslation,
+        morph: word.morph
+      });
 
       return {
         position: word.position,
         original: word.text,
         aiTranslation: mapRow?.aiTranslation?.trim() || lexiconGloss,
-        transliteration:
-          translitRow?.transliteration?.trim() ||
-          lexicon?.translit ||
-          transliterateToken({
-            sourceTranslation: context.sourceTranslation,
-            tokenText: word.text,
-            lemma: word.lemma
-          }),
+        transliteration: transliterateToken({
+          sourceTranslation: context.sourceTranslation,
+          tokenText: word.text,
+          lemma: word.lemma,
+          lexiconTranslit: lexicon?.translit
+        }),
         note: noteRow?.note ?? "",
         lemma: word.lemma,
         strong: word.strong,
@@ -364,26 +271,16 @@ export async function POST(req: Request) {
         strongsDef: lexicon?.strongsDef ?? "",
         kjvDef: lexicon?.kjvDef ?? "",
         morph: word.morph,
-        partOfSpeech: morphRow?.partOfSpeech ?? "",
-        type: morphRow?.type ?? "",
-        gender: morphRow?.gender ?? "",
-        number: morphRow?.number ?? "",
-        state: morphRow?.state ?? "",
-        long: morphRow?.long ?? ""
+        partOfSpeech: morph.partOfSpeech,
+        type: morph.type,
+        gender: morph.gender,
+        number: morph.number,
+        state: morph.state,
+        long: morph.long
       };
     });
 
-    logEvent("info", "word_lens.ai_output", {
-      ...requestMeta,
-      reference: context.reference,
-      mapRowsCount: mapRows.length,
-      transliterationRowsCount: transliterationRows.length,
-      noteRowsCount: noteRows.length,
-      morphologyRowsCount: morphologyRows.length,
-      finalRowsCount: rows.length
-    });
-
-    return NextResponse.json({
+    const payload: WordLensPayload = {
       reference: context.reference,
       chapterReference: context.chapterReference,
       translation: context.translation,
@@ -392,11 +289,56 @@ export async function POST(req: Request) {
       sourceTranslation: context.sourceTranslation,
       sourceTranslationName: context.sourceTranslationName,
       sourceText: context.sourceText,
-      quota: quotaDecision,
       rows,
       notice: context.notice,
       previousReference: context.previousReference,
       nextReference: context.nextReference
+    };
+
+    await writeWordLensCache({
+      cacheKey,
+      kind: "full",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion,
+      payload
+    });
+
+    const mapPayload: WordLensMapPayload = {
+      reference: context.reference,
+      translation: context.translation,
+      translationName: context.translationName,
+      selectedVerse: context.selectedVerse,
+      rows: rows.map((row) => ({
+        position: row.position,
+        aiTranslation: row.aiTranslation
+      }))
+    };
+    await writeWordLensCache({
+      cacheKey: mapCacheKey,
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion,
+      payload: mapPayload
+    });
+
+    logEvent("info", "word_lens.ai_output", {
+      ...requestMeta,
+      reference: context.reference,
+      mapRowsCount: mapRows.length,
+      noteRowsCount: noteRows.length,
+      finalRowsCount: rows.length
+    });
+
+    return NextResponse.json({
+      ...payload,
+      quota: quotaDecision,
+      cached: false
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

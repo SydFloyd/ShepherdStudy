@@ -424,49 +424,53 @@ export default function WordLensPage() {
                       {expanded ? (
                         <tr className="wordLensDetails">
                           <td colSpan={4}>
-                            <div className="grid two">
-                              <p className="wordLensNoteDetail">
-                                <strong>AI note:</strong> {row.note || "-"}
-                              </p>
-                              <p>
-                                <strong>Lemma:</strong> {row.lemma || "-"}
-                              </p>
-                              <p>
-                                <strong>Strong:</strong> {row.strong || "-"}
-                              </p>
-                              <p>
-                                <strong>Strong (normalized):</strong>{" "}
-                                {row.strongNormalized || "-"}
-                              </p>
-                              <p>
-                                <strong>Strong definition:</strong>{" "}
-                                {row.strongsDef || "-"}
-                              </p>
-                              <p>
-                                <strong>KJV glossary:</strong> {row.kjvDef || "-"}
-                              </p>
-                              <p>
-                                <strong>Morph:</strong> {row.morph || "-"}
-                              </p>
-                              <p>
-                                <strong>Part of speech:</strong>{" "}
-                                {formatMorphField("partOfSpeech", row.partOfSpeech)}
-                              </p>
-                              <p>
-                                <strong>Type:</strong> {formatMorphField("type", row.type)}
-                              </p>
-                              <p>
-                                <strong>Gender:</strong> {formatMorphField("gender", row.gender)}
-                              </p>
-                              <p>
-                                <strong>Number:</strong> {formatMorphField("number", row.number)}
-                              </p>
-                              <p>
-                                <strong>State:</strong> {formatMorphField("state", row.state)}
-                              </p>
-                              <p>
-                                <strong>Long:</strong> {row.long || "-"}
-                              </p>
+                            <div className="wordLensDetailsGrid">
+                              <div className="wordLensDetailsCol">
+                                <p>
+                                  <strong>Lemma:</strong> {row.lemma || "-"}
+                                </p>
+                                <p>
+                                  <strong>Strong:</strong> {row.strong || "-"}
+                                </p>
+                                <p>
+                                  <strong>Strong (normalized):</strong>{" "}
+                                  {row.strongNormalized || "-"}
+                                </p>
+                                <p>
+                                  <strong>Morph:</strong> {row.morph || "-"}
+                                </p>
+                                <p>
+                                  <strong>Part of speech:</strong>{" "}
+                                  {formatMorphField("partOfSpeech", row.partOfSpeech)}
+                                </p>
+                                <p>
+                                  <strong>Type:</strong> {formatMorphField("type", row.type)}
+                                </p>
+                                <p>
+                                  <strong>Gender:</strong> {formatMorphField("gender", row.gender)}
+                                </p>
+                                <p>
+                                  <strong>Number:</strong> {formatMorphField("number", row.number)}
+                                </p>
+                                <p>
+                                  <strong>State:</strong> {formatMorphField("state", row.state)}
+                                </p>
+                                <p>
+                                  <strong>Long:</strong> {row.long || "-"}
+                                </p>
+                              </div>
+                              <div className="wordLensDetailsCol wordLensDetailsColWide">
+                                <p>
+                                  <strong>Strong definition:</strong>{" "}
+                                  {row.strongsDef || "-"}
+                                </p>
+                                <p>
+                                  <strong>KJV glossary:</strong> {row.kjvDef || "-"}
+                                </p>
+                                <p className="wordLensNoteDetail">
+                                  <strong>AI note:</strong> {row.note || "-"}
+                                </p>
+                              </div>
                             </div>
                           </td>
                         </tr>

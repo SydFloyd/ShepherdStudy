@@ -91,6 +91,8 @@ const BOOK_CODE_ENTRIES = [
   ["PHM", "Philemon"],
   ["HEB", "Hebrews"],
   ["JAS", "James"],
+  ["1PE", "1 Peter"],
+  ["2PE", "2 Peter"],
   ["1JN", "1 John"],
   ["2JN", "2 John"],
   ["3JN", "3 John"],

@@ -14,6 +14,12 @@ import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 import { extractStrongCandidates } from "@/lib/strongs";
+import {
+  buildWordLensCacheKey,
+  getWordLensPromptVersion,
+  readWordLensCache,
+  writeWordLensCache
+} from "@/lib/word-lens-cache";
 import { resolveWordLensContext } from "@/lib/word-lens-data";
 
 const inputSchema = z.object({
@@ -31,6 +37,14 @@ function compactGloss(input: string | null | undefined) {
     ?.trim();
   return first ?? "";
 }
+
+type MapPayload = {
+  reference: string;
+  translation: string;
+  translationName: string;
+  selectedVerse: { verse: number; text: string };
+  rows: Array<{ position: number; aiTranslation: string }>;
+};
 
 export async function POST(req: Request) {
   const requestId = await getRequestId();
@@ -73,6 +87,30 @@ export async function POST(req: Request) {
     }
 
     const context = contextResult.data;
+    const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+    const promptVersion = getWordLensPromptVersion();
+    const cacheKey = buildWordLensCacheKey({
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+
+    const cached = await readWordLensCache<MapPayload>({ cacheKey });
+    if (cached) {
+      logEvent("info", "word_lens.map_cache_hit", {
+        ...requestMeta,
+        reference: context.reference
+      });
+      return NextResponse.json({
+        ...cached,
+        quota: quotaDecision,
+        cached: true
+      });
+    }
+
     const strongCodes = Array.from(
       new Set(
         context.sourceWords
@@ -135,6 +173,25 @@ export async function POST(req: Request) {
       };
     });
 
+    const payload: MapPayload = {
+      reference: context.reference,
+      translation: context.translation,
+      translationName: context.translationName,
+      selectedVerse: context.selectedVerse,
+      rows
+    };
+
+    await writeWordLensCache({
+      cacheKey,
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion,
+      payload
+    });
+
     logEvent("info", "word_lens.map_only_ok", {
       ...requestMeta,
       reference: context.reference,
@@ -143,12 +200,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({
-      reference: context.reference,
-      translation: context.translation,
-      translationName: context.translationName,
-      selectedVerse: context.selectedVerse,
+      ...payload,
       quota: quotaDecision,
-      rows
+      cached: false
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
