@@ -46,18 +46,6 @@ function sourceLabel(value: "ugnt" | "uhb") {
   return value === "ugnt" ? "Greek NT" : "Hebrew OT";
 }
 
-function summarizeDefinition(data: WordAnalyticsResponse["lexicon"]) {
-  const source = data.strongsDef ?? data.kjvDef ?? "";
-  if (!source.trim()) {
-    return null;
-  }
-  const first = source
-    .replace(/\s+/g, " ")
-    .split(/[;:.]/)[0]
-    ?.trim();
-  return first || null;
-}
-
 function WordAnalyticsPageContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -201,8 +189,6 @@ function WordAnalyticsPageContent() {
   }, [runSearch, searchParams]);
 
   const canSubmit = queryInput.trim().length > 0 && !isLoading;
-  const quickDefinition = data ? summarizeDefinition(data.lexicon) : null;
-
   return (
     <section className="grid">
       <article className="card">
@@ -259,9 +245,6 @@ function WordAnalyticsPageContent() {
             </p>
             <p>
               <strong>Corpus:</strong> {sourceLabel(data.query.sourceTranslation)}
-            </p>
-            <p>
-              <strong>Quick definition:</strong> {quickDefinition ?? "-"}
             </p>
             <p>
               <strong>Strong definition:</strong> {data.lexicon.strongsDef ?? "-"}
