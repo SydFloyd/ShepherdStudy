@@ -15,6 +15,7 @@ import { getRequestId } from "@/lib/request-context";
 import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
 import { persistStudyTurn } from "@/lib/study-history";
 import { captureServerException } from "@/lib/sentry";
+import { resolveActiveUserId } from "@/lib/session-user";
 
 const inputSchema = z
   .object({
@@ -116,9 +117,10 @@ export async function POST(req: Request) {
     const json = await req.json();
     const input = inputSchema.parse(json);
     const session = await getServerSession(authOptions);
+    const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
       request: req,
-      userId: session?.user?.id,
+      userId,
       feature: "STUDY"
     });
 
@@ -236,7 +238,7 @@ export async function POST(req: Request) {
       updatedAt: string;
     } | null = null;
 
-    if (session?.user?.id) {
+    if (userId) {
       const turnKind = input.kind ?? (normalizedPrompt ? "prompt" : "verse");
       const userText =
         input.userText?.trim() ||
@@ -245,7 +247,7 @@ export async function POST(req: Request) {
           : normalizedPrompt || normalizedPassage || "Study prompt");
 
       thread = await persistStudyTurn({
-        userId: session.user.id,
+        userId,
         threadId: input.threadId,
         kind: turnKind,
         userText,

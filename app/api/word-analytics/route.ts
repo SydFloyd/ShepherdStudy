@@ -7,6 +7,7 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { resolveActiveUserId } from "@/lib/session-user";
 import { buildWordAnalyticsPayload } from "@/lib/word-analytics";
 
 const inputSchema = z.object({
@@ -28,9 +29,10 @@ export async function POST(req: Request) {
   try {
     const input = inputSchema.parse(await req.json());
     const session = await getServerSession(authOptions);
+    const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
       request: req,
-      userId: session?.user?.id,
+      userId,
       feature: "INTERLINEAR"
     });
     if (!quotaDecision.allowed) {
@@ -94,4 +96,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

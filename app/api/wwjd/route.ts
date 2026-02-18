@@ -7,6 +7,7 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { resolveActiveUserId } from "@/lib/session-user";
 import { generateWwjdResponse } from "@/lib/wwjd";
 import { persistWwjdTurn } from "@/lib/wwjd-history";
 
@@ -34,9 +35,10 @@ export async function POST(req: Request) {
     const json = await req.json();
     const input = inputSchema.parse(json);
     const session = await getServerSession(authOptions);
+    const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
       request: req,
-      userId: session?.user?.id,
+      userId,
       feature: "WWJD"
     });
 
@@ -66,9 +68,9 @@ export async function POST(req: Request) {
     });
 
     const thread =
-      session?.user?.id
+      userId
         ? await persistWwjdTurn({
-            userId: session.user.id,
+            userId,
             threadId: input.threadId,
             userMessage: input.message,
             reply: response.reply,

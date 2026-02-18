@@ -28,6 +28,7 @@ import {
   transliterateToken
 } from "@/lib/word-lens-deterministic";
 import { resolveWordLensContext } from "@/lib/word-lens-data";
+import { resolveActiveUserId } from "@/lib/session-user";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
@@ -97,9 +98,10 @@ export async function POST(req: Request) {
   try {
     const input = inputSchema.parse(await req.json());
     const session = await getServerSession(authOptions);
+    const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
       request: req,
-      userId: session?.user?.id,
+      userId,
       feature: "INTERLINEAR"
     });
     if (!quotaDecision.allowed) {
