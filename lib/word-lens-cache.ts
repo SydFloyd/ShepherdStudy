@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 const CACHE_TTL_HOURS = Number(process.env.WORD_LENS_CACHE_TTL_HOURS ?? 168);
-const PROMPT_VERSION = "word-lens-v3";
+const PROMPT_VERSION = "word-lens-v4";
 
 export function getWordLensPromptVersion() {
   return PROMPT_VERSION;

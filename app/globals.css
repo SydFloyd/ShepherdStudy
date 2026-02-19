@@ -88,6 +88,29 @@ a {
   gap: 14px;
 }
 
+.navRouteLink {
+  font-weight: 500;
+}
+
+.navRouteLinkActive {
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-shadow:
+    0 0 10px rgba(111, 90, 60, 0.17),
+    0 0 18px rgba(111, 90, 60, 0.11);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(181, 153, 112, 0.11) 0%,
+    rgba(181, 153, 112, 0.06) 42%,
+    transparent 75%
+  );
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
 .navMobileMenu {
   display: none;
   position: relative;
@@ -220,11 +243,11 @@ a {
 }
 
 .infoHeroCard {
-  grid-column: 1 / -1;
+  grid-column: span 2;
 }
 
 .infoFeaturesCard {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .infoFreeCard {
@@ -241,6 +264,7 @@ a {
   margin-top: 0;
 }
 
+.infoHeroCard,
 .infoFeaturesCard,
 .infoFreeCard {
   height: 100%;
@@ -256,6 +280,7 @@ a {
   }
 
   .infoFeaturesCard,
+  .infoHeroCard,
   .infoFreeCard,
   .infoLicenseCard {
     grid-column: auto;
@@ -834,12 +859,6 @@ button:disabled {
   background: #f8f4eb;
 }
 
-.wordLensInlineLink {
-  display: inline;
-  font-size: inherit;
-  text-decoration: underline;
-}
-
 .wordLensDetails td {
   background: #f9f7f1;
   padding-top: 6px;
@@ -864,6 +883,18 @@ button:disabled {
 
 .wordLensDetailsCol p {
   margin: 0;
+}
+
+.wordLensDetailsColWide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wordLensDetailsActionRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
 }
 
 .wordAnalyticsSearch {
@@ -938,6 +969,67 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.compareForm {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.compareGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.comparePanel {
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 10px;
+  background: #faf7f0;
+}
+
+.comparePanelHeader {
+  margin-bottom: 8px;
+}
+
+.comparePanelHeader select {
+  width: auto;
+  min-width: 150px;
+}
+
+.compareText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.diffToken.same {
+  background: transparent;
+}
+
+.diffToken.added {
+  background: #dff2d8;
+}
+
+.diffToken.removed {
+  background: #f9dede;
+  text-decoration: line-through;
+}
+
+.compareNavRow {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.compareNavRef {
+  margin: 4px 0 0;
+  font-size: 12px;
 }
 
 .assistantPanel h3 {
@@ -1304,6 +1396,20 @@ button:disabled {
 
   .wordAnalyticsSearch {
     grid-template-columns: 1fr;
+  }
+
+  .compareForm {
+    grid-template-columns: 1fr;
+  }
+
+  .compareGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .compareNavRow {
+    grid-template-columns: 1fr 1fr;
+    justify-items: stretch;
+    text-align: center;
   }
 
   .wordAnalyticsLayout {

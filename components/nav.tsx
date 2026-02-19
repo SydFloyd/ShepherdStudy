@@ -51,6 +51,17 @@ export function Nav() {
 
   const studyHref = pathname === "/study" ? "/study?new=1" : "/study";
 
+  function isRouteActive(route: string) {
+    if (route === "/study") {
+      return pathname === "/study";
+    }
+    return pathname === route || pathname.startsWith(`${route}/`);
+  }
+
+  function navLinkClass(route: string) {
+    return `navRouteLink${isRouteActive(route) ? " navRouteLinkActive" : ""}`;
+  }
+
   function triggerNewStudyIfOnStudy(event: ReactMouseEvent<HTMLAnchorElement>) {
     if (pathname !== "/study") {
       return;
@@ -79,13 +90,25 @@ export function Nav() {
         </button>
         {mobileMenuOpen ? (
           <div className="navMobileDropdown" role="menu">
-            <Link href={studyHref} onClick={triggerNewStudyIfOnStudy} role="menuitem">
+            <Link
+              href={studyHref}
+              className={navLinkClass("/study")}
+              onClick={triggerNewStudyIfOnStudy}
+              role="menuitem"
+            >
               Study
             </Link>
-            <Link href="/word-lens" role="menuitem">
+            <Link href="/compare" className={navLinkClass("/compare")} role="menuitem">
+              Compare
+            </Link>
+            <Link
+              href="/word-lens"
+              className={navLinkClass("/word-lens")}
+              role="menuitem"
+            >
               Interlinear
             </Link>
-            <Link href="/wwjd" role="menuitem">
+            <Link href="/wwjd" className={navLinkClass("/wwjd")} role="menuitem">
               ShepherdAI
             </Link>
             {isAuthenticated ? (
@@ -114,11 +137,22 @@ export function Nav() {
         ) : null}
       </div>
       <div className="navLinks">
-        <Link href={studyHref} onClick={triggerNewStudyIfOnStudy}>
+        <Link
+          href={studyHref}
+          className={navLinkClass("/study")}
+          onClick={triggerNewStudyIfOnStudy}
+        >
           Study
         </Link>
-        <Link href="/word-lens">Interlinear</Link>
-        <Link href="/wwjd">ShepherdAI</Link>
+        <Link href="/compare" className={navLinkClass("/compare")}>
+          Compare
+        </Link>
+        <Link href="/word-lens" className={navLinkClass("/word-lens")}>
+          Interlinear
+        </Link>
+        <Link href="/wwjd" className={navLinkClass("/wwjd")}>
+          ShepherdAI
+        </Link>
         {isAuthenticated ? (
           <div className="navAccountMenu" ref={accountMenuRef}>
             <button

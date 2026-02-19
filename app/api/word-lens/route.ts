@@ -76,6 +76,38 @@ type WordLensMapPayload = {
   rows: Array<{ position: number; aiTranslation: string }>;
 };
 
+const NOTE_GRAMMAR_RE =
+  /\b(?:noun|verb|adjective|adverb|pronoun|preposition|conjunction|article|participle|infinitive|morph|morphology|part of speech|grammar|grammatical|syntax|nominative|genitive|dative|accusative|vocative|aorist|imperfect|perfect|pluperfect|subjunctive|indicative|imperative|person|singular|plural|tense|voice|mood|case|gender|number|state)\b/i;
+const NOTE_CODE_RE = /\b(?:Gr|He)[,:][A-Za-z0-9,:;-]+\b/;
+const NOTE_VALUE_RE =
+  /\b(?:can mean|also mean|often rendered|better rendered|not just|not merely|title|name|idiom|metaphor|wordplay|echo|alludes?|nuance|sense|range|emphasis)\b/i;
+
+function sanitizeNoteRows(rows: Array<{ position: number; note: string }>) {
+  const seen = new Set<string>();
+  const cleaned: Array<{ position: number; note: string }> = [];
+
+  for (const row of rows) {
+    const note = row.note.replace(/\s+/g, " ").trim();
+    if (note.length < 24 || note.length > 160) {
+      continue;
+    }
+    if (NOTE_GRAMMAR_RE.test(note) || NOTE_CODE_RE.test(note)) {
+      continue;
+    }
+    if (!NOTE_VALUE_RE.test(note)) {
+      continue;
+    }
+    const dedupeKey = note.toLowerCase();
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+    cleaned.push({ position: row.position, note });
+  }
+
+  return cleaned.slice(0, 1);
+}
+
 function compactGloss(input: string | null | undefined) {
   if (!input) {
     return "";
@@ -225,7 +257,8 @@ export async function POST(req: Request) {
     ]);
 
     const mapRows = mapResult.status === "fulfilled" ? mapResult.value : [];
-    const noteRows = notesResult.status === "fulfilled" ? notesResult.value : [];
+    const rawNoteRows = notesResult.status === "fulfilled" ? notesResult.value : [];
+    const noteRows = sanitizeNoteRows(rawNoteRows);
 
     if (mapResult.status === "rejected") {
       logEvent("warn", "word_lens.map_fallback", {

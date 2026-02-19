@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BIBLE_TRANSLATIONS,
@@ -46,6 +46,8 @@ type WordLensResponse = {
   previousReference: string | null;
   nextReference: string | null;
 };
+
+const DEFAULT_WORD_LENS_REFERENCE = "Genesis 1:1";
 
 function buildWordAnalyticsHref(
   row: WordLensRow,
@@ -173,6 +175,7 @@ export default function WordLensPage() {
   const [hoveredWordPosition, setHoveredWordPosition] = useState<number | null>(
     null
   );
+  const autoLoadedRef = useRef(false);
 
   const versionSelectWidthCh =
     Math.max(...BIBLE_TRANSLATIONS.map((item) => item.label.length), 8) + 2;
@@ -182,7 +185,11 @@ export default function WordLensPage() {
     [referenceInput, isLoading]
   );
 
-  async function fetchLens(reference: string, nextTranslation = translation) {
+  async function fetchLens(
+    reference: string,
+    nextTranslation = translation,
+    options?: { syncInput?: boolean }
+  ) {
     setIsLoading(true);
     setError(null);
 
@@ -208,12 +215,22 @@ export default function WordLensPage() {
     }
 
     setData(payload);
-    setReferenceInput(payload.reference);
+    if (options?.syncInput !== false) {
+      setReferenceInput(payload.reference);
+    }
     setTranslation(payload.translation as BibleTranslationId);
     setExpandedRows({});
     setHoveredWordPosition(null);
     setIsLoading(false);
   }
+
+  useEffect(() => {
+    if (autoLoadedRef.current) {
+      return;
+    }
+    autoLoadedRef.current = true;
+    void fetchLens(DEFAULT_WORD_LENS_REFERENCE, translation, { syncInput: false });
+  }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -437,17 +454,7 @@ export default function WordLensPage() {
                       >
                         <td>{row.aiTranslation || "-"}</td>
                         <td>
-                          {analyticsHref ? (
-                            <a
-                              className="wordLensInlineLink"
-                              href={analyticsHref}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {row.original}
-                            </a>
-                          ) : (
-                            <div>{row.original}</div>
-                          )}
+                          <span>{row.original}</span>
                         </td>
                         <td>{row.transliteration || "-"}</td>
                         <td className="wordLensNoteCol">{row.note || ""}</td>
@@ -522,6 +529,16 @@ export default function WordLensPage() {
                                 <p className="wordLensNoteDetail">
                                   <strong>AI note:</strong> {row.note || "-"}
                                 </p>
+                                {analyticsHref ? (
+                                  <div className="wordLensDetailsActionRow">
+                                    <a
+                                      href={analyticsHref}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      View word analytics
+                                    </a>
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                           </td>

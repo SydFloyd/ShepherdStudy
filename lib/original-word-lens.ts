@@ -132,7 +132,7 @@ Rules:
 `.trim();
 
 const notesSystemPrompt = `
-You produce concise lexical notes for original-language Bible tokens.
+You are writing "worth calling out" notes for everyday Bible readers.
 
 Return only valid JSON:
 {
@@ -147,9 +147,18 @@ Return only valid JSON:
 Rules:
 - Return one row for every input token.
 - Use exact input position values (1-based).
-- Keep note blank unless there is a meaningful lexical/grammatical nuance not obvious in the selected English translation.
-- No devotional commentary; lexical support only.
-- Keep notes brief.
+- Set most notes to blank.
+- Add a note only when the token gives meaningful insight that is not obvious from the English verse.
+- Good note types:
+  - translation-impact nuance (alternate sense that changes how the line reads),
+  - title/name nuance,
+  - idiom or metaphor flattened by English,
+  - established theological term-load that a plain gloss can miss.
+- Never explain grammar classes or morphology (no noun/verb labels, no plural/singular comments, no tense/case/gender/number/state, no tag codes).
+- Do not repeat information already shown in the table fields.
+- No devotional advice or application.
+- Keep each note plain-language, concrete, and <= 120 characters.
+- If nothing stands out, return blank notes for all rows.
 `.trim();
 
 const morphologySystemPrompt = `

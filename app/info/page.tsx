@@ -18,6 +18,14 @@ export default function InfoPage() {
         </p>
       </article>
 
+      <article className="card infoFreeCard">
+        <h2>Contact Us</h2>
+        <p>
+          We would love to hear your feedback. Please contact us at{" "}
+          <a href="mailto:contact@shepstudy.com">contact@shepstudy.com</a>.
+        </p>
+      </article>
+
       <article className="card infoFeaturesCard">
         <h2>Features</h2>
         <h3>
@@ -40,16 +48,6 @@ export default function InfoPage() {
         <p>
           Ask questions from a Christ-centered perspective and receive
           Scripture-grounded responses with recommended verses for reflection.
-        </p>
-      </article>
-
-      <article className="card infoFreeCard">
-        <h2>Free To Use</h2>
-        <p>
-          Shepherd Study is free to use. For expanded access, please contact us.
-        </p>
-        <p>
-          <a href="mailto:shepstudy@gmail.com">shepstudy@gmail.com</a>
         </p>
       </article>
 
