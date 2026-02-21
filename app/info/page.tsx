@@ -5,10 +5,6 @@ export default function InfoPage() {
     <section className="grid infoPageGrid">
       <article className="card infoHeroCard">
         <h1>Shepherd Study</h1>
-        <p className="muted">
-          A Christ-centered Bible study companion designed to help people engage
-          Scripture with clarity, humility, and practical obedience.
-        </p>
         <p>
           Our mission is to make faithful, accessible, and meaningful study of
           God&apos;s Word available to anyone by combining trustworthy Scripture

@@ -29,10 +29,12 @@ const nextConfig = {
   }
 };
 
+const sentryTunnelRoute = process.env.SENTRY_TUNNEL_ROUTE?.trim();
+
 module.exports = withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: true,
   widenClientFileUpload: true,
-  tunnelRoute: "/monitoring"
+  ...(sentryTunnelRoute ? { tunnelRoute: sentryTunnelRoute } : {})
 });

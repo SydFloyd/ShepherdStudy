@@ -4,7 +4,6 @@ export type StudyTurn = {
   id: string;
   kind: "prompt" | "verse";
   userText: string;
-  graphNodeId: string;
   response: StudyResponsePayload;
 };
 
@@ -36,16 +35,4 @@ export type StudyThreadSummary = {
 export type StudyThreadDetail = {
   thread: StudyThreadSummary;
   turns: StudyTurn[];
-};
-
-export type StudyGraphNode = {
-  id: string;
-  kind: "PROMPT" | "VERSE";
-  label: string;
-  isUserInput: boolean;
-};
-
-export type StudyGraphEdge = {
-  fromNodeId: string;
-  toNodeId: string;
 };

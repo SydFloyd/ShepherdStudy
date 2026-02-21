@@ -9,14 +9,11 @@ import {
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
 import { StudyAssistantPanel } from "@/components/study/study-assistant-panel";
-import { StudyGraphPanel } from "@/components/study/study-graph-panel";
 import { StudyPassagePanel } from "@/components/study/study-passage-panel";
 import { StudyRecommendations } from "@/components/study/study-recommendations";
 import { StudyThreadPanel } from "@/components/study/study-thread-panel";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { useStudyNavigation } from "@/hooks/use-study-navigation";
 import { useStudySession } from "@/hooks/use-study-session";
-import { buildLocalGraph } from "@/lib/study-client-utils";
 import { PassagePreviewPayload } from "@/lib/study-client-contract";
 
 export default function StudyPage() {
@@ -48,6 +45,7 @@ export default function StudyPage() {
     error,
     isLoading,
     isHistoryLoading,
+    loadThreads,
     loadThread,
     archiveThread,
     renameThread,
@@ -55,7 +53,6 @@ export default function StudyPage() {
     submitPrompt,
     selectRecommendation
   } = useStudySession();
-  const { focusedNodeId, onGraphNodeSelect } = useStudyNavigation(turns);
   const composerFormRef = useRef<HTMLFormElement | null>(null);
 
   function resetStudyView() {
@@ -95,6 +92,12 @@ export default function StudyPage() {
       window.removeEventListener("study:new", onNewStudyEvent);
     };
   }, [startNewThread]);
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      void loadThreads();
+    }
+  }, [sessionStatus, loadThreads]);
 
   useEffect(() => {
     if (turns.length === 0) {
@@ -204,7 +207,6 @@ export default function StudyPage() {
     );
   }
 
-  const graph = buildLocalGraph(turns);
   const hasStudyContent = turns.length > 0 || Boolean(pendingTurn);
   const versionSelectWidthCh =
     Math.max(...BIBLE_TRANSLATIONS.map((item) => item.label.length), 8) + 2;
@@ -306,7 +308,6 @@ export default function StudyPage() {
               <section
                 key={turn.id}
                 id={`study-turn-${turn.id}`}
-                data-graph-node-id={turn.graphNodeId}
                 className="studyTurnBlock"
               >
                 <article className="card studyUserBubble">
@@ -327,14 +328,11 @@ export default function StudyPage() {
                   )}
                   <StudyAssistantPanel
                     answer={turn.response.answer}
-                    context={turn.response.context}
-                    relevance={turn.response.relevance}
                   />
                 </section>
                 <StudyRecommendations
                   recommendations={turn.response.recommendations}
                   translation={turn.response.passage?.translation ?? translation}
-                  sourceNodeId={turn.graphNodeId}
                   isOpen={expandedRecommendationsTurnId === turn.id}
                   onToggleOpen={(open) => {
                     setExpandedRecommendationsTurnId(open ? turn.id : null);
@@ -422,17 +420,6 @@ export default function StudyPage() {
           {error ? <p className="muted">{error}</p> : null}
         </form>
       </div>
-
-      {turns.length > 0 ? (
-        <aside className="studyRail">
-          <StudyGraphPanel
-            nodes={graph.nodes}
-            edges={graph.edges}
-            activeNodeId={focusedNodeId ?? turns.at(-1)?.graphNodeId}
-            onNodeSelect={onGraphNodeSelect}
-          />
-        </aside>
-      ) : null}
 
       {previewSelection ? (
         <div

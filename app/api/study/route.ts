@@ -5,13 +5,15 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import {
   BIBLE_TRANSLATION_IDS,
-  DEFAULT_BIBLE_TRANSLATION
+  DEFAULT_BIBLE_TRANSLATION,
+  isTranslationCompatibleWithBook
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { generateStudyRecommendations } from "@/lib/openai";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
+import { parseScriptureReference } from "@/lib/scripture";
 import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
 import { persistStudyTurn } from "@/lib/study-history";
 import { captureServerException } from "@/lib/sentry";
@@ -102,6 +104,26 @@ function buildInputPassagePayload(input: {
     verses: input.verses,
     chapterPath: input.chapterPath
   };
+}
+
+function getRecommendationTranslation(reference: string, translation: string): string {
+  const parsed = parseScriptureReference(reference);
+  if (!parsed) {
+    return translation;
+  }
+
+  if (isTranslationCompatibleWithBook(translation, parsed.book)) {
+    return translation;
+  }
+
+  if (translation === "uhb") {
+    return "ugnt";
+  }
+  if (translation === "ugnt") {
+    return "uhb";
+  }
+
+  return translation;
 }
 
 export async function POST(req: Request) {
@@ -217,7 +239,7 @@ export async function POST(req: Request) {
     const normalizedAnchorReference = passagePayload?.reference
       ? passagePayload.reference.trim().replace(/\s+/g, " ").toLowerCase()
       : null;
-    const recommendations = response.recommendations.filter((item) => {
+    const filteredRecommendations = response.recommendations.filter((item) => {
       if (!normalizedAnchorReference) {
         return true;
       }
@@ -227,8 +249,32 @@ export async function POST(req: Request) {
         .toLowerCase();
       return normalizedReference !== normalizedAnchorReference;
     });
+    const recommendations = await Promise.all(
+      filteredRecommendations.map(async (item) => {
+        const selectionTranslation = getRecommendationTranslation(
+          item.reference,
+          input.translation
+        );
+        const preview = await resolvePassageFromLocalBible({
+          reference: item.reference,
+          translation: selectionTranslation
+        });
 
-    const graph = undefined;
+        if (!preview.ok) {
+          return {
+            reference: item.reference
+          };
+        }
+
+        const previewText =
+          preview.selectedVerses[0]?.text ?? preview.chapterVerses[0]?.text ?? "";
+
+        return {
+          reference: preview.resolvedReference,
+          preview: previewText
+        };
+      })
+    );
 
     let thread: {
       id: string;
@@ -258,8 +304,8 @@ export async function POST(req: Request) {
           modeName: modeMeta.modeName,
           assistantBehaviorName: modeMeta.assistantBehaviorName,
           answer: response.answer,
-          context: response.context,
-          relevance: response.relevance,
+          context: "",
+          relevance: "",
           recommendations,
           passage: passagePayload,
           saved: true
@@ -272,12 +318,11 @@ export async function POST(req: Request) {
       modeName: modeMeta.modeName,
       assistantBehaviorName: modeMeta.assistantBehaviorName,
       answer: response.answer,
-      context: response.context,
-      relevance: response.relevance,
+      context: "",
+      relevance: "",
       recommendations,
       passage: passagePayload,
       quota: quotaDecision,
-      graph,
       saved: Boolean(thread),
       thread:
         thread && {

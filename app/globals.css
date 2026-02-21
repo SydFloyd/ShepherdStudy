@@ -212,6 +212,7 @@ a {
   border: 1px solid var(--stroke);
   border-radius: 12px;
   padding: 16px;
+  min-width: 0;
 }
 
 .card h1,
@@ -413,17 +414,18 @@ button:disabled {
 
 .studyChatLayout {
   gap: 14px;
+  min-width: 0;
 }
 
 .studyWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(170px, 208px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
 
 .studyWorkspace.withHistory {
-  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(180px, 230px);
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
 }
 
 .studyHistoryRail {
@@ -434,12 +436,6 @@ button:disabled {
 
 .studyMain {
   min-width: 0;
-}
-
-.studyRail {
-  position: sticky;
-  top: 72px;
-  align-self: start;
 }
 
 .studyTopSettings h1 {
@@ -475,10 +471,12 @@ button:disabled {
 .studyTurnBlock {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .studyUserBubble p {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .studyComposer {
@@ -495,11 +493,6 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-}
-
-.studyGraphPanel {
-  display: grid;
-  gap: 10px;
 }
 
 .studyThreadPanel {
@@ -601,89 +594,6 @@ button:disabled {
   background: #f4efe4;
 }
 
-.studyGraphHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.studyGraphHeader h2 {
-  margin: 0;
-}
-
-.studyGraphColumn {
-  display: grid;
-  gap: 0;
-  max-height: min(70vh, 780px);
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.studyGraphItem {
-  display: grid;
-  justify-items: start;
-}
-
-.studyGraphNodeButton {
-  width: 100%;
-  background: #f8f4eb;
-  color: var(--ink);
-  border: 1px solid var(--stroke);
-  border-radius: 10px;
-  padding: 8px 10px;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px;
-  align-items: center;
-  text-align: left;
-}
-
-.studyGraphNodeButton.prompt {
-  background: #eff7ec;
-}
-
-.studyGraphNodeButton.verse {
-  background: #f8f4eb;
-}
-
-.studyGraphNodeButton.userInput {
-  border-color: #a37b2b;
-}
-
-.studyGraphNodeButton.active {
-  outline: 2px solid #bc8f3c;
-  outline-offset: 1px;
-}
-
-.studyGraphNodeIndex {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 11px;
-  line-height: 1;
-}
-
-.studyGraphNodeLabel {
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.studyGraphConnector {
-  width: 2px;
-  height: 16px;
-  margin: 3px 0 3px 10px;
-  background: #d8d2c6;
-}
-
-.studyGraphConnector.linked {
-  background: #9ab29e;
-}
-
 .recoLinkButton {
   border: 0;
   background: transparent;
@@ -700,6 +610,7 @@ button:disabled {
 
 .studyRecoItem {
   padding: 10px 12px;
+  min-width: 0;
 }
 
 .studyRecoSummaryRow {
@@ -711,16 +622,25 @@ button:disabled {
 
 .studyRecoInline {
   margin: 0;
-  display: inline;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   line-height: 1.45;
+  min-width: 0;
 }
 
 .studyRecoRef {
-  margin-right: 6px;
+  margin-right: 0;
+  flex: 0 0 auto;
 }
 
 .studyRecoSummary {
-  overflow-wrap: anywhere;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .studyLensList {
@@ -1040,6 +960,7 @@ button:disabled {
 .assistantPanel,
 .studyRecommendationsCard {
   padding-top: 12px;
+  min-width: 0;
 }
 
 .studyPassageCard h2,
@@ -1047,6 +968,14 @@ button:disabled {
 .studyRecommendationsCard h3 {
   margin-top: 0;
   margin-bottom: 8px;
+}
+
+.studyRecommendationsCard .list {
+  min-width: 0;
+}
+
+.assistantPanel p {
+  overflow-wrap: anywhere;
 }
 
 .assistantDetail {
@@ -1164,10 +1093,6 @@ button:disabled {
 
   .studyWorkspace.withHistory {
     grid-template-columns: 1fr;
-  }
-
-  .studyRail {
-    position: static;
   }
 
   .studyHistoryRail {

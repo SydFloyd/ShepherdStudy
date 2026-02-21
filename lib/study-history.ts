@@ -172,15 +172,14 @@ export async function getStudyThreadDetail(input: {
       continue;
     }
 
-    turns.push({
-      id: assistantMessage.id,
-      kind: (userMessage.kind === "verse" ? "verse" : "prompt") as
-        | "prompt"
-        | "verse",
-      userText: userMessage.content,
-      graphNodeId: assistantMessage.id,
-      response: assistantMessage.response as unknown as StudyResponsePayload
-    });
+      turns.push({
+        id: assistantMessage.id,
+        kind: (userMessage.kind === "verse" ? "verse" : "prompt") as
+          | "prompt"
+          | "verse",
+        userText: userMessage.content,
+        response: assistantMessage.response as unknown as StudyResponsePayload
+      });
   }
 
   return {

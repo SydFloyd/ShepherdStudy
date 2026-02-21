@@ -1,8 +1,4 @@
-import {
-  StudyGraphEdge,
-  StudyGraphNode,
-  StudyTurn
-} from "@/lib/study-client-contract";
+import { StudyTurn } from "@/lib/study-client-contract";
 
 export async function parseJsonSafe(response: Response): Promise<unknown> {
   const text = await response.text().catch(() => "");
@@ -65,9 +61,7 @@ export function buildHistory(turns: StudyTurn[]) {
     const assistantContent = truncate(
       [
         `Study Step ${index + 1} assistant output`,
-        `Answer: ${turn.response.answer}`,
-        `Context: ${turn.response.context}`,
-        `Relevance: ${turn.response.relevance}`
+        `Answer: ${turn.response.answer}`
       ].join("\n\n")
     );
 
@@ -89,7 +83,7 @@ export function buildHistory(turns: StudyTurn[]) {
     });
 
     const assistantLines = olderTurns.map((turn, index) => {
-      return `Step ${index + 1}: answer=${turn.response.answer} | context=${turn.response.context} | relevance=${turn.response.relevance}`;
+      return `Step ${index + 1}: answer=${turn.response.answer}`;
     });
 
     return [
@@ -120,66 +114,4 @@ export function buildHistory(turns: StudyTurn[]) {
   );
 
   return [...compressed, ...recentMessages];
-}
-
-export function buildLocalGraph(turns: StudyTurn[]): {
-  nodes: StudyGraphNode[];
-  edges: StudyGraphEdge[];
-} {
-  const nodes: StudyGraphNode[] = [];
-  const edges: StudyGraphEdge[] = [];
-  let previousNodeId: string | null = null;
-
-  for (const turn of turns) {
-    if (turn.kind === "prompt") {
-      nodes.push({
-        id: turn.graphNodeId,
-        kind: "PROMPT",
-        label: turn.userText,
-        isUserInput: true
-      });
-
-      if (previousNodeId) {
-        edges.push({
-          fromNodeId: previousNodeId,
-          toNodeId: turn.graphNodeId
-        });
-      }
-      previousNodeId = turn.graphNodeId;
-
-      if (turn.response.passage?.origin === "input") {
-        const anchorVerseNodeId = `${turn.id}-anchor-verse`;
-        nodes.push({
-          id: anchorVerseNodeId,
-          kind: "VERSE",
-          label: turn.response.passage.reference,
-          isUserInput: true
-        });
-        edges.push({
-          fromNodeId: turn.graphNodeId,
-          toNodeId: anchorVerseNodeId
-        });
-      }
-      continue;
-    }
-
-    nodes.push({
-      id: turn.graphNodeId,
-      kind: "VERSE",
-      label:
-        turn.response.passage?.reference ??
-        turn.userText.replace(/^Selected verse:\s*/i, ""),
-      isUserInput: true
-    });
-
-    if (previousNodeId) {
-      edges.push({
-        fromNodeId: previousNodeId,
-        toNodeId: turn.graphNodeId
-      });
-    }
-    previousNodeId = turn.graphNodeId;
-  }
-
-  return { nodes, edges };
 }

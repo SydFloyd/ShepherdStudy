@@ -182,7 +182,6 @@ export function useStudySession() {
           id: turnId,
           kind,
           userText,
-          graphNodeId: data.graph?.nodeId ?? `local-${turnId}`,
           response: data
         }
       ]);
@@ -284,7 +283,6 @@ export function useStudySession() {
         id: turnId,
         kind,
         userText,
-        graphNodeId: studyData.graph?.nodeId ?? `local-${turnId}`,
         response: studyData
       }
     ]);
@@ -400,7 +398,6 @@ export function useStudySession() {
         id: turnId,
         kind,
         userText,
-        graphNodeId: studyData.graph?.nodeId ?? `local-${turnId}`,
         response: studyData
       }
     ]);

@@ -5,20 +5,14 @@ import { StudyRecommendation } from "@/lib/study-contract";
 type Props = {
   recommendations: StudyRecommendation[];
   translation: string;
-  sourceNodeId?: string | null;
   isOpen?: boolean;
   onToggleOpen?: (open: boolean) => void;
-  onPreviewRecommendation?: (
-    reference: string,
-    selectionTranslation?: string,
-    sourceNodeId?: string
-  ) => void;
+  onPreviewRecommendation?: (reference: string, selectionTranslation?: string) => void;
 };
 
 export function StudyRecommendations({
   recommendations,
   translation,
-  sourceNodeId,
   isOpen = true,
   onToggleOpen,
   onPreviewRecommendation
@@ -54,16 +48,16 @@ export function StudyRecommendations({
           Recommended verses ({recommendations.length})
         </summary>
         <div className="list">
-          {recommendations.map((item) => {
+          {recommendations.map((item, index) => {
             const selectionTranslation = getSelectionTranslation(item.reference);
             const passagePath = buildPassagePath(
               item.reference,
               selectionTranslation
             );
-            const summary = item.summary || item.reason || item.application || "";
+            const preview = item.preview?.trim() ?? "";
 
             return (
-              <div key={`${item.reference}-${summary}`} className="card studyRecoItem">
+              <div key={`${item.reference}-${index}`} className="card studyRecoItem">
                 <p className="studyRecoInline">
                   <strong className="studyRecoRef">
                     {onPreviewRecommendation ? (
@@ -73,8 +67,7 @@ export function StudyRecommendations({
                         onClick={() =>
                           onPreviewRecommendation(
                             item.reference,
-                            selectionTranslation,
-                            sourceNodeId ?? undefined
+                            selectionTranslation
                           )
                         }
                       >
@@ -86,8 +79,8 @@ export function StudyRecommendations({
                       item.reference
                     )}
                   </strong>
-                  {summary ? (
-                    <span className="muted studyRecoSummary">{summary}</span>
+                  {preview ? (
+                    <span className="muted studyRecoSummary">{preview}</span>
                   ) : null}
                 </p>
               </div>

@@ -1,9 +1,7 @@
 export type StudyRecommendation = {
   reference: string;
-  summary: string;
-  reason?: string;
-  application?: string;
-  confidence?: number;
+  preview?: string;
+  summary?: string;
 };
 
 export type StudyMode = "passage_only" | "prompt_only" | "passage_and_prompt";
@@ -37,18 +35,12 @@ export type StudyResponsePayload = {
   modeName: string;
   assistantBehaviorName: string;
   answer: string;
+  // Context/relevance are intentionally disabled in Study UI for now.
+  // Keep these fields for backward compatibility and easy re-enable later.
   context: string;
   relevance: string;
   passage: StudyPassageResult | null;
   recommendations: StudyRecommendation[];
-  graph?: {
-    sessionId: string;
-    nodeId: string;
-    recommendationNodeIds: Array<{
-      reference: string;
-      nodeId: string;
-    }>;
-  };
   saved: boolean;
   thread?: {
     id: string;

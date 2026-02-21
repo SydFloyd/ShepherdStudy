@@ -4,14 +4,13 @@ import { z } from "zod";
 import { StudyMode } from "@/lib/study-contract";
 
 const recommendationSchema = z.object({
-  reference: z.string().min(1),
-  summary: z.string().min(1)
+  reference: z.string().min(1)
 });
 
 const studyResponseSchema = z.object({
   answer: z.string().min(1),
-  context: z.string().min(1),
-  relevance: z.string().min(1),
+  // context: z.string().min(1), // Disabled for now to reduce token usage.
+  // relevance: z.string().min(1), // Disabled for now to reduce token usage.
   recommendations: z.array(recommendationSchema).min(3).max(10)
 });
 
@@ -23,12 +22,11 @@ You are a biblical study assistant.
 Return only valid JSON with this shape:
 {
   "answer": "direct response to the user's prompt",
-  "context": "biblical context and interpretation context",
-  "relevance": "why this matters for the user's situation",
+  // "context": "disabled for now",
+  // "relevance": "disabled for now",
   "recommendations": [
     {
-      "reference": "Book Chapter:Verse",
-      "summary": "one concise sentence: why this verse fits and how to apply it"
+      "reference": "Book Chapter:Verse"
     }
   ]
 }
@@ -36,7 +34,8 @@ Return only valid JSON with this shape:
 Rules:
 - Keep references orthodox and scripture-focused.
 - Avoid speculative claims.
-- Keep answer/context/relevance concise and practical.
+- Keep answer concise and practical.
+- Do not include recommendation summaries or explanations.
 - Provide 5 recommendations.
 - When prior study-step history is provided, maintain continuity with it and avoid contradicting previous guidance unless correcting an error.
 `.trim();
@@ -71,7 +70,7 @@ Passage to study: ${input.passage ?? "None provided"}
 User prompt: ${input.prompt ?? "None provided"}
 
 Mode guidance:
-- passage_only: explain the passage theme, context, and practical obedience steps.
+- passage_only: explain the passage theme and practical obedience steps.
 - prompt_only: answer the question broadly from Scripture with strong cross-reference coverage.
 - passage_and_prompt: explicitly connect the question to this passage and then broaden with related Scripture.
   `.trim();
