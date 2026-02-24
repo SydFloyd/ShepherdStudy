@@ -511,9 +511,37 @@ button:disabled {
   margin: 0;
 }
 
+.studyThreadHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .studyThreadNewButton {
   padding: 6px 10px;
   font-size: 12px;
+}
+
+.studyThreadCollapseButton {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: #f3eee3;
+  color: #6a5b43;
+}
+
+.studyThreadCollapseButton span {
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.studyThreadCollapseButton.collapsed span {
+  transform: rotate(-90deg);
 }
 
 .studyThreadList {

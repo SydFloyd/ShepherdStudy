@@ -23,6 +23,7 @@ export function StudyThreadPanel({
   onArchiveThread,
   onRenameThread
 }: Props) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [menu, setMenu] = useState<{
     threadId: string;
     title: string;
@@ -64,73 +65,91 @@ export function StudyThreadPanel({
   return (
     <article className="card studyThreadPanel">
       <div className="studyThreadHeader">
-        <h2>Studies</h2>
-        <button type="button" className="studyThreadNewButton" onClick={onNewThread}>
-          New
-        </button>
+        <h2>Study History</h2>
+        <div className="studyThreadHeaderActions">
+          <button type="button" className="studyThreadNewButton" onClick={onNewThread}>
+            New
+          </button>
+          <button
+            type="button"
+            className={`studyThreadCollapseButton${isCollapsed ? " collapsed" : ""}`}
+            aria-label={isCollapsed ? "Expand study history" : "Collapse study history"}
+            aria-expanded={!isCollapsed}
+            onClick={() => {
+              setMenu(null);
+              setIsCollapsed((current) => !current);
+            }}
+          >
+            <span aria-hidden="true">▾</span>
+          </button>
+        </div>
       </div>
 
-      {isLoading ? <p className="muted">Loading history...</p> : null}
-      {!isLoading && threads.length === 0 ? (
-        <p className="muted">No saved studies yet.</p>
-      ) : null}
+      {!isCollapsed ? (
+        <>
+          {isLoading ? <p className="muted">Loading history...</p> : null}
+          {!isLoading && threads.length === 0 ? (
+            <p className="muted">No saved study history yet.</p>
+          ) : null}
 
-      {threads.length > 0 ? (
-        <div className="studyThreadList">
-          {threads.map((thread) => (
-            <div key={thread.id} className="studyThreadItem">
-              <button
-                type="button"
-                className={`studyThreadSelectButton${thread.id === activeThreadId ? " active" : ""}`}
-                onClick={() => onSelectThread(thread.id)}
-              >
-                <span>{thread.title}</span>
-              </button>
-              <button
-                type="button"
-                className="studyThreadActionsButton"
-                aria-label={`Actions for ${thread.title}`}
-                onClick={() => {
-                  setMenu((current) =>
-                    current?.threadId === thread.id
-                      ? null
-                      : {
-                          threadId: thread.id,
-                          title: thread.title
-                        }
-                  );
-                }}
-              >
-                ...
-              </button>
-              {menu?.threadId === thread.id ? (
-                <div ref={menuRef} className="studyThreadMenu inline">
+          {threads.length > 0 ? (
+            <div className="studyThreadList">
+              {threads.map((thread) => (
+                <div key={thread.id} className="studyThreadItem">
                   <button
                     type="button"
-                    onClick={() => {
-                      const nextTitle = window.prompt("Rename study", menu.title);
-                      if (nextTitle && nextTitle.trim()) {
-                        onRenameThread(menu.threadId, nextTitle.trim());
-                      }
-                      setMenu(null);
-                    }}
+                    className={`studyThreadSelectButton${thread.id === activeThreadId ? " active" : ""}`}
+                    onClick={() => onSelectThread(thread.id)}
                   >
-                    Rename
+                    <span>{thread.title}</span>
                   </button>
                   <button
                     type="button"
+                    className="studyThreadActionsButton"
+                    aria-label={`Actions for ${thread.title}`}
                     onClick={() => {
-                      onArchiveThread(menu.threadId);
-                      setMenu(null);
+                      setMenu((current) =>
+                        current?.threadId === thread.id
+                          ? null
+                          : {
+                              threadId: thread.id,
+                              title: thread.title
+                            }
+                      );
                     }}
                   >
-                    Archive
+                    ...
                   </button>
+                  {menu?.threadId === thread.id ? (
+                    <div ref={menuRef} className="studyThreadMenu inline">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextTitle = window.prompt("Rename study", menu.title);
+                          if (nextTitle && nextTitle.trim()) {
+                            onRenameThread(menu.threadId, nextTitle.trim());
+                          }
+                          setMenu(null);
+                        }}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onArchiveThread(menu.threadId);
+                          setMenu(null);
+                        }}
+                      >
+                        Archive
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+        </>
       ) : null}
     </article>
   );
