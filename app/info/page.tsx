@@ -18,7 +18,7 @@ export default function InfoPage() {
         <h2>Contact Us</h2>
         <p>
           We would love to hear your feedback. Please contact us at{" "}
-          <a href="mailto:contact@shepstudy.com">contact@shepstudy.com</a>.
+          <a href="mailto:shepstudy@gmail.com">shepstudy@gmail.com</a>.
         </p>
       </article>
 
