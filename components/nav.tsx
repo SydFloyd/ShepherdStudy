@@ -73,7 +73,7 @@ export function Nav() {
   return (
     <nav className="nav">
       <Link href={studyHref} className="brand" onClick={triggerNewStudyIfOnStudy}>
-        <span className="brandText">Shepherd Study</span>
+        <span className="brandText">✝ ShepherdStudy</span>
       </Link>
       <div className="navMobileMenu" ref={mobileMenuRef}>
         <button

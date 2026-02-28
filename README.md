@@ -1,4 +1,4 @@
-# Shepherd Study
+# ShepherdStudy
 
 Bible study web application with personalized scripture recommendations using OpenAI.
 
@@ -101,4 +101,3 @@ Open `http://localhost:3000`.
   - `passage_only`: "Passage Companion" with default behavior "Context & Companion"
   - `prompt_only`: "Topical Discovery" with default behavior "Topical Scout" and optional anchor passage from recommendations
   - `passage_and_prompt`: "Passage-Anchored Inquiry" with default behavior "Triangulated Guidance"
-

@@ -4,12 +4,12 @@ export default function InfoPage() {
   return (
     <section className="grid infoPageGrid">
       <article className="card infoHeroCard">
-        <h1>Shepherd Study</h1>
+        <h1>ShepherdStudy</h1>
         <p>
           Our mission is to make faithful, accessible, and meaningful study of
           God&apos;s Word available to anyone by combining trustworthy Scripture
           data with thoughtful AI assistance. Bible versions are stored directly
-          by Shepherd Study, independent of third-party APIs, and are not
+          by ShepherdStudy, independent of third-party APIs, and are not
           subject to outside changes.
         </p>
       </article>

@@ -1,10 +1,10 @@
-# Shepherd Study Mission
+# ShepherdStudy Mission
 
-This document defines the permanent mission boundaries for Shepherd Study.
+This document defines the permanent mission boundaries for ShepherdStudy.
 
 ## Purpose
 
-Shepherd Study exists to help people return to Scripture, prayer, obedience, and faithful life in the local church.  
+ShepherdStudy exists to help people return to Scripture, prayer, obedience, and faithful life in the local church.  
 It must never present itself as a replacement for Scripture, pastors, or Christian community.
 
 ## Guiding Principles

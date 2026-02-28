@@ -9,7 +9,7 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Shepherd Study",
+  title: "ShepherdStudy",
   description: "Personalized Bible study companion with OpenAI recommendations.",
   icons: {
     icon: "/branding/shepherdstudy_small.png",

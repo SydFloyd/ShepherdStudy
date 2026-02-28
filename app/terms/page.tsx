@@ -6,7 +6,7 @@ export default function TermsPage() {
 
       <h2>Service Scope</h2>
       <p>
-        Shepherd Study provides AI-assisted Bible study tools for informational and
+        ShepherdStudy provides AI-assisted Bible study tools for informational and
         devotional use. It is not legal, medical, financial, or pastoral authority.
       </p>
 
