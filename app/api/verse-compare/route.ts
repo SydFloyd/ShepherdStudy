@@ -7,6 +7,7 @@ import {
   getTranslationLabel
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
+import { prisma } from "@/lib/prisma";
 import { buildSideBySideDiff } from "@/lib/text-diff";
 import { parseScriptureReference } from "@/lib/scripture";
 
@@ -26,8 +27,79 @@ function renderSelectedText(input: {
   return input.verses.map((verse) => `${verse.verse} ${verse.text}`).join("\n");
 }
 
-function formatVerseReference(book: string, chapter: number, verse: number) {
-  return `${book} ${chapter}:${verse}`;
+function formatChapterReference(book: string, chapter: number) {
+  return `${book} ${chapter}`;
+}
+
+async function getAdjacentChapterReferences(input: {
+  translation: string;
+  book: string;
+  chapter: number;
+}) {
+  const current = await prisma.bibleVerse.findFirst({
+    where: {
+      translation: input.translation,
+      book: input.book,
+      chapter: input.chapter
+    },
+    orderBy: {
+      verse: "asc"
+    },
+    select: {
+      bookOrder: true,
+      chapter: true
+    }
+  });
+
+  if (!current) {
+    return { previousReference: null, nextReference: null };
+  }
+
+  const [previousChapter, nextChapter] = await Promise.all([
+    prisma.bibleVerse.findFirst({
+      where: {
+        translation: input.translation,
+        OR: [
+          { bookOrder: { lt: current.bookOrder } },
+          {
+            bookOrder: current.bookOrder,
+            chapter: { lt: current.chapter }
+          }
+        ]
+      },
+      orderBy: [{ bookOrder: "desc" }, { chapter: "desc" }, { verse: "asc" }],
+      select: {
+        book: true,
+        chapter: true
+      }
+    }),
+    prisma.bibleVerse.findFirst({
+      where: {
+        translation: input.translation,
+        OR: [
+          { bookOrder: { gt: current.bookOrder } },
+          {
+            bookOrder: current.bookOrder,
+            chapter: { gt: current.chapter }
+          }
+        ]
+      },
+      orderBy: [{ bookOrder: "asc" }, { chapter: "asc" }, { verse: "asc" }],
+      select: {
+        book: true,
+        chapter: true
+      }
+    })
+  ]);
+
+  return {
+    previousReference: previousChapter
+      ? formatChapterReference(previousChapter.book, previousChapter.chapter)
+      : null,
+    nextReference: nextChapter
+      ? formatChapterReference(nextChapter.book, nextChapter.chapter)
+      : null
+  };
 }
 
 export async function POST(req: Request) {
@@ -70,26 +142,12 @@ export async function POST(req: Request) {
     });
     const diff = buildSideBySideDiff({ leftText, rightText });
 
-    const anchorVerse =
-      parsed.verseStart ?? left.selectedVerses[0]?.verse ?? left.chapterVerses[0]?.verse;
-    let previousReference: string | null = null;
-    let nextReference: string | null = null;
-
-    if (anchorVerse) {
-      const currentIndex = left.chapterVerses.findIndex(
-        (verse) => verse.verse === anchorVerse
-      );
-      if (currentIndex >= 0) {
-        const previous = left.chapterVerses[currentIndex - 1];
-        const next = left.chapterVerses[currentIndex + 1];
-        previousReference = previous
-          ? formatVerseReference(left.resolvedBook, parsed.chapter, previous.verse)
-          : null;
-        nextReference = next
-          ? formatVerseReference(left.resolvedBook, parsed.chapter, next.verse)
-          : null;
-      }
-    }
+    const { previousReference, nextReference } =
+      await getAdjacentChapterReferences({
+        translation: input.leftTranslation,
+        book: left.resolvedBook,
+        chapter: parsed.chapter
+      });
 
     return NextResponse.json({
       reference: left.resolvedReference,

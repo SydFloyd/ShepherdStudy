@@ -28,7 +28,7 @@ type CompareResponse = {
   };
 };
 
-const DEFAULT_REFERENCE = "John 1:1";
+const DEFAULT_REFERENCE = "John 1";
 
 function DiffText({ segments }: { segments: DiffSegment[] }) {
   return (
@@ -120,7 +120,7 @@ export default function ComparePage() {
     <section className="grid">
       <article className="card">
         <div className="studyTopHeader">
-          <h1>Verse Comparison</h1>
+          <h1>Translation Comparison</h1>
         </div>
         <p className="muted">
           Compare a verse or full chapter across translations with highlighted
@@ -130,7 +130,7 @@ export default function ComparePage() {
           <input
             value={referenceInput}
             onChange={(event) => setReferenceInput(event.target.value)}
-            placeholder="John 1:1"
+            placeholder="John 1"
           />
           <button type="submit" disabled={!canSubmit}>
             {isLoading ? "Comparing..." : "Compare"}
