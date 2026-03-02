@@ -617,11 +617,9 @@ button:disabled {
 }
 
 .studyThreadMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 8px;
+  position: fixed;
   min-width: 120px;
-  z-index: 20;
+  z-index: 200;
   border: 1px solid var(--stroke);
   border-radius: 8px;
   background: #fffdf8;
