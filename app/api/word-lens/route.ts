@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
 import { extractStrongCandidates } from "@/lib/strongs";
 import {
   buildWordLensCacheKey,
@@ -380,6 +381,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid word-lens request." },
         { status: 400 }
+      );
+    }
+    if (isPrismaDatabaseUnavailableError(error)) {
+      logEvent("warn", "word_lens.database_unavailable", { ...requestMeta, error });
+      return NextResponse.json(
+        { error: "Database temporarily unavailable. Please retry in a moment." },
+        { status: 503 }
       );
     }
     captureServerException(error, {

@@ -8,6 +8,7 @@ import {
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { prisma } from "@/lib/prisma";
+import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
 import { parseScriptureReference } from "@/lib/scripture";
 
 const inputSchema = z.object({
@@ -155,6 +156,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid verse comparison request." },
         { status: 400 }
+      );
+    }
+    if (isPrismaDatabaseUnavailableError(error)) {
+      return NextResponse.json(
+        { error: "Database temporarily unavailable. Please retry in a moment." },
+        { status: 503 }
       );
     }
     return NextResponse.json(
