@@ -18,7 +18,7 @@ export default function InfoPage() {
         <h2>Contact Us</h2>
         <p>
           We would love to hear your feedback. Please contact us at{" "}
-          <a href="mailto:shepstudy@gmail.com">shepstudy@gmail.com</a>.
+          <a href="mailto:contact@shepstudy.com">contact@shepstudy.com</a>.
         </p>
       </article>
 
@@ -37,13 +37,6 @@ export default function InfoPage() {
         <p>
           Analyze one verse at a time in original language with AI-assisted
           word-by-word transliteration, translation, and morphology support.
-        </p>
-        <h3>
-          <Link href="/wwjd">ShepherdAI</Link>
-        </h3>
-        <p>
-          Ask questions from a Christ-centered perspective and receive
-          Scripture-grounded responses with recommended verses for reflection.
         </p>
       </article>
 

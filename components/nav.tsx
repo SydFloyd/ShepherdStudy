@@ -108,9 +108,6 @@ export function Nav() {
             >
               Interlinear
             </Link>
-            <Link href="/wwjd" className={navLinkClass("/wwjd")} role="menuitem">
-              ShepherdAI
-            </Link>
             {isAuthenticated ? (
               <>
                 <Link href="/account" role="menuitem">
@@ -149,9 +146,6 @@ export function Nav() {
         </Link>
         <Link href="/word-lens" className={navLinkClass("/word-lens")}>
           Interlinear
-        </Link>
-        <Link href="/wwjd" className={navLinkClass("/wwjd")}>
-          ShepherdAI
         </Link>
         {isAuthenticated ? (
           <div className="navAccountMenu" ref={accountMenuRef}>
