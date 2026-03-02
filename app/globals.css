@@ -940,11 +940,33 @@ button:disabled {
   gap: 10px;
 }
 
-.compareForm {
-  display: grid;
-  grid-template-columns: minmax(220px, 340px) auto;
-  gap: 8px;
+.compareTopHeader {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compareTopHeader h1 {
+  margin: 0;
+}
+
+.compareForm {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.compareForm input {
+  width: clamp(190px, 28vw, 340px);
+}
+
+.compareForm button {
+  width: auto;
+  white-space: nowrap;
+  padding-inline: 12px;
 }
 
 .compareGrid {
@@ -999,6 +1021,11 @@ button:disabled {
   min-width: 10px;
 }
 
+.compareMissingVerse.is-token-hovered {
+  background: #ffe27a;
+  border-radius: 3px;
+}
+
 .diffToken.same {
   background: transparent;
 }
@@ -1009,7 +1036,12 @@ button:disabled {
 
 .diffToken.removed {
   background: #f9dede;
-  text-decoration: line-through;
+  color: #6c6c6c;
+  text-decoration: none;
+}
+
+.diffToken.tokenHover {
+  background: #ffe27a;
 }
 
 .compareNavRow {
@@ -1424,8 +1456,20 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .compareTopHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .compareForm {
-    grid-template-columns: 1fr;
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .compareForm input {
+    width: auto;
+    flex: 1 1 auto;
   }
 
   .compareGrid {

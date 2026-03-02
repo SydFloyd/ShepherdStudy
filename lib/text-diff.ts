@@ -3,6 +3,10 @@ export type DiffSegment = {
   type: "same" | "added" | "removed";
 };
 
+export type LinkedDiffSegment = DiffSegment & {
+  groupId: number;
+};
+
 type DiffOp =
   | { type: "same"; text: string }
   | { type: "added"; text: string }
@@ -78,6 +82,72 @@ function compactSegments(segments: DiffSegment[]) {
   return compacted;
 }
 
+function compactLinkedSegments(segments: LinkedDiffSegment[]) {
+  const compacted: LinkedDiffSegment[] = [];
+  for (const segment of segments) {
+    const last = compacted[compacted.length - 1];
+    if (
+      last &&
+      last.type === segment.type &&
+      last.groupId === segment.groupId
+    ) {
+      last.text += segment.text;
+    } else {
+      compacted.push({ ...segment });
+    }
+  }
+  return compacted;
+}
+
+export function buildLinkedSideBySideDiff(input: {
+  leftText: string;
+  rightText: string;
+}): {
+  left: LinkedDiffSegment[];
+  right: LinkedDiffSegment[];
+} {
+  const leftTokens = tokenize(input.leftText);
+  const rightTokens = tokenize(input.rightText);
+  const ops = buildDiffOps(leftTokens, rightTokens);
+
+  const leftSegments: LinkedDiffSegment[] = [];
+  const rightSegments: LinkedDiffSegment[] = [];
+
+  let groupId = 1;
+  let index = 0;
+
+  while (index < ops.length) {
+    const op = ops[index];
+
+    if (op.type === "same") {
+      while (index < ops.length && ops[index].type === "same") {
+        const sameOp = ops[index];
+        leftSegments.push({ text: sameOp.text, type: "same", groupId });
+        rightSegments.push({ text: sameOp.text, type: "same", groupId });
+        index += 1;
+      }
+      groupId += 1;
+      continue;
+    }
+
+    while (index < ops.length && ops[index].type !== "same") {
+      const changeOp = ops[index];
+      if (changeOp.type === "removed") {
+        leftSegments.push({ text: changeOp.text, type: "removed", groupId });
+      } else {
+        rightSegments.push({ text: changeOp.text, type: "added", groupId });
+      }
+      index += 1;
+    }
+    groupId += 1;
+  }
+
+  return {
+    left: compactLinkedSegments(leftSegments),
+    right: compactLinkedSegments(rightSegments)
+  };
+}
+
 export function buildSideBySideDiff(input: {
   leftText: string;
   rightText: string;
@@ -85,28 +155,19 @@ export function buildSideBySideDiff(input: {
   left: DiffSegment[];
   right: DiffSegment[];
 } {
-  const leftTokens = tokenize(input.leftText);
-  const rightTokens = tokenize(input.rightText);
-  const ops = buildDiffOps(leftTokens, rightTokens);
-
-  const leftSegments: DiffSegment[] = [];
-  const rightSegments: DiffSegment[] = [];
-
-  for (const op of ops) {
-    if (op.type === "same") {
-      leftSegments.push({ text: op.text, type: "same" });
-      rightSegments.push({ text: op.text, type: "same" });
-      continue;
-    }
-    if (op.type === "removed") {
-      leftSegments.push({ text: op.text, type: "removed" });
-      continue;
-    }
-    rightSegments.push({ text: op.text, type: "added" });
-  }
-
+  const linked = buildLinkedSideBySideDiff(input);
   return {
-    left: compactSegments(leftSegments),
-    right: compactSegments(rightSegments)
+    left: compactSegments(
+      linked.left.map((segment) => ({
+        text: segment.text,
+        type: segment.type
+      }))
+    ),
+    right: compactSegments(
+      linked.right.map((segment) => ({
+        text: segment.text,
+        type: segment.type
+      }))
+    )
   };
 }

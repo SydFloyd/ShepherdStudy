@@ -8,9 +8,9 @@ import {
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { prisma } from "@/lib/prisma";
-import { buildSideBySideDiff } from "@/lib/text-diff";
+import { buildLinkedSideBySideDiff, buildSideBySideDiff } from "@/lib/text-diff";
 import { parseScriptureReference } from "@/lib/scripture";
-import type { DiffSegment } from "@/lib/text-diff";
+import type { LinkedDiffSegment } from "@/lib/text-diff";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
@@ -32,8 +32,8 @@ function buildVerseDiffRows(input: {
   leftVerses: Array<{ verse: number; paragraph: number; text: string }>;
   rightVerses: Array<{ verse: number; paragraph: number; text: string }>;
 }): {
-  left: Array<{ verse: number; paragraph: number; segments: DiffSegment[] }>;
-  right: Array<{ verse: number; paragraph: number; segments: DiffSegment[] }>;
+  left: Array<{ verse: number; paragraph: number; segments: LinkedDiffSegment[] }>;
+  right: Array<{ verse: number; paragraph: number; segments: LinkedDiffSegment[] }>;
 } {
   const leftTextByVerse = new Map(
     input.leftVerses.map((item) => [item.verse, item.text.trim()])
@@ -45,13 +45,13 @@ function buildVerseDiffRows(input: {
     new Set([...leftTextByVerse.keys(), ...rightTextByVerse.keys()])
   ).sort((a, b) => a - b);
 
-  const leftSegmentsByVerse = new Map<number, DiffSegment[]>();
-  const rightSegmentsByVerse = new Map<number, DiffSegment[]>();
+  const leftSegmentsByVerse = new Map<number, LinkedDiffSegment[]>();
+  const rightSegmentsByVerse = new Map<number, LinkedDiffSegment[]>();
 
   for (const verse of verseNumbers) {
     const leftText = leftTextByVerse.get(verse) ?? "";
     const rightText = rightTextByVerse.get(verse) ?? "";
-    const diff = buildSideBySideDiff({
+    const diff = buildLinkedSideBySideDiff({
       leftText,
       rightText
     });

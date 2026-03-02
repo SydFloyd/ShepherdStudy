@@ -8,7 +8,7 @@ import {
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
 import { parseJsonSafe } from "@/lib/study-client-utils";
-import { DiffSegment } from "@/lib/text-diff";
+import type { DiffSegment, LinkedDiffSegment } from "@/lib/text-diff";
 
 type CompareResponse = {
   reference: string;
@@ -22,7 +22,7 @@ type CompareResponse = {
     verses: Array<{
       verse: number;
       paragraph: number;
-      segments: DiffSegment[];
+      segments: LinkedDiffSegment[];
     }>;
   };
   right: {
@@ -33,22 +33,51 @@ type CompareResponse = {
     verses: Array<{
       verse: number;
       paragraph: number;
-      segments: DiffSegment[];
+      segments: LinkedDiffSegment[];
     }>;
   };
 };
 
 const DEFAULT_REFERENCE = "John 1";
 
-function DiffText({ segments }: { segments: DiffSegment[] }) {
-  if (segments.length === 0) {
-    return <span className="muted compareMissingVerse">-</span>;
+function DiffText(input: {
+  verse: number;
+  segments: LinkedDiffSegment[];
+  hoveredTokenKey: string | null;
+  onHoverToken: (tokenKey: string | null) => void;
+}) {
+  function buildTokenKey(groupId: number) {
+    return `${input.verse}:${groupId}`;
+  }
+
+  if (input.segments.length === 0) {
+    const isTokenHoveredInVerse = input.hoveredTokenKey?.startsWith(
+      `${input.verse}:`
+    );
+    return (
+      <span
+        className={`muted compareMissingVerse${
+          isTokenHoveredInVerse ? " is-token-hovered" : ""
+        }`}
+      >
+        -
+      </span>
+    );
   }
 
   return (
     <>
-      {segments.map((segment, index) => (
-        <span key={`${segment.type}-${index}`} className={`diffToken ${segment.type}`}>
+      {input.segments.map((segment, index) => (
+        <span
+          key={`${segment.type}-${segment.groupId}-${index}`}
+          className={`diffToken ${segment.type}${
+            input.hoveredTokenKey === buildTokenKey(segment.groupId)
+              ? " tokenHover"
+              : ""
+          }`}
+          onMouseEnter={() => input.onHoverToken(buildTokenKey(segment.groupId))}
+          onMouseLeave={() => input.onHoverToken(null)}
+        >
           {segment.text}
         </span>
       ))}
@@ -60,11 +89,13 @@ function DiffVerseParagraphs(input: {
   verses: Array<{
     verse: number;
     paragraph: number;
-    segments: DiffSegment[];
+    segments: LinkedDiffSegment[];
   }>;
   side: "left" | "right";
   hoveredVerse: number | null;
   onHoverVerse: (verse: number | null) => void;
+  hoveredTokenKey: string | null;
+  onHoverToken: (tokenKey: string | null) => void;
 }) {
   const paragraphGroups = input.verses.reduce<
     Array<{
@@ -84,7 +115,10 @@ function DiffVerseParagraphs(input: {
   return (
     <div
       className="paragraphList compareParagraphList"
-      onMouseLeave={() => input.onHoverVerse(null)}
+      onMouseLeave={() => {
+        input.onHoverVerse(null);
+        input.onHoverToken(null);
+      }}
     >
       {paragraphGroups.map((group) => (
         <p key={`${input.side}-p-${group.paragraph}`} className="paragraphText compareText">
@@ -100,7 +134,12 @@ function DiffVerseParagraphs(input: {
               tabIndex={0}
             >
               <span className="verseNumber">{verseRow.verse}</span>
-              <DiffText segments={verseRow.segments} />
+              <DiffText
+                verse={verseRow.verse}
+                segments={verseRow.segments}
+                hoveredTokenKey={input.hoveredTokenKey}
+                onHoverToken={input.onHoverToken}
+              />
             </span>
           ))}
         </p>
@@ -120,6 +159,7 @@ export default function ComparePage() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CompareResponse | null>(null);
   const [hoveredVerse, setHoveredVerse] = useState<number | null>(null);
+  const [hoveredTokenKey, setHoveredTokenKey] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => !isLoading, [isLoading]);
 
@@ -131,6 +171,7 @@ export default function ComparePage() {
     setIsLoading(true);
     setError(null);
     setHoveredVerse(null);
+    setHoveredTokenKey(null);
 
     const response = await fetch("/api/verse-compare", {
       method: "POST",
@@ -188,23 +229,19 @@ export default function ComparePage() {
   return (
     <section className="grid">
       <article className="card">
-        <div className="studyTopHeader">
+        <div className="compareTopHeader">
           <h1>Translation Comparison</h1>
+          <form className="compareForm" onSubmit={submit}>
+            <input
+              value={referenceInput}
+              onChange={(event) => setReferenceInput(event.target.value)}
+              placeholder="John 1"
+            />
+            <button type="submit" disabled={!canSubmit}>
+              {isLoading ? "Comparing..." : "Compare"}
+            </button>
+          </form>
         </div>
-        <p className="muted">
-          Compare a verse or full chapter across translations with highlighted
-          text differences.
-        </p>
-        <form className="compareForm" onSubmit={submit}>
-          <input
-            value={referenceInput}
-            onChange={(event) => setReferenceInput(event.target.value)}
-            placeholder="John 1"
-          />
-          <button type="submit" disabled={!canSubmit}>
-            {isLoading ? "Comparing..." : "Compare"}
-          </button>
-        </form>
         {error ? <p className="muted">{error}</p> : null}
       </article>
 
@@ -239,6 +276,8 @@ export default function ComparePage() {
                 side="left"
                 hoveredVerse={hoveredVerse}
                 onHoverVerse={setHoveredVerse}
+                hoveredTokenKey={hoveredTokenKey}
+                onHoverToken={setHoveredTokenKey}
               />
             </section>
             <section className="comparePanel">
@@ -268,6 +307,8 @@ export default function ComparePage() {
                 side="right"
                 hoveredVerse={hoveredVerse}
                 onHoverVerse={setHoveredVerse}
+                hoveredTokenKey={hoveredTokenKey}
+                onHoverToken={setHoveredTokenKey}
               />
             </section>
           </div>
