@@ -8,7 +8,8 @@ import {
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
 import { parseJsonSafe } from "@/lib/study-client-utils";
-import type { DiffSegment, LinkedDiffSegment } from "@/lib/text-diff";
+import { buildLinkedSideBySideDiff } from "@/lib/text-diff";
+import type { LinkedDiffSegment } from "@/lib/text-diff";
 
 type CompareResponse = {
   reference: string;
@@ -17,28 +18,30 @@ type CompareResponse = {
   left: {
     translation: string;
     translationName: string;
-    text: string;
-    segments: DiffSegment[];
     verses: Array<{
       verse: number;
       paragraph: number;
-      segments: LinkedDiffSegment[];
+      text: string;
     }>;
   };
   right: {
     translation: string;
     translationName: string;
-    text: string;
-    segments: DiffSegment[];
     verses: Array<{
       verse: number;
       paragraph: number;
-      segments: LinkedDiffSegment[];
+      text: string;
     }>;
   };
 };
 
 const DEFAULT_REFERENCE = "John 1";
+
+type ComputedVerseDiff = {
+  verse: number;
+  paragraph: number;
+  segments: LinkedDiffSegment[];
+};
 
 function DiffText(input: {
   verse: number;
@@ -86,11 +89,7 @@ function DiffText(input: {
 }
 
 function DiffVerseParagraphs(input: {
-  verses: Array<{
-    verse: number;
-    paragraph: number;
-    segments: LinkedDiffSegment[];
-  }>;
+  verses: ComputedVerseDiff[];
   side: "left" | "right";
   hoveredVerse: number | null;
   onHoverVerse: (verse: number | null) => void;
@@ -162,6 +161,48 @@ export default function ComparePage() {
   const [hoveredTokenKey, setHoveredTokenKey] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => !isLoading, [isLoading]);
+  const computedDiffBySide = useMemo<{
+    left: ComputedVerseDiff[];
+    right: ComputedVerseDiff[];
+  }>(() => {
+    if (!data) {
+      return {
+        left: [],
+        right: []
+      };
+    }
+
+    const leftTextByVerse = new Map(data.left.verses.map((item) => [item.verse, item.text]));
+    const rightTextByVerse = new Map(data.right.verses.map((item) => [item.verse, item.text]));
+    const verseNumbers = Array.from(
+      new Set([...leftTextByVerse.keys(), ...rightTextByVerse.keys()])
+    ).sort((a, b) => a - b);
+
+    const leftSegmentsByVerse = new Map<number, LinkedDiffSegment[]>();
+    const rightSegmentsByVerse = new Map<number, LinkedDiffSegment[]>();
+
+    for (const verse of verseNumbers) {
+      const diff = buildLinkedSideBySideDiff({
+        leftText: leftTextByVerse.get(verse) ?? "",
+        rightText: rightTextByVerse.get(verse) ?? ""
+      });
+      leftSegmentsByVerse.set(verse, diff.left);
+      rightSegmentsByVerse.set(verse, diff.right);
+    }
+
+    return {
+      left: data.left.verses.map((item) => ({
+        verse: item.verse,
+        paragraph: item.paragraph,
+        segments: leftSegmentsByVerse.get(item.verse) ?? []
+      })),
+      right: data.right.verses.map((item) => ({
+        verse: item.verse,
+        paragraph: item.paragraph,
+        segments: rightSegmentsByVerse.get(item.verse) ?? []
+      }))
+    };
+  }, [data]);
 
   const runCompare = useCallback(async (input: {
     reference: string;
@@ -272,7 +313,7 @@ export default function ComparePage() {
                 </select>
               </div>
               <DiffVerseParagraphs
-                verses={data.left.verses}
+                verses={computedDiffBySide.left}
                 side="left"
                 hoveredVerse={hoveredVerse}
                 onHoverVerse={setHoveredVerse}
@@ -303,7 +344,7 @@ export default function ComparePage() {
                 </select>
               </div>
               <DiffVerseParagraphs
-                verses={data.right.verses}
+                verses={computedDiffBySide.right}
                 side="right"
                 hoveredVerse={hoveredVerse}
                 onHoverVerse={setHoveredVerse}
