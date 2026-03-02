@@ -288,7 +288,35 @@ export default function ComparePage() {
 
       {data ? (
         <article className="card">
-          <h2>{data.reference}</h2>
+          <div className="compareNavHeaderRow">
+            <div className="compareNavControl compareNavControlLeft">
+              <button
+                type="button"
+                className="linkButton"
+                disabled={!data.previousReference || isLoading}
+                onClick={() => void navigateTo(data.previousReference)}
+              >
+                {"<- Prev"}
+              </button>
+              <p className="muted compareNavRef">
+                {data.previousReference ?? "\u00a0"}
+              </p>
+            </div>
+            <h2 className="compareNavTitle">{data.reference}</h2>
+            <div className="compareNavControl compareNavControlRight">
+              <button
+                type="button"
+                className="linkButton"
+                disabled={!data.nextReference || isLoading}
+                onClick={() => void navigateTo(data.nextReference)}
+              >
+                {"Next ->"}
+              </button>
+              <p className="muted compareNavRef">
+                {data.nextReference ?? "\u00a0"}
+              </p>
+            </div>
+          </div>
           <div className="compareGrid">
             <section className="comparePanel">
               <div className="comparePanelHeader">
@@ -352,34 +380,6 @@ export default function ComparePage() {
                 onHoverToken={setHoveredTokenKey}
               />
             </section>
-          </div>
-          <div className="compareNavRow">
-            <div>
-              <button
-                type="button"
-                className="linkButton"
-                disabled={!data.previousReference || isLoading}
-                onClick={() => void navigateTo(data.previousReference)}
-              >
-                {"<- Prev"}
-              </button>
-              <p className="muted compareNavRef">
-                {data.previousReference ?? "\u00a0"}
-              </p>
-            </div>
-            <div>
-              <button
-                type="button"
-                className="linkButton"
-                disabled={!data.nextReference || isLoading}
-                onClick={() => void navigateTo(data.nextReference)}
-              >
-                {"Next ->"}
-              </button>
-              <p className="muted compareNavRef">
-                {data.nextReference ?? "\u00a0"}
-              </p>
-            </div>
           </div>
         </article>
       ) : null}

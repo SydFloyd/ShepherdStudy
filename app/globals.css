@@ -1061,18 +1061,43 @@ button:disabled {
   background: #ffe27a;
 }
 
-.compareNavRow {
-  margin-top: 12px;
+.compareNavHeaderRow {
+  margin-bottom: 12px;
   display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "prev title next";
+  align-items: start;
   gap: 10px;
 }
 
+.compareNavTitle {
+  grid-area: title;
+  margin: 0;
+  text-align: center;
+}
+
+.compareNavControl {
+  display: grid;
+  gap: 4px;
+}
+
+.compareNavControlLeft {
+  grid-area: prev;
+  justify-items: start;
+}
+
+.compareNavControlRight {
+  grid-area: next;
+  justify-items: end;
+}
+
 .compareNavRef {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 12px;
+}
+
+.compareNavControlLeft .compareNavRef {
+  text-align: right;
 }
 
 .assistantPanel h3 {
@@ -1497,10 +1522,19 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .compareNavRow {
+  .compareNavHeaderRow {
     grid-template-columns: 1fr 1fr;
-    justify-items: stretch;
-    text-align: center;
+    grid-template-areas:
+      "title title"
+      "prev next";
+  }
+
+  .compareNavControlLeft {
+    justify-items: start;
+  }
+
+  .compareNavControlLeft .compareNavRef {
+    text-align: left;
   }
 
   .wordAnalyticsLayout {
