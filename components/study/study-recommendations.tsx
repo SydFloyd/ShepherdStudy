@@ -1,10 +1,19 @@
-import { isTranslationCompatibleWithBook } from "@/lib/bible";
-import { buildPassagePath, parseScriptureReference } from "@/lib/scripture";
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { BibleTranslationId } from "@/lib/bible";
+import {
+  buildPassagePreviewKey,
+  fetchPassagePreviewCached
+} from "@/lib/passage-preview-client";
+import { buildPassagePath } from "@/lib/scripture";
 import { StudyRecommendation } from "@/lib/study-contract";
+import { getStudySelectionTranslation } from "@/lib/study-translation";
 
 type Props = {
   recommendations: StudyRecommendation[];
-  translation: string;
+  translation: BibleTranslationId;
   isOpen?: boolean;
   onToggleOpen?: (open: boolean) => void;
   onPreviewRecommendation?: (reference: string, selectionTranslation?: string) => void;
@@ -17,24 +26,58 @@ export function StudyRecommendations({
   onToggleOpen,
   onPreviewRecommendation
 }: Props) {
-  function getSelectionTranslation(reference: string): string {
-    const parsed = parseScriptureReference(reference);
-    if (!parsed) {
-      return translation;
+  const [livePreviewByKey, setLivePreviewByKey] = useState<Record<string, string>>(
+    {}
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLivePreviews() {
+      if (recommendations.length === 0) {
+        setLivePreviewByKey({});
+        return;
+      }
+
+      const entries = await Promise.all(
+        recommendations.map(async (item, index) => {
+          const selectionTranslation = getStudySelectionTranslation(
+            item.reference,
+            translation
+          );
+          const previewData = await fetchPassagePreviewCached({
+            reference: item.reference,
+            translation: selectionTranslation
+          });
+          const key = `${index}:${buildPassagePreviewKey(
+            item.reference,
+            selectionTranslation
+          )}`;
+          const text =
+            previewData?.verses[0]?.text?.trim() ?? item.preview?.trim() ?? "";
+          return { key, text };
+        })
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const next: Record<string, string> = {};
+      for (const entry of entries) {
+        if (entry.text) {
+          next[entry.key] = entry.text;
+        }
+      }
+      setLivePreviewByKey(next);
     }
 
-    if (isTranslationCompatibleWithBook(translation, parsed.book)) {
-      return translation;
-    }
+    void loadLivePreviews();
 
-    if (translation === "uhb") {
-      return "ugnt";
-    }
-    if (translation === "ugnt") {
-      return "uhb";
-    }
-    return translation;
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [recommendations, translation]);
 
   return (
     <article className="card studyRecommendationsCard">
@@ -49,12 +92,19 @@ export function StudyRecommendations({
         </summary>
         <div className="list">
           {recommendations.map((item, index) => {
-            const selectionTranslation = getSelectionTranslation(item.reference);
+            const selectionTranslation = getStudySelectionTranslation(
+              item.reference,
+              translation
+            );
+            const previewKey = `${index}:${buildPassagePreviewKey(
+              item.reference,
+              selectionTranslation
+            )}`;
             const passagePath = buildPassagePath(
               item.reference,
               selectionTranslation
             );
-            const preview = item.preview?.trim() ?? "";
+            const preview = livePreviewByKey[previewKey] ?? item.preview?.trim() ?? "";
 
             return (
               <div key={`${item.reference}-${index}`} className="card studyRecoItem">

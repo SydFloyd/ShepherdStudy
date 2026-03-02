@@ -19,26 +19,93 @@ type CompareResponse = {
     translationName: string;
     text: string;
     segments: DiffSegment[];
+    verses: Array<{
+      verse: number;
+      paragraph: number;
+      segments: DiffSegment[];
+    }>;
   };
   right: {
     translation: string;
     translationName: string;
     text: string;
     segments: DiffSegment[];
+    verses: Array<{
+      verse: number;
+      paragraph: number;
+      segments: DiffSegment[];
+    }>;
   };
 };
 
 const DEFAULT_REFERENCE = "John 1";
 
 function DiffText({ segments }: { segments: DiffSegment[] }) {
+  if (segments.length === 0) {
+    return <span className="muted compareMissingVerse">-</span>;
+  }
+
   return (
-    <p className="compareText paragraphText">
+    <>
       {segments.map((segment, index) => (
         <span key={`${segment.type}-${index}`} className={`diffToken ${segment.type}`}>
           {segment.text}
         </span>
       ))}
-    </p>
+    </>
+  );
+}
+
+function DiffVerseParagraphs(input: {
+  verses: Array<{
+    verse: number;
+    paragraph: number;
+    segments: DiffSegment[];
+  }>;
+  side: "left" | "right";
+  hoveredVerse: number | null;
+  onHoverVerse: (verse: number | null) => void;
+}) {
+  const paragraphGroups = input.verses.reduce<
+    Array<{
+      paragraph: number;
+      verses: typeof input.verses;
+    }>
+  >((groups, verse) => {
+    const current = groups[groups.length - 1];
+    if (!current || current.paragraph !== verse.paragraph) {
+      groups.push({ paragraph: verse.paragraph, verses: [verse] });
+    } else {
+      current.verses.push(verse);
+    }
+    return groups;
+  }, []);
+
+  return (
+    <div
+      className="paragraphList compareParagraphList"
+      onMouseLeave={() => input.onHoverVerse(null)}
+    >
+      {paragraphGroups.map((group) => (
+        <p key={`${input.side}-p-${group.paragraph}`} className="paragraphText compareText">
+          {group.verses.map((verseRow) => (
+            <span
+              key={`${input.side}-${verseRow.verse}`}
+              className={`verseInline compareVerseInline${
+                input.hoveredVerse === verseRow.verse ? " is-hovered" : ""
+              }`}
+              onMouseEnter={() => input.onHoverVerse(verseRow.verse)}
+              onFocus={() => input.onHoverVerse(verseRow.verse)}
+              onBlur={() => input.onHoverVerse(null)}
+              tabIndex={0}
+            >
+              <span className="verseNumber">{verseRow.verse}</span>
+              <DiffText segments={verseRow.segments} />
+            </span>
+          ))}
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -52,6 +119,7 @@ export default function ComparePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CompareResponse | null>(null);
+  const [hoveredVerse, setHoveredVerse] = useState<number | null>(null);
 
   const canSubmit = useMemo(() => !isLoading, [isLoading]);
 
@@ -62,6 +130,7 @@ export default function ComparePage() {
   }) => {
     setIsLoading(true);
     setError(null);
+    setHoveredVerse(null);
 
     const response = await fetch("/api/verse-compare", {
       method: "POST",
@@ -165,7 +234,12 @@ export default function ComparePage() {
                   ))}
                 </select>
               </div>
-              <DiffText segments={data.left.segments} />
+              <DiffVerseParagraphs
+                verses={data.left.verses}
+                side="left"
+                hoveredVerse={hoveredVerse}
+                onHoverVerse={setHoveredVerse}
+              />
             </section>
             <section className="comparePanel">
               <div className="comparePanelHeader">
@@ -189,7 +263,12 @@ export default function ComparePage() {
                   ))}
                 </select>
               </div>
-              <DiffText segments={data.right.segments} />
+              <DiffVerseParagraphs
+                verses={data.right.verses}
+                side="right"
+                hoveredVerse={hoveredVerse}
+                onHoverVerse={setHoveredVerse}
+              />
             </section>
           </div>
           <div className="compareNavRow">

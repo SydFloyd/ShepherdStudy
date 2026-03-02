@@ -15,6 +15,7 @@ import { StudyThreadPanel } from "@/components/study/study-thread-panel";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useStudySession } from "@/hooks/use-study-session";
 import { PassagePreviewPayload } from "@/lib/study-client-contract";
+import { getStudySelectionTranslation } from "@/lib/study-translation";
 
 export default function StudyPage() {
   const [translation, setTranslation] = useState<BibleTranslationId>(
@@ -145,6 +146,27 @@ export default function StudyPage() {
 
     void loadPreview();
   }, [previewSelection]);
+
+  useEffect(() => {
+    setPreviewSelection((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextTranslation = getStudySelectionTranslation(
+        current.reference,
+        translation
+      );
+      if (nextTranslation === current.translation) {
+        return current;
+      }
+
+      return {
+        ...current,
+        translation: nextTranslation
+      };
+    });
+  }, [translation]);
 
   async function onPromptSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -317,7 +339,10 @@ export default function StudyPage() {
 
                 <section className="studyResultGrid">
                   {turn.response.passage ? (
-                    <StudyPassagePanel passage={turn.response.passage} />
+                    <StudyPassagePanel
+                      passage={turn.response.passage}
+                      selectedTranslation={translation}
+                    />
                   ) : (
                     <article className="card">
                       <h2>No Anchor Passage</h2>
@@ -332,7 +357,7 @@ export default function StudyPage() {
                 </section>
                 <StudyRecommendations
                   recommendations={turn.response.recommendations}
-                  translation={turn.response.passage?.translation ?? translation}
+                  translation={translation}
                   isOpen={expandedRecommendationsTurnId === turn.id}
                   onToggleOpen={(open) => {
                     setExpandedRecommendationsTurnId(open ? turn.id : null);
@@ -351,7 +376,10 @@ export default function StudyPage() {
                 </article>
                 <section className="studyResultGrid">
                   {pendingTurn.passage ? (
-                    <StudyPassagePanel passage={pendingTurn.passage} />
+                    <StudyPassagePanel
+                      passage={pendingTurn.passage}
+                      selectedTranslation={translation}
+                    />
                   ) : (
                     <article className="card">
                       <div className="loadingRow">

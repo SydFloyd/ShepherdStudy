@@ -1,16 +1,89 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { BibleTranslationId, isRtlTranslation } from "@/lib/bible";
+import {
+  buildPassagePreviewKey,
+  fetchPassagePreviewCached
+} from "@/lib/passage-preview-client";
 import { StudyPassageResult } from "@/lib/study-contract";
-import { isRtlTranslation } from "@/lib/bible";
+import { getStudySelectionTranslation } from "@/lib/study-translation";
 
 type Props = {
   passage: StudyPassageResult;
+  selectedTranslation: BibleTranslationId;
 };
 
-export function StudyPassagePanel({ passage }: Props) {
-  const isRtl = isRtlTranslation(passage.translation);
-  const paragraphGroups = passage.verses.reduce<
+export function StudyPassagePanel({ passage, selectedTranslation }: Props) {
+  const targetTranslation = getStudySelectionTranslation(
+    passage.reference,
+    selectedTranslation
+  );
+  const displayKey = buildPassagePreviewKey(passage.reference, targetTranslation);
+  const [previewByKey, setPreviewByKey] = useState<{
+    key: string;
+    passage: StudyPassageResult;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTranslatedPassage() {
+      if (targetTranslation === passage.translation) {
+        setPreviewByKey(null);
+        return;
+      }
+
+      const preview = await fetchPassagePreviewCached({
+        reference: passage.reference,
+        translation: targetTranslation
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (!preview) {
+        setPreviewByKey(null);
+        return;
+      }
+
+      setPreviewByKey({
+        key: displayKey,
+        passage: {
+          origin: passage.origin,
+          reference: preview.reference,
+          chapterReference: preview.chapterReference,
+          translation: preview.translation,
+          translationName: preview.translationName,
+          verses: preview.verses,
+          chapterPath: preview.chapterPath,
+          excerpted: preview.excerpted
+        }
+      });
+    }
+
+    void loadTranslatedPassage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    displayKey,
+    passage.origin,
+    passage.reference,
+    passage.translation,
+    targetTranslation
+  ]);
+
+  const displayPassage =
+    previewByKey && previewByKey.key === displayKey ? previewByKey.passage : passage;
+  const isRtl = isRtlTranslation(displayPassage.translation);
+  const paragraphGroups = displayPassage.verses.reduce<
     Array<{
       paragraph: number;
-      verses: typeof passage.verses;
+      verses: typeof displayPassage.verses;
     }>
   >((groups, verse) => {
     const current = groups[groups.length - 1];
@@ -24,21 +97,14 @@ export function StudyPassagePanel({ passage }: Props) {
 
   return (
     <article className="card studyPassageCard">
-      <h2>{passage.reference}</h2>
-      <p className="muted">
-        {passage.translationName} |{" "}
-        {passage.chapterPath ? (
-          <a href={passage.chapterPath}>Open chapter</a>
+      <div className="studyPassageHeader">
+        <h2>{displayPassage.reference}</h2>
+        {displayPassage.chapterPath ? (
+          <a href={displayPassage.chapterPath}>Open chapter</a>
         ) : (
-          passage.chapterReference
+          <span className="muted">{displayPassage.chapterReference}</span>
         )}
-      </p>
-      {passage.origin === "anchor" ? (
-        <p className="muted">
-          Anchor passage selected from recommendations.
-          {passage.excerpted ? " Showing a short chapter excerpt." : ""}
-        </p>
-      ) : null}
+      </div>
       <div
         className="paragraphList"
         dir={isRtl ? "rtl" : "ltr"}

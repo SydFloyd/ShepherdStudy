@@ -190,9 +190,10 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
   return (
     <section className="grid">
       <article className="card">
-        <h1>{chapterData.reference}</h1>
-        <p className="muted">Translation: {chapterData.translationName}</p>
-        <PassageVersionSelect currentValue={translation} />
+        <div className="passagePanelHeader">
+          <h1>{chapterData.reference}</h1>
+          <PassageVersionSelect currentValue={translation} />
+        </div>
         <p>
           <Link href="/study">Back to study</Link>
         </p>

@@ -10,6 +10,7 @@ import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { prisma } from "@/lib/prisma";
 import { buildSideBySideDiff } from "@/lib/text-diff";
 import { parseScriptureReference } from "@/lib/scripture";
+import type { DiffSegment } from "@/lib/text-diff";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
@@ -25,6 +26,51 @@ function renderSelectedText(input: {
     return input.verses.map((verse) => verse.text).join(" ");
   }
   return input.verses.map((verse) => `${verse.verse} ${verse.text}`).join("\n");
+}
+
+function buildVerseDiffRows(input: {
+  leftVerses: Array<{ verse: number; paragraph: number; text: string }>;
+  rightVerses: Array<{ verse: number; paragraph: number; text: string }>;
+}): {
+  left: Array<{ verse: number; paragraph: number; segments: DiffSegment[] }>;
+  right: Array<{ verse: number; paragraph: number; segments: DiffSegment[] }>;
+} {
+  const leftTextByVerse = new Map(
+    input.leftVerses.map((item) => [item.verse, item.text.trim()])
+  );
+  const rightTextByVerse = new Map(
+    input.rightVerses.map((item) => [item.verse, item.text.trim()])
+  );
+  const verseNumbers = Array.from(
+    new Set([...leftTextByVerse.keys(), ...rightTextByVerse.keys()])
+  ).sort((a, b) => a - b);
+
+  const leftSegmentsByVerse = new Map<number, DiffSegment[]>();
+  const rightSegmentsByVerse = new Map<number, DiffSegment[]>();
+
+  for (const verse of verseNumbers) {
+    const leftText = leftTextByVerse.get(verse) ?? "";
+    const rightText = rightTextByVerse.get(verse) ?? "";
+    const diff = buildSideBySideDiff({
+      leftText,
+      rightText
+    });
+    leftSegmentsByVerse.set(verse, diff.left);
+    rightSegmentsByVerse.set(verse, diff.right);
+  }
+
+  return {
+    left: input.leftVerses.map((item) => ({
+      verse: item.verse,
+      paragraph: item.paragraph,
+      segments: leftSegmentsByVerse.get(item.verse) ?? []
+    })),
+    right: input.rightVerses.map((item) => ({
+      verse: item.verse,
+      paragraph: item.paragraph,
+      segments: rightSegmentsByVerse.get(item.verse) ?? []
+    }))
+  };
 }
 
 function formatChapterReference(book: string, chapter: number) {
@@ -141,6 +187,10 @@ export async function POST(req: Request) {
       includeVerseNumbers
     });
     const diff = buildSideBySideDiff({ leftText, rightText });
+    const verseDiffRows = buildVerseDiffRows({
+      leftVerses: left.selectedVerses,
+      rightVerses: right.selectedVerses
+    });
 
     const { previousReference, nextReference } =
       await getAdjacentChapterReferences({
@@ -157,13 +207,15 @@ export async function POST(req: Request) {
         translation: input.leftTranslation,
         translationName: getTranslationLabel(input.leftTranslation),
         text: leftText,
-        segments: diff.left
+        segments: diff.left,
+        verses: verseDiffRows.left
       },
       right: {
         translation: input.rightTranslation,
         translationName: getTranslationLabel(input.rightTranslation),
         text: rightText,
-        segments: diff.right
+        segments: diff.right,
+        verses: verseDiffRows.right
       }
     });
   } catch (error) {

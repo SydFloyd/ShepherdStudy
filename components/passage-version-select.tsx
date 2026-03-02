@@ -20,9 +20,9 @@ export function PassageVersionSelect({ currentValue }: Props) {
   }
 
   return (
-    <label>
-      Version
+    <div className="passageVersionSelect">
       <select
+        aria-label="Bible version"
         value={currentValue}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -32,6 +32,6 @@ export function PassageVersionSelect({ currentValue }: Props) {
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }
