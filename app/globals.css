@@ -1552,18 +1552,8 @@ button:disabled {
   }
 
   .compareNavHeaderRow {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "title title"
-      "prev next";
-  }
-
-  .compareNavControlLeft {
-    justify-items: start;
-  }
-
-  .compareNavControlLeft .compareNavRef {
-    text-align: left;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "prev title next";
   }
 
   .wordAnalyticsLayout {
