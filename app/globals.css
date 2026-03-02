@@ -451,7 +451,7 @@ button:disabled {
 
 .studyHistoryRail {
   position: sticky;
-  top: 72px;
+  top: 64px;
   align-self: start;
 }
 
@@ -1339,7 +1339,7 @@ button:disabled {
 
 .wwjdHistoryRail {
   position: sticky;
-  top: 72px;
+  top: 64px;
   align-self: start;
 }
 
