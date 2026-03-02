@@ -76,12 +76,14 @@ export function StudyThreadPanel({
   }, []);
 
   useEffect(() => {
-    if (!menu) {
+    const menuState = menu;
+    if (!menuState) {
       setMenuPosition(null);
       return;
     }
+    const activeMenu: ThreadMenuState = menuState;
 
-    function positionMenu() {
+    function positionMenu(targetMenu: ThreadMenuState) {
       if (!menuRef.current) {
         return;
       }
@@ -90,13 +92,13 @@ export function StudyThreadPanel({
       const horizontalPadding = 8;
       const verticalPadding = 8;
 
-      let left = menu.anchor.right - menuRect.width;
+      let left = targetMenu.anchor.right - menuRect.width;
       const maxLeft = window.innerWidth - menuRect.width - horizontalPadding;
       left = Math.min(Math.max(horizontalPadding, left), Math.max(horizontalPadding, maxLeft));
 
-      let top = menu.anchor.bottom + 6;
+      let top = targetMenu.anchor.bottom + 6;
       if (top + menuRect.height > window.innerHeight - verticalPadding) {
-        top = menu.anchor.top - menuRect.height - 6;
+        top = targetMenu.anchor.top - menuRect.height - 6;
       }
       top = Math.max(verticalPadding, top);
 
@@ -108,14 +110,20 @@ export function StudyThreadPanel({
       });
     }
 
-    positionMenu();
-    window.addEventListener("resize", positionMenu);
-    window.addEventListener("scroll", positionMenu, true);
+    function onViewportChange() {
+      positionMenu(activeMenu);
+    }
+
+    onViewportChange();
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
     return () => {
-      window.removeEventListener("resize", positionMenu);
-      window.removeEventListener("scroll", positionMenu, true);
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
     };
   }, [menu]);
+
+  const activeMenu = menu;
 
   return (
     <>
@@ -196,22 +204,22 @@ export function StudyThreadPanel({
           </>
         ) : null}
       </article>
-      {menu && typeof document !== "undefined"
+      {activeMenu && typeof document !== "undefined"
         ? createPortal(
             <div
               ref={menuRef}
               className="studyThreadMenu"
               style={{
-                top: `${menuPosition?.top ?? menu.anchor.bottom + 6}px`,
-                left: `${menuPosition?.left ?? menu.anchor.left}px`
+                top: `${menuPosition?.top ?? activeMenu.anchor.bottom + 6}px`,
+                left: `${menuPosition?.left ?? activeMenu.anchor.left}px`
               }}
             >
               <button
                 type="button"
                 onClick={() => {
-                  const nextTitle = window.prompt("Rename study", menu.title);
+                  const nextTitle = window.prompt("Rename study", activeMenu.title);
                   if (nextTitle && nextTitle.trim()) {
-                    onRenameThread(menu.threadId, nextTitle.trim());
+                    onRenameThread(activeMenu.threadId, nextTitle.trim());
                   }
                   setMenu(null);
                 }}
@@ -221,7 +229,7 @@ export function StudyThreadPanel({
               <button
                 type="button"
                 onClick={() => {
-                  onArchiveThread(menu.threadId);
+                  onArchiveThread(activeMenu.threadId);
                   setMenu(null);
                 }}
               >
