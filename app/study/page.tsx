@@ -21,7 +21,7 @@ export default function StudyPage() {
   const [translation, setTranslation] = useState<BibleTranslationId>(
     DEFAULT_BIBLE_TRANSLATION
   );
-  const [startingPassage, setStartingPassage] = useState("");
+  const [passageInput, setPassageInput] = useState("");
   const [promptInput, setPromptInput] = useState("");
   const [expandedRecommendationsTurnId, setExpandedRecommendationsTurnId] =
     useState<string | null>(null);
@@ -57,7 +57,7 @@ export default function StudyPage() {
   const composerFormRef = useRef<HTMLFormElement | null>(null);
 
   function resetStudyView() {
-    setStartingPassage("");
+    setPassageInput("");
     setPromptInput("");
     setPreviewSelection(null);
     setPreviewData(null);
@@ -170,18 +170,25 @@ export default function StudyPage() {
 
   async function onPromptSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const isFirstTurn = turns.length === 0;
+    const submittedPassage = passageInput;
+    const submittedPrompt = promptInput;
+
+    if (!submittedPassage.trim() && !submittedPrompt.trim()) {
+      return;
+    }
+
+    setPassageInput("");
+    setPromptInput("");
+
     const ok = await submitPrompt({
       translation,
-      promptInput,
-      startingPassage
+      promptInput: submittedPrompt,
+      passageInput: submittedPassage
     });
 
-    if (ok) {
-      setPromptInput("");
-      if (isFirstTurn) {
-        setStartingPassage("");
-      }
+    if (!ok) {
+      setPassageInput(submittedPassage);
+      setPromptInput(submittedPrompt);
     }
   }
 
@@ -254,7 +261,7 @@ export default function StudyPage() {
             activeThreadId={activeThreadId}
             isLoading={isHistoryLoading}
             onNewThread={() => {
-              setStartingPassage("");
+              setPassageInput("");
               setPromptInput("");
               setPreviewSelection(null);
               setPreviewData(null);
@@ -264,7 +271,7 @@ export default function StudyPage() {
               window.scrollTo({ top: 0, behavior: "auto" });
             }}
             onSelectThread={async (threadId) => {
-              setStartingPassage("");
+              setPassageInput("");
               setPreviewSelection(null);
               setPreviewData(null);
               setPreviewError(null);
@@ -310,20 +317,6 @@ export default function StudyPage() {
           </div>
         </article>
 
-        {turns.length === 0 ? (
-          <article className="card">
-            <label className="passageField">
-              Starting Verse (optional)
-              <input
-                placeholder="Example: Matthew 6:25-34"
-                value={startingPassage}
-                onChange={(event) => setStartingPassage(event.target.value)}
-                onKeyDown={onInputSubmitShortcut}
-              />
-            </label>
-          </article>
-        ) : null}
-
         {hasStudyContent ? (
           <div className="studyTurns">
             {turns.map((turn) => (
@@ -360,7 +353,12 @@ export default function StudyPage() {
                   translation={translation}
                   isOpen={expandedRecommendationsTurnId === turn.id}
                   onToggleOpen={(open) => {
-                    setExpandedRecommendationsTurnId(open ? turn.id : null);
+                    setExpandedRecommendationsTurnId((current) => {
+                      if (open) {
+                        return turn.id;
+                      }
+                      return current === turn.id ? null : current;
+                    });
                   }}
                   onPreviewRecommendation={onRecommendationPreview}
                 />
@@ -436,13 +434,26 @@ export default function StudyPage() {
         >
           <div className="studyComposerRow">
             <input
+              value={passageInput}
+              onChange={(event) => setPassageInput(event.target.value)}
+              onKeyDown={onInputSubmitShortcut}
+              className="studyComposerPassageInput"
+              placeholder="Verse (optional)"
+            />
+            <input
               value={promptInput}
               onChange={(event) => setPromptInput(event.target.value)}
               onKeyDown={onInputSubmitShortcut}
-              placeholder="Ask a question"
+              className="studyComposerPromptInput"
+              placeholder="Ask a question (optional)"
             />
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? "Thinking..." : "Send"}
+            <button
+              type="submit"
+              className="studySendButton"
+              aria-label={isLoading ? "Sending..." : "Send study request"}
+              disabled={isLoading}
+            >
+              {isLoading ? "..." : "\u2191"}
             </button>
           </div>
           {error ? <p className="muted">{error}</p> : null}

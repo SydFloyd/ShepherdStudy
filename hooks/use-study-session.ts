@@ -14,7 +14,7 @@ import { StudyResponsePayload } from "@/lib/study-contract";
 type SubmitPromptInput = {
   translation: BibleTranslationId;
   promptInput: string;
-  startingPassage: string;
+  passageInput: string;
 };
 
 export function useStudySession() {
@@ -137,17 +137,22 @@ export function useStudySession() {
 
   async function submitPrompt(input: SubmitPromptInput) {
     const trimmedPrompt = input.promptInput.trim();
-    const initialPassage = turns.length === 0 ? input.startingPassage.trim() : "";
+    const selectedPassage = input.passageInput.trim();
 
-    if (!trimmedPrompt && !initialPassage) {
+    if (!trimmedPrompt && !selectedPassage) {
       return false;
     }
 
-    const isVerseOnlyStart = !trimmedPrompt && Boolean(initialPassage);
-    const kind: "prompt" | "verse" = isVerseOnlyStart ? "verse" : "prompt";
-    const userText = trimmedPrompt || initialPassage;
+    const isVerseOnly = !trimmedPrompt && Boolean(selectedPassage);
+    const kind: "prompt" | "verse" = isVerseOnly ? "verse" : "prompt";
+    const userText =
+      selectedPassage && trimmedPrompt
+        ? `Selected verse: ${selectedPassage} | Question: ${trimmedPrompt}`
+        : selectedPassage
+          ? `Selected verse: ${selectedPassage}`
+          : trimmedPrompt;
 
-    if (!initialPassage) {
+    if (!selectedPassage) {
       setIsLoading(true);
       setError(null);
 
@@ -215,7 +220,7 @@ export function useStudySession() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        reference: initialPassage,
+        reference: selectedPassage,
         translation: input.translation
       })
     });
@@ -225,7 +230,7 @@ export function useStudySession() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         translation: input.translation,
-        passage: initialPassage,
+        passage: selectedPassage,
         prompt: trimmedPrompt || undefined,
         history: buildHistory(turns),
         threadId: activeThreadId ?? undefined,

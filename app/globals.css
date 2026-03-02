@@ -512,8 +512,27 @@ button:disabled {
 
 .studyComposerRow {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(160px, 280px) minmax(0, 1fr) auto;
+  align-items: center;
   gap: 8px;
+}
+
+.studyComposerPassageInput,
+.studyComposerPromptInput {
+  min-width: 0;
+}
+
+.studySendButton {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .studyThreadPanel {
@@ -1241,6 +1260,10 @@ button:disabled {
   .studyTopHeader {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .studyComposerRow {
+    grid-template-columns: minmax(120px, 42%) minmax(0, 1fr) auto;
   }
 }
 
