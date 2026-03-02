@@ -220,6 +220,7 @@ export type WordAnalyticsPayload = {
       chapter: number;
       verse: number;
       position: number;
+      previewWords: string[];
       chapterPath: string | null;
     }>;
   };
@@ -344,14 +345,58 @@ export async function buildWordAnalyticsPayload(input: {
     : occurrenceRows;
   const total = selectedRows.length;
   const offset = (page - 1) * pageSize;
-  const items = selectedRows.slice(offset, offset + pageSize).map((row) => {
+  const pageRows = selectedRows.slice(offset, offset + pageSize);
+  const pageVerseScope = Array.from(
+    new Set(pageRows.map((row) => `${row.book}::${row.chapter}::${row.verse}`))
+  ).map((key) => {
+    const [book, chapterText, verseText] = key.split("::");
+    return {
+      book,
+      chapter: Number(chapterText),
+      verse: Number(verseText)
+    };
+  });
+
+  const verseWordRows =
+    pageVerseScope.length > 0
+      ? await prisma.bibleWord.findMany({
+          where: {
+            translation: canonical.sourceTranslation,
+            OR: pageVerseScope
+          },
+          orderBy: [
+            { bookOrder: "asc" },
+            { chapter: "asc" },
+            { verse: "asc" },
+            { position: "asc" }
+          ],
+          select: {
+            book: true,
+            chapter: true,
+            verse: true,
+            text: true
+          }
+        })
+      : [];
+
+  const wordsByVerse = new Map<string, string[]>();
+  for (const row of verseWordRows) {
+    const key = `${row.book}::${row.chapter}::${row.verse}`;
+    const list = wordsByVerse.get(key) ?? [];
+    list.push(row.text);
+    wordsByVerse.set(key, list);
+  }
+
+  const items = pageRows.map((row) => {
     const reference = formatReference(row.book, row.chapter, row.verse);
+    const verseKey = `${row.book}::${row.chapter}::${row.verse}`;
     return {
       reference,
       chapter: row.chapter,
       verse: row.verse,
       position: row.position,
-      chapterPath: buildPassagePath(reference, "web")
+      previewWords: wordsByVerse.get(verseKey) ?? [],
+      chapterPath: buildPassagePath(reference, canonical.sourceTranslation)
     };
   });
 

@@ -37,6 +37,7 @@ type WordAnalyticsResponse = {
       chapter: number;
       verse: number;
       position: number;
+      previewWords: string[];
       chapterPath: string | null;
     }>;
   };
@@ -58,6 +59,9 @@ function WordAnalyticsPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<WordAnalyticsResponse | null>(null);
+  const [previewItem, setPreviewItem] = useState<
+    WordAnalyticsResponse["occurrences"]["items"][number] | null
+  >(null);
 
   const totalPages = useMemo(() => {
     if (!data) {
@@ -65,6 +69,23 @@ function WordAnalyticsPageContent() {
     }
     return Math.max(1, Math.ceil(data.occurrences.total / data.occurrences.pageSize));
   }, [data]);
+
+  useEffect(() => {
+    if (!previewItem) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPreviewItem(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [previewItem]);
 
   const syncUrl = useCallback(
     (input: {
@@ -134,6 +155,7 @@ function WordAnalyticsPageContent() {
       }
 
       setData(payload);
+      setPreviewItem(null);
       setSelectedBook(payload.occurrences.book);
       setPage(payload.occurrences.page);
       setQueryInput(payload.query.input);
@@ -313,11 +335,13 @@ function WordAnalyticsPageContent() {
                     <span>
                       {item.reference} (position {item.position})
                     </span>
-                    {item.chapterPath ? (
-                      <a href={item.chapterPath}>Open passage</a>
-                    ) : (
-                      <span className="muted">Open unavailable</span>
-                    )}
+                    <button
+                      type="button"
+                      className="linkButton"
+                      onClick={() => setPreviewItem(item)}
+                    >
+                      Show preview
+                    </button>
                   </div>
                 ))}
               </div>
@@ -355,6 +379,70 @@ function WordAnalyticsPageContent() {
               </div>
             </article>
           </div>
+
+          {previewItem ? (
+            <div
+              className="modalBackdrop"
+              role="presentation"
+              onClick={() => setPreviewItem(null)}
+            >
+              <article
+                className="modalCard"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Preview ${previewItem.reference}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="modalHeader">
+                  <h2>{previewItem.reference}</h2>
+                  <button
+                    type="button"
+                    className="linkButton"
+                    onClick={() => setPreviewItem(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div
+                  className={`modalBody wordAnalyticsPreviewBody ${
+                    data.query.sourceTranslation === "uhb" ? "rtl" : ""
+                  }`}
+                  dir={data.query.sourceTranslation === "uhb" ? "rtl" : "ltr"}
+                  lang={data.query.sourceTranslation === "uhb" ? "he" : undefined}
+                >
+                  {previewItem.previewWords.length > 0 ? (
+                    <p className="wordAnalyticsPreviewVerse">
+                      {previewItem.previewWords.map((word, index) => {
+                        const isMatched = index + 1 === previewItem.position;
+                        return (
+                          <span
+                            key={`${previewItem.reference}-${previewItem.position}-${index}`}
+                            className={
+                              isMatched
+                                ? "wordAnalyticsPreviewToken matched"
+                                : "wordAnalyticsPreviewToken"
+                            }
+                          >
+                            {word}
+                            {index < previewItem.previewWords.length - 1 ? " " : ""}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  ) : (
+                    <p className="muted">Preview unavailable for this verse.</p>
+                  )}
+                </div>
+                <div className="wordAnalyticsPreviewFooter">
+                  {previewItem.chapterPath ? (
+                    <a href={previewItem.chapterPath}>Open chapter</a>
+                  ) : (
+                    <span className="muted">Open unavailable</span>
+                  )}
+                </div>
+              </article>
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>

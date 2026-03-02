@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PassageVersionSelect } from "@/components/passage-version-select";
 import {
   DEFAULT_BIBLE_TRANSLATION,
@@ -194,9 +192,6 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
           <h1>{chapterData.reference}</h1>
           <PassageVersionSelect currentValue={translation} />
         </div>
-        <p>
-          <Link href="/study">Back to study</Link>
-        </p>
       </article>
 
       <article className="card">
