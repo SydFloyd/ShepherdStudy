@@ -195,7 +195,10 @@ export default function WordLensPage() {
 
     const response = await fetch("/api/word-lens", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/word-lens"
+      },
       body: JSON.stringify({
         reference,
         translation: nextTranslation
@@ -258,7 +261,10 @@ export default function WordLensPage() {
     setError(null);
     const response = await fetch("/api/word-lens/map", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/word-lens"
+      },
       body: JSON.stringify({
         reference: data.reference,
         translation: nextTranslation

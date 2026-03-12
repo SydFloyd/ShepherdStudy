@@ -222,7 +222,10 @@ export default function WwjdPage() {
 
     const response = await fetch("/api/wwjd", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/wwjd"
+      },
       body: JSON.stringify({
         message: nextInput,
         threadId: activeThreadId ?? undefined,

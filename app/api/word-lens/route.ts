@@ -30,6 +30,7 @@ import {
 } from "@/lib/word-lens-deterministic";
 import { resolveWordLensContext } from "@/lib/word-lens-data";
 import { resolveActiveUserId } from "@/lib/session-user";
+import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
@@ -186,6 +187,15 @@ export async function POST(req: Request) {
       logEvent("info", "word_lens.cache_hit", {
         ...requestMeta,
         reference: context.reference
+      });
+      await trackUsageSuccess({
+        request: req,
+        feature: "WORD_LENS",
+        pagePath: "/word-lens",
+        apiRoute: "/api/word-lens",
+        action: "analyze",
+        userId,
+        requestId
       });
       return NextResponse.json({
         ...cached,
@@ -369,6 +379,16 @@ export async function POST(req: Request) {
       mapRowsCount: mapRows.length,
       noteRowsCount: noteRows.length,
       finalRowsCount: rows.length
+    });
+
+    await trackUsageSuccess({
+      request: req,
+      feature: "WORD_LENS",
+      pagePath: "/word-lens",
+      apiRoute: "/api/word-lens",
+      action: "analyze",
+      userId,
+      requestId
     });
 
     return NextResponse.json({

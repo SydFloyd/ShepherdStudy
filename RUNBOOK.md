@@ -63,6 +63,8 @@ Database admin/migrations:
    - Sentry issues.
    - Retention metrics endpoint (admin key required):
      - `GET /api/metrics/retention` with header `x-admin-key`.
+   - Usage metrics endpoint (admin key required):
+     - `GET /api/metrics/usage` with header `x-admin-key`.
 
 ## Critical Endpoints
 - Health: `GET /api/health`
@@ -71,6 +73,7 @@ Database admin/migrations:
 - Interlinear: `POST /api/word-lens`
 - Passage preview: `POST /api/passage-preview`
 - Retention metrics: `GET /api/metrics/retention`
+- Usage metrics: `GET /api/metrics/usage`
 
 ## Known Constraints
 - Anonymous users are quota-limited by actor key derived from IP + user agent.

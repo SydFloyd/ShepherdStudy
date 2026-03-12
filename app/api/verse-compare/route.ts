@@ -9,7 +9,9 @@ import {
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { prisma } from "@/lib/prisma";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
+import { getRequestId } from "@/lib/request-context";
 import { parseScriptureReference } from "@/lib/scripture";
+import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
@@ -93,6 +95,8 @@ async function getAdjacentChapterReferences(input: {
 }
 
 export async function POST(req: Request) {
+  const requestId = await getRequestId();
+
   try {
     const input = inputSchema.parse(await req.json());
     const parsed = parseScriptureReference(input.reference);
@@ -127,6 +131,15 @@ export async function POST(req: Request) {
         book: left.resolvedBook,
         chapter: parsed.chapter
       });
+
+    await trackUsageSuccess({
+      request: req,
+      feature: "COMPARE",
+      pagePath: "/compare",
+      apiRoute: "/api/verse-compare",
+      action: "compare",
+      requestId
+    });
 
     return NextResponse.json({
       reference: left.resolvedReference,

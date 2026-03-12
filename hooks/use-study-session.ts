@@ -158,7 +158,10 @@ export function useStudySession() {
 
       const response = await fetch("/api/study", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-source-route": "/study"
+        },
         body: JSON.stringify({
           translation: input.translation,
           prompt: trimmedPrompt || undefined,
@@ -227,7 +230,10 @@ export function useStudySession() {
 
     const studyPromise = fetch("/api/study", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/study"
+      },
       body: JSON.stringify({
         translation: input.translation,
         passage: selectedPassage,
@@ -342,7 +348,10 @@ export function useStudySession() {
 
     const studyPromise = fetch("/api/study", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/study"
+      },
       body: JSON.stringify({
         translation: input.translation,
         passage: input.reference,

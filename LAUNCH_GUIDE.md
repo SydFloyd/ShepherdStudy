@@ -27,6 +27,9 @@
 - Retention metrics endpoint:
   - `GET /api/metrics/retention`
   - Auth via header `x-admin-key: <ADMIN_METRICS_KEY>`
+- Usage metrics endpoint:
+  - `GET /api/metrics/usage`
+  - Auth via header `x-admin-key: <ADMIN_METRICS_KEY>`
 
 ## 4) Launch Smoke Checklist
 1. `GET /api/health` returns `ok: true`.
@@ -35,3 +38,4 @@
 4. `/wwjd` can generate and save history.
 5. Sentry receives test issue.
 6. `GET /api/metrics/retention` returns JSON for admin key.
+7. `GET /api/metrics/usage` returns JSON for admin key.

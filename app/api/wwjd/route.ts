@@ -8,6 +8,7 @@ import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 import { resolveActiveUserId } from "@/lib/session-user";
+import { trackUsageSuccess } from "@/lib/usage-tracking";
 import { generateWwjdResponse } from "@/lib/wwjd";
 import { persistWwjdTurn } from "@/lib/wwjd-history";
 
@@ -82,6 +83,16 @@ export async function POST(req: Request) {
       ...requestMeta,
       recommendations: response.recommendations.length,
       saved: Boolean(thread)
+    });
+
+    await trackUsageSuccess({
+      request: req,
+      feature: "WWJD",
+      pagePath: "/wwjd",
+      apiRoute: "/api/wwjd",
+      action: "submit",
+      userId,
+      requestId
     });
 
     return NextResponse.json({

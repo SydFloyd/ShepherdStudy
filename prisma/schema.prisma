@@ -20,6 +20,7 @@ model User {
   studyGraphNodes    StudyGraphNode[]
   studyGraphEdges    StudyGraphEdge[]
   dailyQuotaUsages   DailyQuotaUsage[]
+  usageEvents        UsageEvent[]
   studyThreads       StudyThread[]
   studyMessages      StudyMessage[]
   wwjdThreads        WwjdThread[]
@@ -214,10 +215,36 @@ model DailyQuotaUsage {
   @@index([feature, day])
 }
 
+model UsageEvent {
+  id         String       @id @default(cuid())
+  feature    UsageFeature
+  pagePath   String
+  apiRoute   String
+  action     String
+  sourcePath String?
+  sourceHost String?
+  userId     String?
+  anonId     String?
+  createdAt  DateTime     @default(now())
+  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([feature, createdAt])
+  @@index([pagePath, createdAt])
+  @@index([userId, createdAt])
+  @@index([anonId, createdAt])
+}
+
 enum QuotaFeature {
   STUDY
   WWJD
   INTERLINEAR
+}
+
+enum UsageFeature {
+  STUDY
+  COMPARE
+  WORD_LENS
+  WWJD
 }
 
 model StudyThread {

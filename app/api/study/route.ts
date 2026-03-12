@@ -18,6 +18,7 @@ import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
 import { persistStudyTurn } from "@/lib/study-history";
 import { captureServerException } from "@/lib/sentry";
 import { resolveActiveUserId } from "@/lib/session-user";
+import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z
   .object({
@@ -338,6 +339,16 @@ export async function POST(req: Request) {
       mode,
       recommendations: recommendations.length,
       saved: Boolean(thread)
+    });
+
+    await trackUsageSuccess({
+      request: req,
+      feature: "STUDY",
+      pagePath: "/study",
+      apiRoute: "/api/study",
+      action: "submit",
+      userId,
+      requestId
     });
 
     return NextResponse.json(payload);

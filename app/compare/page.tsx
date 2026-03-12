@@ -216,7 +216,10 @@ export default function ComparePage() {
 
     const response = await fetch("/api/verse-compare", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-source-route": "/compare"
+      },
       body: JSON.stringify({
         reference: input.reference,
         leftTranslation: input.left,
