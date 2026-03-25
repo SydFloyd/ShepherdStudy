@@ -512,13 +512,18 @@ button:disabled {
 
 .studyComposerRow {
   display: grid;
-  grid-template-columns: minmax(160px, 280px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
 
-.studyComposerPassageInput,
-.studyComposerPromptInput {
+.studyComposerEntryInput {
+  min-width: 0;
+}
+
+.studyPassageList {
+  display: grid;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1317,7 +1322,7 @@ button:disabled {
   }
 
   .studyComposerRow {
-    grid-template-columns: minmax(120px, 42%) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 

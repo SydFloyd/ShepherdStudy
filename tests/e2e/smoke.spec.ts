@@ -27,8 +27,10 @@ test("study page smoke flow", async ({ page }) => {
   });
 
   await page.goto("/study");
-  await page.getByPlaceholder("Ask a question").fill("Where is comfort in scripture?");
-  await page.getByRole("button", { name: "Send" }).click();
+  await page
+    .getByPlaceholder("Enter a verse, verses, or question")
+    .fill("Where is comfort in scripture?");
+  await page.getByRole("button", { name: "Send study request" }).click();
 
   await expect(page.getByText("Sample study answer")).toBeVisible();
   await expect(page.getByRole("button", { name: "Psalm 23:1" })).toBeVisible();

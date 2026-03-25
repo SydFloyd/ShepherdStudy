@@ -55,6 +55,7 @@ function getClient(): OpenAI {
 export async function generateStudyRecommendations(input: {
   mode: StudyMode;
   passage?: string;
+  passages?: string[];
   prompt?: string;
   history?: Array<{
     role: "user" | "assistant";
@@ -64,9 +65,17 @@ export async function generateStudyRecommendations(input: {
   const client = getClient();
   const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
 
+  const passages = (input.passages ?? []).filter((item) => item.trim().length > 0);
+  const passageList =
+    passages.length > 0
+      ? passages.join("; ")
+      : input.passage
+        ? input.passage
+        : "None provided";
+
   const userPrompt = `
 Study mode: ${input.mode}
-Passage to study: ${input.passage ?? "None provided"}
+Passages to study: ${passageList}
 User prompt: ${input.prompt ?? "None provided"}
 
 Mode guidance:

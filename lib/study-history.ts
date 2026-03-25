@@ -17,9 +17,14 @@ function deriveTitle(input: {
   kind: "prompt" | "verse";
   userText: string;
   passage?: string;
+  passages?: string[];
 }) {
   if (input.kind === "verse") {
-    const verseLabel = input.passage?.trim() || input.userText.trim();
+    const passageList = (input.passages ?? []).map((item) => item.trim()).filter(Boolean);
+    const verseLabel =
+      passageList.length > 1
+        ? `${passageList[0]} +${passageList.length - 1} verse${passageList.length - 1 === 1 ? "" : "s"}`
+        : passageList[0] || input.passage?.trim() || input.userText.trim();
     return normalizeTitle(verseLabel || "Verse Study");
   }
 
@@ -61,6 +66,7 @@ export async function persistStudyTurn(input: {
   kind: "prompt" | "verse";
   userText: string;
   passage?: string;
+  passages?: string[];
   translation: string;
   response: StudyResponsePayload;
 }) {
@@ -82,7 +88,8 @@ export async function persistStudyTurn(input: {
           title: deriveTitle({
             kind: input.kind,
             userText: input.userText,
-            passage: input.passage
+            passage: input.passage,
+            passages: input.passages
           }),
           translation: input.translation
         }
@@ -127,7 +134,8 @@ export async function persistStudyTurn(input: {
             : deriveTitle({
                 kind: input.kind,
                 userText: input.userText,
-                passage: input.passage
+                passage: input.passage,
+                passages: input.passages
               })
       }
     });

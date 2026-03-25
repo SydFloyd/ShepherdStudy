@@ -1,4 +1,5 @@
 import { StudyTurn } from "@/lib/study-client-contract";
+import { getStudyPassages } from "@/lib/study-contract";
 
 export async function parseJsonSafe(response: Response): Promise<unknown> {
   const text = await response.text().catch(() => "");
@@ -47,7 +48,9 @@ export function buildHistory(turns: StudyTurn[]) {
 
   function buildFullTurnMessages(turn: StudyTurn, index: number) {
     const promptText = extractPromptText(turn);
-    const anchorReference = turn.response.passage?.reference ?? "";
+    const anchorReference = getStudyPassages(turn.response)
+      .map((item) => item.reference)
+      .join("; ");
     const userContent = truncate(
       [
         `Study Step ${index + 1}`,
@@ -78,7 +81,9 @@ export function buildHistory(turns: StudyTurn[]) {
 
     const userLines = olderTurns.map((turn, index) => {
       const promptText = extractPromptText(turn);
-      const anchorReference = turn.response.passage?.reference ?? "";
+      const anchorReference = getStudyPassages(turn.response)
+        .map((item) => item.reference)
+        .join("; ");
       return `Step ${index + 1}: prompt=${promptText || "(none)"} | verse=${anchorReference || "(none)"}`;
     });
 

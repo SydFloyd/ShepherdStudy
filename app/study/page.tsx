@@ -15,14 +15,14 @@ import { StudyThreadPanel } from "@/components/study/study-thread-panel";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { useStudySession } from "@/hooks/use-study-session";
 import { PassagePreviewPayload } from "@/lib/study-client-contract";
+import { getStudyPassages } from "@/lib/study-contract";
 import { getStudySelectionTranslation } from "@/lib/study-translation";
 
 export default function StudyPage() {
   const [translation, setTranslation] = useState<BibleTranslationId>(
     DEFAULT_BIBLE_TRANSLATION
   );
-  const [passageInput, setPassageInput] = useState("");
-  const [promptInput, setPromptInput] = useState("");
+  const [entryInput, setEntryInput] = useState("");
   const [expandedRecommendationsTurnId, setExpandedRecommendationsTurnId] =
     useState<string | null>(null);
   const [previewSelection, setPreviewSelection] = useState<{
@@ -57,8 +57,7 @@ export default function StudyPage() {
   const composerFormRef = useRef<HTMLFormElement | null>(null);
 
   function resetStudyView() {
-    setPassageInput("");
-    setPromptInput("");
+    setEntryInput("");
     setPreviewSelection(null);
     setPreviewData(null);
     setPreviewError(null);
@@ -170,25 +169,21 @@ export default function StudyPage() {
 
   async function onPromptSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const submittedPassage = passageInput;
-    const submittedPrompt = promptInput;
+    const submittedEntry = entryInput;
 
-    if (!submittedPassage.trim() && !submittedPrompt.trim()) {
+    if (!submittedEntry.trim()) {
       return;
     }
 
-    setPassageInput("");
-    setPromptInput("");
+    setEntryInput("");
 
     const ok = await submitPrompt({
       translation,
-      promptInput: submittedPrompt,
-      passageInput: submittedPassage
+      entryInput: submittedEntry
     });
 
     if (!ok) {
-      setPassageInput(submittedPassage);
-      setPromptInput(submittedPrompt);
+      setEntryInput(submittedEntry);
     }
   }
 
@@ -261,8 +256,7 @@ export default function StudyPage() {
             activeThreadId={activeThreadId}
             isLoading={isHistoryLoading}
             onNewThread={() => {
-              setPassageInput("");
-              setPromptInput("");
+              setEntryInput("");
               setPreviewSelection(null);
               setPreviewData(null);
               setPreviewError(null);
@@ -271,7 +265,7 @@ export default function StudyPage() {
               window.scrollTo({ top: 0, behavior: "auto" });
             }}
             onSelectThread={async (threadId) => {
-              setPassageInput("");
+              setEntryInput("");
               setPreviewSelection(null);
               setPreviewData(null);
               setPreviewError(null);
@@ -319,51 +313,59 @@ export default function StudyPage() {
 
         {hasStudyContent ? (
           <div className="studyTurns">
-            {turns.map((turn) => (
-              <section
-                key={turn.id}
-                id={`study-turn-${turn.id}`}
-                className="studyTurnBlock"
-              >
-                <article className="card studyUserBubble">
-                  <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
-                  <p>{turn.userText}</p>
-                </article>
+            {turns.map((turn) => {
+              const passages = getStudyPassages(turn.response);
+              return (
+                <section
+                  key={turn.id}
+                  id={`study-turn-${turn.id}`}
+                  className="studyTurnBlock"
+                >
+                  <article className="card studyUserBubble">
+                    <p className="muted">{turn.kind === "verse" ? "Verse Selection" : "Prompt"}</p>
+                    <p>{turn.userText}</p>
+                  </article>
 
-                <section className="studyResultGrid">
-                  {turn.response.passage ? (
-                    <StudyPassagePanel
-                      passage={turn.response.passage}
-                      selectedTranslation={translation}
+                  <section className="studyResultGrid">
+                    {passages.length > 0 ? (
+                      <div className="studyPassageList">
+                        {passages.map((passage) => (
+                          <StudyPassagePanel
+                            key={`${turn.id}-${passage.reference}`}
+                            passage={passage}
+                            selectedTranslation={translation}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <article className="card">
+                        <h2>No Anchor Passage</h2>
+                        <p className="muted">
+                          This response did not resolve to an anchor passage.
+                        </p>
+                      </article>
+                    )}
+                    <StudyAssistantPanel
+                      answer={turn.response.answer}
                     />
-                  ) : (
-                    <article className="card">
-                      <h2>No Anchor Passage</h2>
-                      <p className="muted">
-                        This response did not resolve to a single anchor verse.
-                      </p>
-                    </article>
-                  )}
-                  <StudyAssistantPanel
-                    answer={turn.response.answer}
+                  </section>
+                  <StudyRecommendations
+                    recommendations={turn.response.recommendations}
+                    translation={translation}
+                    isOpen={expandedRecommendationsTurnId === turn.id}
+                    onToggleOpen={(open) => {
+                      setExpandedRecommendationsTurnId((current) => {
+                        if (open) {
+                          return turn.id;
+                        }
+                        return current === turn.id ? null : current;
+                      });
+                    }}
+                    onPreviewRecommendation={onRecommendationPreview}
                   />
                 </section>
-                <StudyRecommendations
-                  recommendations={turn.response.recommendations}
-                  translation={translation}
-                  isOpen={expandedRecommendationsTurnId === turn.id}
-                  onToggleOpen={(open) => {
-                    setExpandedRecommendationsTurnId((current) => {
-                      if (open) {
-                        return turn.id;
-                      }
-                      return current === turn.id ? null : current;
-                    });
-                  }}
-                  onPreviewRecommendation={onRecommendationPreview}
-                />
-              </section>
-            ))}
+              );
+            })}
             {pendingTurn ? (
               <section className="studyTurnBlock">
                 <article className="card studyUserBubble">
@@ -373,11 +375,16 @@ export default function StudyPage() {
                   <p>{pendingTurn.userText}</p>
                 </article>
                 <section className="studyResultGrid">
-                  {pendingTurn.passage ? (
-                    <StudyPassagePanel
-                      passage={pendingTurn.passage}
-                      selectedTranslation={translation}
-                    />
+                  {pendingTurn.passages.length > 0 ? (
+                    <div className="studyPassageList">
+                      {pendingTurn.passages.map((passage) => (
+                        <StudyPassagePanel
+                          key={`${pendingTurn.id}-${passage.reference}`}
+                          passage={passage}
+                          selectedTranslation={translation}
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <article className="card">
                       <div className="loadingRow">
@@ -434,18 +441,11 @@ export default function StudyPage() {
         >
           <div className="studyComposerRow">
             <input
-              value={passageInput}
-              onChange={(event) => setPassageInput(event.target.value)}
+              value={entryInput}
+              onChange={(event) => setEntryInput(event.target.value)}
               onKeyDown={onInputSubmitShortcut}
-              className="studyComposerPassageInput"
-              placeholder="Verse (optional)"
-            />
-            <input
-              value={promptInput}
-              onChange={(event) => setPromptInput(event.target.value)}
-              onKeyDown={onInputSubmitShortcut}
-              className="studyComposerPromptInput"
-              placeholder="Ask a question (optional)"
+              className="studyComposerEntryInput"
+              placeholder="Enter a verse, verses, or question"
             />
             <button
               type="submit"

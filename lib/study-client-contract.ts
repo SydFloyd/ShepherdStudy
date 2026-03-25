@@ -21,7 +21,7 @@ export type PendingStudyTurn = {
   id: string;
   kind: "prompt" | "verse";
   userText: string;
-  passage: NonNullable<StudyResponsePayload["passage"]> | null;
+  passages: Array<NonNullable<StudyResponsePayload["passage"]>>;
 };
 
 export type StudyThreadSummary = {

@@ -13,7 +13,11 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { generateStudyRecommendations } from "@/lib/openai";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
-import { parseScriptureReference } from "@/lib/scripture";
+import {
+  extractScriptureReferencesFromText,
+  hasMeaningfulPromptText,
+  parseScriptureReference
+} from "@/lib/scripture";
 import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
 import { persistStudyTurn } from "@/lib/study-history";
 import { captureServerException } from "@/lib/sentry";
@@ -23,6 +27,11 @@ import { trackUsageSuccess } from "@/lib/usage-tracking";
 const inputSchema = z
   .object({
     passage: z.string().trim().max(120).optional().or(z.literal("")),
+    passages: z
+      .array(z.string().trim().min(1).max(120))
+      .max(8)
+      .optional()
+      .default([]),
     prompt: z.string().trim().max(3000).optional().or(z.literal("")),
     history: z
       .array(
@@ -41,22 +50,50 @@ const inputSchema = z
     kind: z.enum(["prompt", "verse"]).optional(),
     userText: z.string().trim().max(4000).optional().or(z.literal(""))
   })
-  .refine((value) => Boolean(value.passage?.trim() || value.prompt?.trim()), {
+  .refine(
+    (value) =>
+      Boolean(
+        value.passage?.trim() || value.prompt?.trim() || value.passages.length > 0
+      ),
+    {
     message: "Please provide a passage, a prompt, or both.",
     path: ["passage"]
-  });
+    }
+  );
 
 function getStudyMode(input: {
-  passage?: string;
-  prompt?: string;
+  hasPassages: boolean;
+  promptText?: string;
 }): StudyMode {
-  if (input.passage && input.prompt) {
+  if (input.hasPassages && input.promptText) {
     return "passage_and_prompt";
   }
-  if (input.passage) {
+  if (input.hasPassages) {
     return "passage_only";
   }
   return "prompt_only";
+}
+
+function normalizeReferences(references: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const item of references) {
+    const reference = item.trim().replace(/\s+/g, " ");
+    if (!reference) {
+      continue;
+    }
+
+    const key = reference.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    normalized.push(reference);
+  }
+
+  return normalized;
 }
 
 function getModeMetadata(mode: StudyMode): {
@@ -167,49 +204,76 @@ export async function POST(req: Request) {
       );
     }
 
-    const normalizedPassage = input.passage?.trim() || undefined;
-    const normalizedPrompt = input.prompt?.trim() || undefined;
+    const normalizedPrompt = input.prompt?.trim() || "";
+    const promptExtraction = extractScriptureReferencesFromText(normalizedPrompt);
+    const normalizedPassages = normalizeReferences([
+      ...input.passages,
+      input.passage?.trim() || "",
+      ...promptExtraction.references
+    ]).slice(0, 8);
+    const promptWithoutReferences = promptExtraction.residualText;
+    const hasPromptText = hasMeaningfulPromptText(promptWithoutReferences);
     const mode = getStudyMode({
-      passage: normalizedPassage,
-      prompt: normalizedPrompt
+      hasPassages: normalizedPassages.length > 0,
+      promptText: hasPromptText ? promptWithoutReferences : undefined
     });
     const modeMeta = getModeMetadata(mode);
     const effectivePrompt =
-      mode === "passage_only" ? modeMeta.effectivePrompt : normalizedPrompt ?? "";
+      mode === "passage_only" ? modeMeta.effectivePrompt : normalizedPrompt;
 
-    let passagePayload: StudyPassageResult | null = null;
+    const inputPassages: StudyPassageResult[] = [];
+    let firstResolutionFailure: {
+      message: string;
+      status: number;
+    } | null = null;
 
-    if (normalizedPassage) {
+    for (const reference of normalizedPassages) {
       const resolution = await resolvePassageFromLocalBible({
-        reference: normalizedPassage,
+        reference,
         translation: input.translation
       });
 
       if (!resolution.ok) {
-        return NextResponse.json(
-          { error: resolution.message },
-          { status: resolution.reason === "invalid_reference" ? 400 : 404 }
-        );
+        if (!firstResolutionFailure) {
+          firstResolutionFailure = {
+            message: resolution.message,
+            status: resolution.reason === "invalid_reference" ? 400 : 404
+          };
+        }
+        continue;
       }
 
-      passagePayload = buildInputPassagePayload({
-        reference: resolution.resolvedReference,
-        chapterReference: resolution.chapterReference,
-        translation: input.translation,
-        translationName: resolution.translationName,
-        verses: resolution.selectedVerses,
-        chapterPath: resolution.chapterPath
-      });
+      inputPassages.push(
+        buildInputPassagePayload({
+          reference: resolution.resolvedReference,
+          chapterReference: resolution.chapterReference,
+          translation: input.translation,
+          translationName: resolution.translationName,
+          verses: resolution.selectedVerses,
+          chapterPath: resolution.chapterPath
+        })
+      );
     }
+
+    if (normalizedPassages.length > 0 && inputPassages.length === 0) {
+      return NextResponse.json(
+        { error: firstResolutionFailure?.message ?? "Unable to resolve passages." },
+        { status: firstResolutionFailure?.status ?? 404 }
+      );
+    }
+
+    let passagesPayload = inputPassages;
+    let passagePayload = passagesPayload[0] ?? null;
 
     const response = await generateStudyRecommendations({
       mode,
-      passage: normalizedPassage,
+      passage: passagesPayload[0]?.reference,
+      passages: passagesPayload.map((item) => item.reference),
       prompt: effectivePrompt,
       history: input.history
     });
 
-    if (!passagePayload && response.recommendations.length > 0) {
+    if (passagesPayload.length === 0 && response.recommendations.length > 0) {
       for (const recommendation of response.recommendations) {
         const anchor = await resolvePassageFromLocalBible({
           reference: recommendation.reference,
@@ -223,7 +287,8 @@ export async function POST(req: Request) {
           ? anchor.selectedVerses
           : anchor.chapterVerses.slice(0, 12);
 
-        passagePayload = {
+        passagesPayload = [
+          {
           origin: "anchor",
           reference: anchor.resolvedReference,
           chapterReference: anchor.chapterReference,
@@ -232,23 +297,27 @@ export async function POST(req: Request) {
           verses,
           chapterPath: anchor.chapterPath,
           excerpted: !anchor.parsed.verseStart
-        };
+        }
+        ];
+        passagePayload = passagesPayload[0];
         break;
       }
     }
 
-    const normalizedAnchorReference = passagePayload?.reference
-      ? passagePayload.reference.trim().replace(/\s+/g, " ").toLowerCase()
-      : null;
+    const normalizedAnchorReferences = new Set(
+      passagesPayload.map((item) =>
+        item.reference.trim().replace(/\s+/g, " ").toLowerCase()
+      )
+    );
     const filteredRecommendations = response.recommendations.filter((item) => {
-      if (!normalizedAnchorReference) {
+      if (normalizedAnchorReferences.size === 0) {
         return true;
       }
       const normalizedReference = item.reference
         .trim()
         .replace(/\s+/g, " ")
         .toLowerCase();
-      return normalizedReference !== normalizedAnchorReference;
+      return !normalizedAnchorReferences.has(normalizedReference);
     });
     const recommendations = await Promise.all(
       filteredRecommendations.map(async (item) => {
@@ -286,19 +355,27 @@ export async function POST(req: Request) {
     } | null = null;
 
     if (userId) {
-      const turnKind = input.kind ?? (normalizedPrompt ? "prompt" : "verse");
+      const turnKind = input.kind ?? (mode === "passage_only" ? "verse" : "prompt");
+      const selectedReferenceText =
+        passagesPayload.length > 0
+          ? passagesPayload.map((item) => item.reference).join("; ")
+          : normalizedPassages.join("; ");
       const userText =
         input.userText?.trim() ||
         (turnKind === "verse"
-          ? `Selected verse: ${passagePayload?.reference ?? normalizedPassage ?? "Unknown passage"}`
-          : normalizedPrompt || normalizedPassage || "Study prompt");
+          ? `Selected verse${passagesPayload.length > 1 ? "s" : ""}: ${selectedReferenceText || "Unknown passage"}`
+          : normalizedPrompt || selectedReferenceText || "Study prompt");
 
       thread = await persistStudyTurn({
         userId,
         threadId: input.threadId,
         kind: turnKind,
         userText,
-        passage: passagePayload?.reference ?? normalizedPassage,
+        passage: passagesPayload[0]?.reference ?? normalizedPassages[0],
+        passages:
+          passagesPayload.length > 0
+            ? passagesPayload.map((item) => item.reference)
+            : normalizedPassages,
         translation: input.translation,
         response: {
           mode,
@@ -308,6 +385,7 @@ export async function POST(req: Request) {
           context: "",
           relevance: "",
           recommendations,
+          passages: passagesPayload,
           passage: passagePayload,
           saved: true
         }
@@ -322,6 +400,7 @@ export async function POST(req: Request) {
       context: "",
       relevance: "",
       recommendations,
+      passages: passagesPayload,
       passage: passagePayload,
       quota: quotaDecision,
       saved: Boolean(thread),
@@ -337,6 +416,7 @@ export async function POST(req: Request) {
     logEvent("info", "study.ok", {
       ...requestMeta,
       mode,
+      passages: passagesPayload.length,
       recommendations: recommendations.length,
       saved: Boolean(thread)
     });

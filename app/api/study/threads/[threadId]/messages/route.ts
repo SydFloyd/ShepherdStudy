@@ -13,6 +13,7 @@ const appendSchema = z.object({
   kind: z.enum(["prompt", "verse"]),
   userText: z.string().trim().min(1).max(4000),
   passage: z.string().trim().max(120).optional().or(z.literal("")),
+  passages: z.array(z.string().trim().min(1).max(120)).max(8).optional(),
   translation: z.string().trim().min(1).max(24),
   response: z.custom<StudyResponsePayload>()
 });
@@ -45,6 +46,7 @@ export async function POST(req: Request, context: Params) {
       kind: input.kind,
       userText: input.userText,
       passage: input.passage?.trim() || undefined,
+      passages: input.passages,
       translation: input.translation,
       response: input.response
     });

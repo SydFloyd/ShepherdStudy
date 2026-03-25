@@ -9,12 +9,15 @@ import {
   StudyTurn
 } from "@/lib/study-client-contract";
 import { buildHistory, parseJsonSafe } from "@/lib/study-client-utils";
+import {
+  extractScriptureReferencesFromText,
+  hasMeaningfulPromptText
+} from "@/lib/scripture";
 import { StudyResponsePayload } from "@/lib/study-contract";
 
 type SubmitPromptInput = {
   translation: BibleTranslationId;
-  promptInput: string;
-  passageInput: string;
+  entryInput: string;
 };
 
 export function useStudySession() {
@@ -135,100 +138,91 @@ export function useStudySession() {
     setError(null);
   }, []);
 
-  async function submitPrompt(input: SubmitPromptInput) {
-    const trimmedPrompt = input.promptInput.trim();
-    const selectedPassage = input.passageInput.trim();
+  function buildPreviewPassage(
+    preview: PassagePreviewPayload
+  ): NonNullable<StudyResponsePayload["passage"]> {
+    return {
+      origin: "input",
+      reference: preview.reference,
+      chapterReference: preview.chapterReference,
+      translation: preview.translation,
+      translationName: preview.translationName,
+      verses: preview.verses,
+      chapterPath: preview.chapterPath,
+      excerpted: preview.excerpted
+    };
+  }
 
-    if (!trimmedPrompt && !selectedPassage) {
-      return false;
-    }
-
-    const isVerseOnly = !trimmedPrompt && Boolean(selectedPassage);
-    const kind: "prompt" | "verse" = isVerseOnly ? "verse" : "prompt";
-    const userText =
-      selectedPassage && trimmedPrompt
-        ? `Selected verse: ${selectedPassage} | Question: ${trimmedPrompt}`
-        : selectedPassage
-          ? `Selected verse: ${selectedPassage}`
-          : trimmedPrompt;
-
-    if (!selectedPassage) {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/study", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-source-route": "/study"
-        },
-        body: JSON.stringify({
-          translation: input.translation,
-          prompt: trimmedPrompt || undefined,
-          history: buildHistory(turns),
-          threadId: activeThreadId ?? undefined,
-          kind,
-          userText
-        })
-      });
-
-      const data = (await parseJsonSafe(response)) as
-        | (StudyResponsePayload & { error?: undefined })
-        | { error: string };
-
-      if (!response.ok || "error" in data) {
-        const message = data.error ?? "Unable to generate recommendations.";
-        setError(`Study request failed (${response.status}): ${message}`);
-        setIsLoading(false);
-        return false;
-      }
-
-      const turnId = `${Date.now()}-${turns.length}`;
-      setTurns((current) => [
-        ...current,
-        {
-          id: turnId,
-          kind,
-          userText,
-          response: data
-        }
-      ]);
-
-      if (data.thread) {
-        upsertThread({
-          id: data.thread.id,
-          title: data.thread.title ?? "Untitled Study",
-          translation: input.translation,
-          archivedAt: data.thread.archivedAt,
-          updatedAt: data.thread.updatedAt
+  async function loadPendingPassages(input: {
+    pendingId: string;
+    references: string[];
+    translation: BibleTranslationId;
+  }) {
+    const previews = await Promise.all(
+      input.references.map(async (reference) => {
+        const response = await fetch("/api/passage-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reference,
+            translation: input.translation
+          })
         });
-        setActiveThreadId(data.thread.id);
-      }
+        const data = (await parseJsonSafe(response)) as
+          | (PassagePreviewPayload & { error?: undefined })
+          | { error: string };
 
-      setIsLoading(false);
-      return true;
+        if (!response.ok || "error" in data) {
+          return null;
+        }
+
+        return buildPreviewPassage(data);
+      })
+    );
+
+    const passages = previews.filter(
+      (item): item is NonNullable<StudyResponsePayload["passage"]> => Boolean(item)
+    );
+    if (passages.length === 0) {
+      return;
     }
 
+    setPendingTurn((current) =>
+      current && current.id === input.pendingId
+        ? {
+            ...current,
+            passages
+          }
+        : current
+    );
+  }
+
+  async function executeStudyRequest(input: {
+    translation: BibleTranslationId;
+    passages: string[];
+    prompt?: string;
+    kind: "prompt" | "verse";
+    userText: string;
+  }) {
     const pendingId = `pending-${Date.now()}`;
-    setPendingTurn({
-      id: pendingId,
-      kind,
-      userText,
-      passage: null
-    });
+    if (input.passages.length > 0) {
+      setPendingTurn({
+        id: pendingId,
+        kind: input.kind,
+        userText: input.userText,
+        passages: []
+      });
+      void loadPendingPassages({
+        pendingId,
+        references: input.passages,
+        translation: input.translation
+      }).catch(() => undefined);
+    }
+
     setError(null);
     setIsLoading(true);
 
-    const previewPromise = fetch("/api/passage-preview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference: selectedPassage,
-        translation: input.translation
-      })
-    });
-
-    const studyPromise = fetch("/api/study", {
+    const studyResponse = await fetch("/api/study", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -236,43 +230,16 @@ export function useStudySession() {
       },
       body: JSON.stringify({
         translation: input.translation,
-        passage: selectedPassage,
-        prompt: trimmedPrompt || undefined,
+        passage: input.passages[0],
+        passages: input.passages,
+        prompt: input.prompt,
         history: buildHistory(turns),
         threadId: activeThreadId ?? undefined,
-        kind,
-        userText
+        kind: input.kind,
+        userText: input.userText
       })
     });
 
-    const previewResponse = await previewPromise;
-    const previewData = (await parseJsonSafe(previewResponse)) as
-      | (PassagePreviewPayload & { error?: undefined })
-      | { error: string };
-
-    if (previewResponse.ok && !("error" in previewData)) {
-      const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
-        origin: "input",
-        reference: previewData.reference,
-        chapterReference: previewData.chapterReference,
-        translation: previewData.translation,
-        translationName: previewData.translationName,
-        verses: previewData.verses,
-        chapterPath: previewData.chapterPath,
-        excerpted: previewData.excerpted
-      };
-
-      setPendingTurn((current) =>
-        current && current.id === pendingId
-          ? {
-              ...current,
-              passage: previewPassage
-            }
-          : current
-      );
-    }
-
-    const studyResponse = await studyPromise;
     const studyData = (await parseJsonSafe(studyResponse)) as
       | (StudyResponsePayload & { error?: undefined })
       | { error: string };
@@ -292,8 +259,8 @@ export function useStudySession() {
       ...current,
       {
         id: turnId,
-        kind,
-        userText,
+        kind: input.kind,
+        userText: input.userText,
         response: studyData
       }
     ]);
@@ -316,122 +283,57 @@ export function useStudySession() {
     return true;
   }
 
+  async function submitPrompt(input: SubmitPromptInput) {
+    const entryText = input.entryInput.trim();
+    if (!entryText) {
+      return false;
+    }
+
+    const extraction = extractScriptureReferencesFromText(entryText);
+    const selectedPassages = extraction.references;
+    const hasPromptText = hasMeaningfulPromptText(extraction.residualText);
+    if (selectedPassages.length === 0 && !hasPromptText) {
+      return false;
+    }
+
+    const kind: "prompt" | "verse" =
+      selectedPassages.length > 0 && !hasPromptText ? "verse" : "prompt";
+    const selectedText = selectedPassages.join("; ");
+    const verseLabel = `Selected verse${selectedPassages.length > 1 ? "s" : ""}: ${selectedText}`;
+    const userText =
+      kind === "verse"
+        ? verseLabel
+        : selectedPassages.length > 0
+          ? `${verseLabel}\nQuestion: ${entryText}`
+          : entryText;
+
+    return executeStudyRequest({
+      translation: input.translation,
+      passages: selectedPassages,
+      prompt: hasPromptText ? entryText : undefined,
+      kind,
+      userText
+    });
+  }
+
   async function selectRecommendation(input: {
     reference: string;
     translation: BibleTranslationId;
     prompt?: string;
   }) {
-    const pendingId = `pending-${Date.now()}`;
     const trimmedPrompt = input.prompt?.trim() ?? "";
     const userText = trimmedPrompt
       ? `Selected verse: ${input.reference}\nQuestion: ${trimmedPrompt}`
       : `Selected verse: ${input.reference}`;
     const kind: "prompt" | "verse" = trimmedPrompt ? "prompt" : "verse";
 
-    setPendingTurn({
-      id: pendingId,
+    return executeStudyRequest({
+      translation: input.translation,
+      passages: [input.reference],
+      prompt: trimmedPrompt || undefined,
       kind,
-      userText,
-      passage: null
+      userText
     });
-    setError(null);
-    setIsLoading(true);
-
-    const previewPromise = fetch("/api/passage-preview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference: input.reference,
-        translation: input.translation
-      })
-    });
-
-    const studyPromise = fetch("/api/study", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-source-route": "/study"
-      },
-      body: JSON.stringify({
-        translation: input.translation,
-        passage: input.reference,
-        prompt: trimmedPrompt || undefined,
-        history: buildHistory(turns),
-        threadId: activeThreadId ?? undefined,
-        kind,
-        userText
-      })
-    });
-
-    const previewResponse = await previewPromise;
-    const previewData = (await parseJsonSafe(previewResponse)) as
-      | (PassagePreviewPayload & { error?: undefined })
-      | { error: string };
-
-    if (previewResponse.ok && !("error" in previewData)) {
-      const previewPassage: NonNullable<StudyResponsePayload["passage"]> = {
-        origin: "input",
-        reference: previewData.reference,
-        chapterReference: previewData.chapterReference,
-        translation: previewData.translation,
-        translationName: previewData.translationName,
-        verses: previewData.verses,
-        chapterPath: previewData.chapterPath,
-        excerpted: previewData.excerpted
-      };
-
-      setPendingTurn((current) =>
-        current && current.id === pendingId
-          ? {
-              ...current,
-              passage: previewPassage
-            }
-          : current
-      );
-    }
-
-    const studyResponse = await studyPromise;
-    const studyData = (await parseJsonSafe(studyResponse)) as
-      | (StudyResponsePayload & { error?: undefined })
-      | { error: string };
-
-    if (!studyResponse.ok || "error" in studyData) {
-      const message = studyData.error ?? "Unable to generate recommendations.";
-      setError(`Study request failed (${studyResponse.status}): ${message}`);
-      setPendingTurn((current) =>
-        current && current.id === pendingId ? null : current
-      );
-      setIsLoading(false);
-      return false;
-    }
-
-    const turnId = `${Date.now()}-${turns.length}`;
-    setTurns((current) => [
-      ...current,
-      {
-        id: turnId,
-        kind,
-        userText,
-        response: studyData
-      }
-    ]);
-
-    if (studyData.thread) {
-      upsertThread({
-        id: studyData.thread.id,
-        title: studyData.thread.title ?? "Untitled Study",
-        translation: input.translation,
-        archivedAt: studyData.thread.archivedAt,
-        updatedAt: studyData.thread.updatedAt
-      });
-      setActiveThreadId(studyData.thread.id);
-    }
-
-    setPendingTurn((current) =>
-      current && current.id === pendingId ? null : current
-    );
-    setIsLoading(false);
-    return true;
   }
 
   return {

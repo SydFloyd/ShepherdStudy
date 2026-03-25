@@ -39,6 +39,7 @@ export type StudyResponsePayload = {
   // Keep these fields for backward compatibility and easy re-enable later.
   context: string;
   relevance: string;
+  passages?: StudyPassageResult[];
   passage: StudyPassageResult | null;
   recommendations: StudyRecommendation[];
   saved: boolean;
@@ -49,3 +50,18 @@ export type StudyResponsePayload = {
     updatedAt: string;
   };
 };
+
+export function getStudyPassages(input: {
+  passages?: StudyPassageResult[] | null;
+  passage: StudyPassageResult | null;
+}): StudyPassageResult[] {
+  const fromArray = Array.isArray(input.passages)
+    ? input.passages.filter((item): item is StudyPassageResult => Boolean(item))
+    : [];
+
+  if (fromArray.length > 0) {
+    return fromArray;
+  }
+
+  return input.passage ? [input.passage] : [];
+}
