@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { MarkdownMessage } from "@/components/shared/markdown-message";
 import { WwjdThreadPanel } from "@/components/wwjd/wwjd-thread-panel";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import {
@@ -342,7 +343,7 @@ export default function WwjdPage() {
                 <p className="wwjdRole">
                   {message.role === "assistant" ? "ShepherdAI" : "You"}
                 </p>
-                <p>{message.content}</p>
+                <MarkdownMessage content={message.content} />
                 {message.role === "assistant" && message.recommendations ? (
                   <details className="wwjdRecoBar">
                     <summary>
