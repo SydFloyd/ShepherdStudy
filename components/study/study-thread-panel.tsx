@@ -44,6 +44,16 @@ export function StudyThreadPanel({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(max-width: 860px)").matches) {
+      setIsCollapsed(true);
+    }
+  }, []);
+
+  useEffect(() => {
     function onPointerDown(event: MouseEvent) {
       if (!menuRef.current) {
         return;
