@@ -48,8 +48,13 @@ function getClient() {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
 
+  const organization = process.env.OPENAI_ORGANIZATION?.trim();
+  const project = process.env.OPENAI_PROJECT?.trim();
+
   return new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    organization: organization || undefined,
+    project: project || undefined,
     maxRetries: 2,
     timeout: 20000
   });

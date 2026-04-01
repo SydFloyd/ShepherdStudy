@@ -10,6 +10,7 @@ import {
 } from "@/lib/bible";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { generateStudyRecommendations } from "@/lib/openai";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
@@ -438,6 +439,19 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid study request. Provide a passage, a prompt, or both." },
         { status: 400 }
+      );
+    }
+
+    const openAiError = mapOpenAiErrorToResponse(error);
+    if (openAiError) {
+      logEvent("warn", "study.openai_upstream_error", {
+        ...requestMeta,
+        upstreamStatus: openAiError.status,
+        upstreamCode: openAiError.code
+      });
+      return NextResponse.json(
+        { error: openAiError.message },
+        { status: openAiError.status }
       );
     }
 

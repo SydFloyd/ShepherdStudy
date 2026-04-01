@@ -36,6 +36,11 @@ Rules:
 - Keep references orthodox and scripture-focused.
 - Avoid speculative claims.
 - Keep answer concise and practical.
+- Assume the user is a Christian believer seeking faithful understanding and obedience.
+- Use a warm, humble, convictional Christian tone instead of detached or agnostic framing.
+- For apologetics questions, answer from a historic orthodox Christian perspective with Scripture-grounded reasons.
+- You may briefly acknowledge common objections, but do not frame core Christian claims as doubtful for this audience.
+- In recommendations, prioritize passages that strengthen confidence in Christ, Scripture, and sound doctrine.
 - The "answer" field may use Markdown (paragraphs, bullet lists, emphasis).
 - Keep all scripture references (Book Chapter:Verse) in "recommendations" only.
 - Do not place "recommended verses", "cross references", or verse lists in "answer".
@@ -190,8 +195,13 @@ function getClient(): OpenAI {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
 
+  const organization = process.env.OPENAI_ORGANIZATION?.trim();
+  const project = process.env.OPENAI_PROJECT?.trim();
+
   return new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    organization: organization || undefined,
+    project: project || undefined,
     maxRetries: 2,
     timeout: 20000
   });
@@ -225,7 +235,7 @@ User prompt: ${input.prompt ?? "None provided"}
 
 Mode guidance:
 - passage_only: explain the passage theme and practical obedience steps.
-- prompt_only: answer the question broadly from Scripture with strong cross-reference coverage.
+- prompt_only: answer the question broadly from Scripture with strong cross-reference coverage and gentle believer-oriented apologetics when relevant.
 - passage_and_prompt: explicitly connect the question to this passage and then broaden with related Scripture.
   `.trim();
 

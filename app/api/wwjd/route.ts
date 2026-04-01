@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { consumeQuota } from "@/lib/quota";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
@@ -107,6 +108,19 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid WWJD input." },
         { status: 400 }
+      );
+    }
+
+    const openAiError = mapOpenAiErrorToResponse(error);
+    if (openAiError) {
+      logEvent("warn", "wwjd.openai_upstream_error", {
+        ...requestMeta,
+        upstreamStatus: openAiError.status,
+        upstreamCode: openAiError.code
+      });
+      return NextResponse.json(
+        { error: openAiError.message },
+        { status: openAiError.status }
       );
     }
 
