@@ -1,7 +1,11 @@
+import { memo, useMemo } from "react";
+
 import { MarkdownMessage } from "@/components/shared/markdown-message";
 import { BibleTranslationId } from "@/lib/bible";
 import { buildPassagePath, extractScriptureReferencesFromText } from "@/lib/scripture";
 import { getStudySelectionTranslation } from "@/lib/study-translation";
+
+const MAX_ASSISTANT_REFERENCES = 12;
 
 type Props = {
   answer: string;
@@ -9,12 +13,31 @@ type Props = {
   onPreviewReference?: (reference: string, selectionTranslation?: string) => void;
 };
 
-export function StudyAssistantPanel({
+function StudyAssistantPanelComponent({
   answer,
   translation,
   onPreviewReference
 }: Props) {
-  const references = extractScriptureReferencesFromText(answer).references.slice(0, 12);
+  const references = useMemo(() => {
+    const extracted = extractScriptureReferencesFromText(answer).references;
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+
+    for (const reference of extracted) {
+      const normalized = reference.trim().replace(/\s+/g, " ");
+      const key = normalized.toLowerCase();
+      if (!normalized || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      deduped.push(normalized);
+      if (deduped.length >= MAX_ASSISTANT_REFERENCES) {
+        break;
+      }
+    }
+
+    return deduped;
+  }, [answer]);
 
   return (
     <article className="card assistantPanel">
@@ -59,3 +82,6 @@ export function StudyAssistantPanel({
     </article>
   );
 }
+
+export const StudyAssistantPanel = memo(StudyAssistantPanelComponent);
+StudyAssistantPanel.displayName = "StudyAssistantPanel";
