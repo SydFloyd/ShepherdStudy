@@ -122,7 +122,6 @@ a {
   padding: 6px 10px;
   background: #f3eee3;
   color: var(--ink);
-  touch-action: manipulation;
 }
 
 .navMobileDropdown {
