@@ -1178,6 +1178,11 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.studyAssistantText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .assistantAnswerReferences {
   border-top: 1px solid var(--stroke);
   margin-top: 10px;
