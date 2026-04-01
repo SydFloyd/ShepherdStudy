@@ -1,4 +1,3 @@
-import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -7,7 +6,7 @@ type Props = {
   className?: string;
 };
 
-function MarkdownMessageComponent({ content, className }: Props) {
+export function MarkdownMessage({ content, className }: Props) {
   const classes = className ? `markdownMessage ${className}` : "markdownMessage";
 
   return (
@@ -16,6 +15,3 @@ function MarkdownMessageComponent({ content, className }: Props) {
     </div>
   );
 }
-
-export const MarkdownMessage = memo(MarkdownMessageComponent);
-MarkdownMessage.displayName = "MarkdownMessage";

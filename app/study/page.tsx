@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -187,11 +187,11 @@ export default function StudyPage() {
     }
   }
 
-  const onRecommendationSelect = useCallback(async (
+  async function onRecommendationSelect(
     reference: string,
     selectionTranslation?: string,
     promptOverride?: string
-  ) => {
+  ) {
     const selectedTranslation = (selectionTranslation ??
       translation) as BibleTranslationId;
     if (selectedTranslation !== translation) {
@@ -202,21 +202,21 @@ export default function StudyPage() {
       translation: selectedTranslation,
       prompt: promptOverride?.trim() || undefined
     });
-  }, [selectRecommendation, translation]);
+  }
 
-  const onRecommendationPreview = useCallback((
+  function onRecommendationPreview(
     reference: string,
     selectionTranslation?: string
-  ) => {
+  ) {
     const selectedTranslation = (selectionTranslation ??
       translation) as BibleTranslationId;
     setPreviewSelection({
       reference,
       translation: selectedTranslation
     });
-  }, [translation]);
+  }
 
-  const onContinueFromPreview = useCallback(async () => {
+  async function onContinueFromPreview() {
     if (!previewSelection || isLoading) {
       return;
     }
@@ -229,12 +229,7 @@ export default function StudyPage() {
       selectedTranslation,
       question || undefined
     );
-  }, [
-    isLoading,
-    onRecommendationSelect,
-    previewPrompt,
-    previewSelection
-  ]);
+  }
 
   const hasStudyContent = turns.length > 0 || Boolean(pendingTurn);
   const versionSelectWidthCh =
