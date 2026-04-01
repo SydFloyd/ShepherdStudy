@@ -169,6 +169,9 @@ export default function StudyPage() {
 
   async function onPromptSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isLoading) {
+      return;
+    }
     const submittedEntry = entryInput;
 
     if (!submittedEntry.trim()) {
@@ -438,6 +441,7 @@ export default function StudyPage() {
           ref={composerFormRef}
           onSubmit={onPromptSubmit}
           className={`card studyComposer${hasStudyContent ? "" : " initial"}`}
+          aria-busy={isLoading}
         >
           <div className="studyComposerRow">
             <input
@@ -446,14 +450,23 @@ export default function StudyPage() {
               onKeyDown={onInputSubmitShortcut}
               className="studyComposerEntryInput"
               placeholder="Enter a verse, verses, or question"
+              disabled={isLoading}
             />
             <button
               type="submit"
-              className="studySendButton"
+              className={`studySendButton${isLoading ? " isLoading" : ""}`}
               aria-label={isLoading ? "Sending..." : "Send study request"}
               disabled={isLoading}
             >
-              {isLoading ? "..." : "\u2191"}
+              {isLoading ? (
+                <span className="studySendDots" aria-hidden="true">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+              ) : (
+                "\u2191"
+              )}
             </button>
           </div>
           {error ? <p className="muted">{error}</p> : null}
