@@ -347,6 +347,8 @@ export default function StudyPage() {
                     )}
                     <StudyAssistantPanel
                       answer={turn.response.answer}
+                      translation={translation}
+                      onPreviewReference={onRecommendationPreview}
                     />
                   </section>
                   <StudyRecommendations

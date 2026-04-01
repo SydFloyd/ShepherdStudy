@@ -1179,6 +1179,22 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.assistantAnswerReferences {
+  border-top: 1px solid var(--stroke);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.assistantAnswerReferences .muted {
+  margin: 0 0 6px;
+}
+
+.assistantAnswerReferences .list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
 .markdownMessage {
   overflow-wrap: anywhere;
 }

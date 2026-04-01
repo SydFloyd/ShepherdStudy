@@ -17,7 +17,7 @@ export function Nav() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
+    function onDocumentClick(event: MouseEvent) {
       const target = event.target as Node | null;
       if (target && accountMenuRef.current?.contains(target)) {
         return;
@@ -36,10 +36,10 @@ export function Nav() {
       }
     }
 
-    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("click", onDocumentClick);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("click", onDocumentClick);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, []);
