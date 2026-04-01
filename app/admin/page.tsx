@@ -96,13 +96,13 @@ export default async function AdminPage() {
       by: ["feature"],
       where: { createdAt: { gte: sevenDaysAgo } },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } }
+      orderBy: { _count: { id: "desc" } }
     }),
     prisma.usageEvent.groupBy({
       by: ["action"],
       where: { createdAt: { gte: oneDayAgo } },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { id: "desc" } },
       take: 12
     }),
     prisma.usageEvent.groupBy({
@@ -112,7 +112,7 @@ export default async function AdminPage() {
         userId: { not: null }
       },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { id: "desc" } },
       take: 20
     }),
     prisma.usageEvent.groupBy({
@@ -122,7 +122,7 @@ export default async function AdminPage() {
         anonId: { not: null }
       },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { id: "desc" } },
       take: 20
     }),
     prisma.dailyQuotaUsage.findMany({
