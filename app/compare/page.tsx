@@ -35,7 +35,7 @@ type CompareResponse = {
   };
 };
 
-const DEFAULT_REFERENCE = "John 1";
+const DEFAULT_REFERENCE = "John 1:1-5";
 
 type ComputedVerseDiff = {
   verse: number;
@@ -279,7 +279,7 @@ export default function ComparePage() {
             <input
               value={referenceInput}
               onChange={(event) => setReferenceInput(event.target.value)}
-              placeholder="John 1"
+              placeholder="John 1:1-5"
             />
             <button type="submit" disabled={!canSubmit}>
               {isLoading ? "Comparing..." : "Compare"}

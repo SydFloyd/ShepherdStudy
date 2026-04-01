@@ -32,6 +32,13 @@ export default function InfoPage() {
           study and practical application.
         </p>
         <h3>
+          <Link href="/compare">Compare</Link>
+        </h3>
+        <p>
+          View two Bible translations side by side with linked verse-level
+          differences and quick chapter navigation.
+        </p>
+        <h3>
           <Link href="/word-lens">Interlinear</Link>
         </h3>
         <p>
