@@ -13,6 +13,7 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { generateStudyRecommendations } from "@/lib/openai";
 import { consumeQuota } from "@/lib/quota";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import {
   extractScriptureReferencesFromText,
@@ -175,7 +176,7 @@ export async function POST(req: Request) {
 
   try {
     logEvent("info", "study.start", requestMeta);
-    const json = await req.json();
+    const json = await readJsonBody(req);
     const input = inputSchema.parse(json);
     const session = await getServerSession(authOptions);
     const userId = await resolveActiveUserId(session?.user?.id);
@@ -228,11 +229,16 @@ export async function POST(req: Request) {
       status: number;
     } | null = null;
 
-    for (const reference of normalizedPassages) {
-      const resolution = await resolvePassageFromLocalBible({
-        reference,
-        translation: input.translation
-      });
+    const passageResolutions = await Promise.all(
+      normalizedPassages.map((reference) =>
+        resolvePassageFromLocalBible({
+          reference,
+          translation: input.translation
+        })
+      )
+    );
+
+    for (const resolution of passageResolutions) {
 
       if (!resolution.ok) {
         if (!firstResolutionFailure) {
@@ -434,6 +440,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json(payload);
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       logEvent("warn", "study.invalid_input", requestMeta);
       return NextResponse.json(

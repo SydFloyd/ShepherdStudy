@@ -8,6 +8,7 @@ import {
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { getRequestId } from "@/lib/request-context";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { captureServerException } from "@/lib/sentry";
 
 const inputSchema = z.object({
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
   try {
     logEvent("info", "passage_preview.start", requestMeta);
-    const json = await req.json();
+    const json = await readJsonBody(req);
     const input = inputSchema.parse(json);
 
     const resolution = await resolvePassageFromLocalBible({
@@ -53,6 +54,11 @@ export async function POST(req: Request) {
       excerpted: !resolution.parsed.verseStart
     });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       logEvent("warn", "passage_preview.invalid_input", requestMeta);
       return NextResponse.json(

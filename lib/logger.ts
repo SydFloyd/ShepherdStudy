@@ -9,7 +9,13 @@ const REDACT_KEYS = new Set([
   "content",
   "message",
   "prompt",
-  "history"
+  "history",
+  "query",
+  "usertext",
+  "reply",
+  "answer",
+  "context",
+  "email"
 ]);
 
 function sanitize(value: unknown): unknown {

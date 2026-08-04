@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 
@@ -80,7 +81,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const input = updateSchema.parse(body);
 
     const user = await prisma.user.findUnique({
@@ -132,6 +133,11 @@ export async function PATCH(req: Request) {
     logEvent("info", "account.patch.ok", requestMeta);
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid account update input." }, { status: 400 });
     }
@@ -159,7 +165,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const input = deleteSchema.parse(body);
 
     const user = await prisma.user.findUnique({
@@ -180,6 +186,11 @@ export async function DELETE(req: Request) {
     logEvent("info", "account.delete.ok", requestMeta);
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid account deletion input." }, { status: 400 });
     }

@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { listStudyThreads, toThreadSummary } from "@/lib/study-history";
 import { prisma } from "@/lib/prisma";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const payload = createThreadSchema.parse(await req.json());
+    const payload = createThreadSchema.parse(await readJsonBody(req));
     const thread = await prisma.studyThread.create({
       data: {
         userId: session.user.id,
@@ -65,6 +66,11 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ thread: toThreadSummary(thread) }, { status: 201 });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       logEvent("warn", "study_threads.invalid_input", requestMeta);
       return NextResponse.json({ error: "Invalid thread payload." }, { status: 400 });

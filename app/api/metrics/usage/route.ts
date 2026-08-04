@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 
+import {
+  isMetricsRequestAuthorized,
+  PRIVATE_RESPONSE_HEADERS
+} from "@/lib/admin-metrics-auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getRequestId } from "@/lib/request-context";
-
-function isAuthorized(req: Request) {
-  const expected = process.env.ADMIN_METRICS_KEY;
-  if (!expected) {
-    return false;
-  }
-
-  const header = req.headers.get("x-admin-key");
-  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return header === expected || bearer === expected;
-}
 
 export async function GET(req: Request) {
   const requestId = await getRequestId();
@@ -23,9 +16,12 @@ export async function GET(req: Request) {
     method: req.method
   });
 
-  if (!isAuthorized(req)) {
+  if (!isMetricsRequestAuthorized(req)) {
     logEvent("warn", "usage_metrics.unauthorized", requestMeta);
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized." },
+      { status: 401, headers: PRIVATE_RESPONSE_HEADERS }
+    );
   }
 
   const now = new Date();
@@ -155,19 +151,22 @@ export async function GET(req: Request) {
     eventsLast7d
   });
 
-  return NextResponse.json({
-    generatedAt: now.toISOString(),
-    summary: {
-      totalEvents,
-      eventsLast24h,
-      eventsLast7d,
-      authenticatedLast7d,
-      anonymousLast7d
+  return NextResponse.json(
+    {
+      generatedAt: now.toISOString(),
+      summary: {
+        totalEvents,
+        eventsLast24h,
+        eventsLast7d,
+        authenticatedLast7d,
+        anonymousLast7d
+      },
+      byFeature,
+      byPage,
+      byAction,
+      topSourcePaths,
+      recentEvents
     },
-    byFeature,
-    byPage,
-    byAction,
-    topSourcePaths,
-    recentEvents
-  });
+    { headers: PRIVATE_RESPONSE_HEADERS }
+  );
 }

@@ -45,7 +45,7 @@ function getSourceMeta(request: Request) {
 
   try {
     const parsed = new URL(referer);
-    const path = normalizePath(`${parsed.pathname}${parsed.search}`) ?? null;
+    const path = normalizePath(parsed.pathname) ?? null;
     return {
       sourcePath: path,
       sourceHost: parsed.host || null

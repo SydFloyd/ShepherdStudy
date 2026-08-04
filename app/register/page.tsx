@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { TurnstileSubmit } from "@/components/turnstile-submit";
+import { DEFAULT_TURNSTILE_SITE_KEY } from "@/lib/turnstile-config";
+
 type RegisterPageProps = {
   searchParams: Promise<{
     error?: string | string[];
@@ -20,6 +23,8 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const error = firstValue(resolvedSearchParams.error);
   const email = firstValue(resolvedSearchParams.email);
   const name = firstValue(resolvedSearchParams.name);
+  const siteKey =
+    process.env.TURNSTILE_SITE_KEY?.trim() || DEFAULT_TURNSTILE_SITE_KEY;
 
   return (
     <section className="card">
@@ -43,7 +48,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           Password
           <input name="password" type="password" required minLength={8} />
         </label>
-        <button type="submit">Create account</button>
+        <TurnstileSubmit siteKey={siteKey} />
       </form>
       {error ? <p className="muted">{error}</p> : null}
       <p className="muted">

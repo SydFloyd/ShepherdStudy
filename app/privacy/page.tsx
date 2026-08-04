@@ -6,9 +6,8 @@ export default function PrivacyPage() {
 
       <h2>What We Collect</h2>
       <p>
-        ShepherdStudy stores account details (email, display name), study and WWJD
-        conversation history, and operational logs required to keep the service
-        secure and reliable.
+        ShepherdStudy stores account details (email, display name), study conversation
+        history, and operational logs required to keep the service secure and reliable.
       </p>
 
       <h2>How We Use Data</h2>

@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuthStatus } from "@/hooks/use-auth-status";
@@ -16,6 +17,7 @@ type AccountPayload = {
 };
 
 export default function AccountPage() {
+  const router = useRouter();
   const { status } = useAuthStatus();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -33,7 +35,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      window.location.href = "/login";
+      router.replace("/login");
       return;
     }
 
@@ -47,7 +49,7 @@ export default function AccountPage() {
       const data = (await parseJsonSafe(response)) as AccountPayload | { error?: string };
 
       if (response.status === 401) {
-        window.location.href = "/login";
+        router.replace("/login");
         return;
       }
 
@@ -69,7 +71,7 @@ export default function AccountPage() {
     }
 
     void loadAccount();
-  }, [status]);
+  }, [router, status]);
 
   async function onSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -217,7 +219,7 @@ export default function AccountPage() {
       <article className="card">
         <h2>Delete account</h2>
         <p className="muted">
-          This permanently deletes your account and all saved study/WWJD history.
+          This permanently deletes your account and all saved study history.
         </p>
         <form className="grid" onSubmit={onDeleteAccount}>
           <label>

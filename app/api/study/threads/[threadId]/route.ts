@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { getStudyThreadDetail, toThreadSummary } from "@/lib/study-history";
 import { prisma } from "@/lib/prisma";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 
@@ -69,7 +70,7 @@ export async function PATCH(req: Request, context: Params) {
   }
 
   try {
-    const input = patchSchema.parse(await req.json());
+    const input = patchSchema.parse(await readJsonBody(req));
     const { threadId } = await context.params;
     const existing = await prisma.studyThread.findFirst({
       where: { id: threadId, userId: session.user.id }
@@ -99,6 +100,11 @@ export async function PATCH(req: Request, context: Params) {
     logEvent("info", "study_thread.patch_ok", { ...requestMeta, userId: session.user.id });
     return NextResponse.json({ thread: toThreadSummary(thread) });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       logEvent("warn", "study_thread.invalid_input", requestMeta);
       return NextResponse.json({ error: "Invalid patch payload." }, { status: 400 });
