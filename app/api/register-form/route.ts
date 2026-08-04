@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { readUrlEncodedBody, RequestBodyError } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 function getOrigin(req: Request) {
   const url = new URL(req.url);
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
       .normalize("NFKC")
       .toLowerCase();
     const password = String(formData.get("password") ?? "");
+    const turnstileToken = String(
+      formData.get("cf-turnstile-response") ?? ""
+    );
 
     if (
       !email ||
@@ -56,6 +60,22 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.redirect(
         buildRegisterRedirect(req, "Invalid registration input.", { email, name }),
+        303
+      );
+    }
+
+    const verification = await verifyTurnstile(req, turnstileToken);
+    if (!verification.success) {
+      logEvent("warn", "register_form.turnstile_rejected", {
+        ...requestMeta,
+        reason: verification.reason
+      });
+      return NextResponse.redirect(
+        buildRegisterRedirect(
+          req,
+          "Verification failed. Please try again.",
+          { email, name }
+        ),
         303
       );
     }

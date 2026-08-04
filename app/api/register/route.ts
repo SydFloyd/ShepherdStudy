@@ -8,11 +8,13 @@ import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(80).optional().or(z.literal("")),
   email: z.string().trim().max(254).email(),
-  password: z.string().min(8).max(128)
+  password: z.string().min(8).max(128),
+  turnstileToken: z.string().min(1).max(2048)
 });
 
 export async function POST(req: Request) {
@@ -28,6 +30,18 @@ export async function POST(req: Request) {
     const body = await readJsonBody(req, 16 * 1024);
     const input = registerSchema.parse(body);
     const email = input.email.normalize("NFKC").toLowerCase();
+
+    const verification = await verifyTurnstile(req, input.turnstileToken);
+    if (!verification.success) {
+      logEvent("warn", "register.turnstile_rejected", {
+        ...requestMeta,
+        reason: verification.reason
+      });
+      return NextResponse.json(
+        { error: "Verification failed. Please try again." },
+        { status: 403 }
+      );
+    }
 
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) {

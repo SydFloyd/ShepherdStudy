@@ -41,7 +41,9 @@ npm install
 cp .env.example .env
 ```
 
-Set `NEXTAUTH_SECRET` and `OPENAI_API_KEY`.
+Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`, and
+`TURNSTILE_HOSTNAMES`. Use `localhost,127.0.0.1` only for local development;
+production must list only its public registration hostnames.
 
 3. Generate Prisma client and migrate DB:
 
@@ -64,7 +66,7 @@ Open `http://localhost:3000`.
 
 ## API endpoints
 
-- `POST /api/register`
+- `POST /api/register` (requires a `turnstileToken` from the registration widget)
 - `POST /api/study`
 - `GET|POST /api/auth/[...nextauth]`
 
