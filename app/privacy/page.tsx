@@ -20,8 +20,10 @@ export default function PrivacyPage() {
       <h2>Third-Party Services</h2>
       <p>
         AI responses are generated through OpenAI. Postmark processes account emails.
-        Error monitoring is handled by Sentry. Hosting and database infrastructure may
-        process data as required to operate the service.
+        Stripe processes optional contributions and associated payment information;
+        ShepherdStudy does not receive full card details. Error monitoring is handled
+        by Sentry. Hosting and database infrastructure may process data as required to
+        operate the service.
       </p>
 
       <h2>Retention</h2>

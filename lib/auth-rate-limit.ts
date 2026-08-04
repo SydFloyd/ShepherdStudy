@@ -11,6 +11,7 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
 const ACCOUNT_EMAIL_WINDOW_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_CONFIRM_WINDOW_MS = 15 * 60 * 1000;
+const DONATION_CHECKOUT_WINDOW_MS = 15 * 60 * 1000;
 const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type RateLimitRule = {
@@ -46,7 +47,8 @@ function buildRuleKeys(input: {
     | "register"
     | "verify_email"
     | "reset_password"
-    | "reset_confirm";
+    | "reset_confirm"
+    | "donation_checkout";
   headers: RequestHeaderSource;
   normalizedEmail: string;
 }) {
@@ -60,6 +62,28 @@ function buildRuleKeys(input: {
       `${actor}|${account}`
     )}`
   };
+}
+
+function getDonationCheckoutRules(input: {
+  headers: RequestHeaderSource;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys({
+    action: "donation_checkout",
+    headers: input.headers,
+    normalizedEmail: "donation"
+  });
+  return [
+    {
+      key: keys.actor,
+      limit: readPositiveInteger(
+        process.env.DONATION_CHECKOUTS_PER_15_MINUTES,
+        10,
+        1_000
+      ),
+      windowMs: DONATION_CHECKOUT_WINDOW_MS,
+      scope: "actor"
+    }
+  ];
 }
 
 function getPasswordResetConfirmationRules(input: {
@@ -357,7 +381,14 @@ export function consumePasswordResetConfirmationRateLimit(input: {
   );
 }
 
+export function consumeDonationCheckoutRateLimit(input: { request: Request }) {
+  return consumeRules(
+    getDonationCheckoutRules({ headers: input.request.headers })
+  );
+}
+
 export const __testables = {
   buildRuleKeys,
+  getDonationCheckoutRules,
   readPositiveInteger
 };

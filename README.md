@@ -44,9 +44,11 @@ cp .env.example .env
 
 Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`,
 `TURNSTILE_HOSTNAMES`, `CRON_SECRET`, `POSTMARK_API_KEY`, and
-`POSTMARK_FROM_EMAIL`. The Postmark sender must be a confirmed sender signature
-or use a verified domain. Use `localhost,127.0.0.1` only for local development;
-production must list only its public registration hostnames.
+`POSTMARK_FROM_EMAIL`. Set `STRIPE_SECRET_KEY` to accept optional contributions
+through hosted Stripe Checkout; the publishable key is not used by this flow.
+The Postmark sender must be a confirmed sender signature or use a verified
+domain. Use `localhost,127.0.0.1` only for local development; production must
+list only its public registration hostnames.
 
 3. Generate Prisma client and migrate DB:
 
@@ -71,6 +73,7 @@ Open `http://localhost:3000`.
 
 - `POST /api/register` (requires a `turnstileToken` from the registration widget)
 - `POST /api/study`
+- `POST /api/donations/checkout` (creates a hosted, one-time Stripe Checkout session)
 - `GET|POST /api/auth/[...nextauth]`
 
 ## Self-hosted Bible data
