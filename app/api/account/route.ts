@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { MEMORIZATION_TRANSLATION_IDS } from "@/lib/bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -12,6 +13,7 @@ import { captureServerException } from "@/lib/sentry";
 
 const updateSchema = z.object({
   name: z.string().trim().max(80).optional(),
+  preferredTranslation: z.enum(MEMORIZATION_TRANSLATION_IDS).optional(),
   currentPassword: z.string().min(1).max(128).optional(),
   newPassword: z.string().min(8).max(128).optional()
 });
@@ -42,6 +44,7 @@ export async function GET(req: Request) {
         email: true,
         name: true,
         accountTier: true,
+        preferredTranslation: true,
         createdAt: true
       }
     });
@@ -56,6 +59,7 @@ export async function GET(req: Request) {
         email: user.email,
         name: user.name,
         accountTier: user.accountTier,
+        preferredTranslation: user.preferredTranslation,
         createdAt: user.createdAt.toISOString()
       }
     });
@@ -119,9 +123,13 @@ export async function PATCH(req: Request) {
       name?: string | null;
       passwordHash?: string;
       authVersion?: { increment: number };
+      preferredTranslation?: (typeof MEMORIZATION_TRANSLATION_IDS)[number];
     } = {};
     if (input.name !== undefined) {
       data.name = nextName;
+    }
+    if (input.preferredTranslation !== undefined) {
+      data.preferredTranslation = input.preferredTranslation;
     }
     if (wantsPasswordChange && input.newPassword) {
       data.passwordHash = await bcrypt.hash(input.newPassword, 12);

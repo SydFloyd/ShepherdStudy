@@ -9,24 +9,92 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  name               String?
-  passwordHash       String
-  emailVerifiedAt    DateTime?
-  authVersion        Int                 @default(0)
-  accountTier        AccountTier         @default(FREE)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  studySessions      StudySession[]
-  studyGraphSessions StudyGraphSession[]
-  studyGraphNodes    StudyGraphNode[]
-  studyGraphEdges    StudyGraphEdge[]
-  dailyQuotaUsages   DailyQuotaUsage[]
-  usageEvents        UsageEvent[]
-  studyThreads       StudyThread[]
-  studyMessages      StudyMessage[]
-  accountTokens      AccountToken[]
+  id                              String                           @id @default(cuid())
+  email                           String                           @unique
+  name                            String?
+  passwordHash                    String
+  emailVerifiedAt                 DateTime?
+  authVersion                     Int                              @default(0)
+  accountTier                     AccountTier                      @default(FREE)
+  preferredTranslation            String                           @default("web")
+  createdAt                       DateTime                         @default(now())
+  updatedAt                       DateTime                         @updatedAt
+  studySessions                   StudySession[]
+  studyGraphSessions              StudyGraphSession[]
+  studyGraphNodes                 StudyGraphNode[]
+  studyGraphEdges                 StudyGraphEdge[]
+  dailyQuotaUsages                DailyQuotaUsage[]
+  usageEvents                     UsageEvent[]
+  studyThreads                    StudyThread[]
+  studyMessages                   StudyMessage[]
+  accountTokens                   AccountToken[]
+  memorizationPassages            MemorizationPassage[]
+  memorizationAttempts            MemorizationAttempt[]
+  memorizationRecommendationCache MemorizationRecommendationCache?
+}
+
+model MemorizationPassage {
+  id                    String                @id @default(cuid())
+  userId                String
+  translation           String
+  reference             String
+  book                  String
+  bookOrder             Int
+  chapter               Int
+  verseStart            Int
+  verseEnd              Int
+  isWholeChapter        Boolean               @default(false)
+  text                  String
+  verses                Json
+  textAttemptCount      Int                   @default(0)
+  latestTextScore       Int?
+  bestTextScore         Int?
+  referenceAttemptCount Int                   @default(0)
+  latestReferenceScore  Int?
+  bestReferenceScore    Int?
+  lastPracticedAt       DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts              MemorizationAttempt[]
+
+  @@unique([userId, translation, bookOrder, chapter, verseStart, verseEnd])
+  @@index([userId, updatedAt])
+  @@index([userId, bookOrder, chapter, verseStart])
+}
+
+model MemorizationAttempt {
+  id        String                  @id @default(cuid())
+  passageId String
+  userId    String
+  mode      MemorizationAttemptMode
+  score     Int
+  wordCount Int
+  createdAt DateTime                @default(now())
+  passage   MemorizationPassage     @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([passageId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model MemorizationRecommendationCache {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  sourceFingerprint String
+  translation       String
+  model             String
+  payload           Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sourceFingerprint])
+}
+
+enum MemorizationAttemptMode {
+  TEXT
+  REFERENCE
 }
 
 model AccountToken {

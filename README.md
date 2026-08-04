@@ -27,6 +27,8 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 - Optional original-language versions: UHB (Hebrew OT), UGNT (Greek NT)
 - Save study sessions for authenticated users
 - Dashboard showing recent sessions
+- Save a verse, contiguous range, or whole chapter for memorization practice
+- Word-level recall scoring, reverse-address flashcards, and cached next-passage suggestions
 
 ## Local setup
 
@@ -74,6 +76,7 @@ Open `http://localhost:3000`.
 - `POST /api/register` (requires a `turnstileToken` from the registration widget)
 - `POST /api/study`
 - `POST /api/donations/checkout` (creates a hosted, one-time Stripe Checkout session)
+- `GET /api/memorize` and authenticated memorization passage/attempt/recommendation routes
 - `GET|POST /api/auth/[...nextauth]`
 
 ## Self-hosted Bible data

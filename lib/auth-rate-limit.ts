@@ -12,6 +12,9 @@ const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
 const ACCOUNT_EMAIL_WINDOW_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_CONFIRM_WINDOW_MS = 15 * 60 * 1000;
 const DONATION_CHECKOUT_WINDOW_MS = 15 * 60 * 1000;
+const MEMORIZATION_RECOMMENDATION_WINDOW_MS = 60 * 60 * 1000;
+const MEMORIZATION_RECOMMENDATION_DAY_MS = 24 * 60 * 60 * 1000;
+const MEMORIZATION_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type RateLimitRule = {
@@ -48,7 +51,9 @@ function buildRuleKeys(input: {
     | "verify_email"
     | "reset_password"
     | "reset_confirm"
-    | "donation_checkout";
+    | "donation_checkout"
+    | "memorization_recommendation"
+    | "memorization_attempt";
   headers: RequestHeaderSource;
   normalizedEmail: string;
 }) {
@@ -82,6 +87,62 @@ function getDonationCheckoutRules(input: {
       ),
       windowMs: DONATION_CHECKOUT_WINDOW_MS,
       scope: "actor"
+    }
+  ];
+}
+
+function getMemorizationRecommendationRules(input: {
+  headers: RequestHeaderSource;
+  userId: string;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys({
+    action: "memorization_recommendation",
+    headers: input.headers,
+    normalizedEmail: input.userId
+  });
+  return [
+    {
+      key: `${keys.actorAccount}:hour`,
+      limit: readPositiveInteger(
+        process.env.MEMORIZATION_RECOMMENDATIONS_PER_HOUR,
+        3,
+        100
+      ),
+      windowMs: MEMORIZATION_RECOMMENDATION_WINDOW_MS,
+      scope: "actor_account"
+    },
+    {
+      key: `${keys.actorAccount}:day`,
+      limit: readPositiveInteger(
+        process.env.MEMORIZATION_RECOMMENDATIONS_PER_DAY,
+        10,
+        1_000
+      ),
+      windowMs: MEMORIZATION_RECOMMENDATION_DAY_MS,
+      scope: "actor_account"
+    }
+  ];
+}
+
+function getMemorizationAttemptRules(input: {
+  headers: RequestHeaderSource;
+  userId: string;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys({
+    action: "memorization_attempt",
+    headers: input.headers,
+    normalizedEmail: input.userId
+  });
+  return [
+    {
+      key: keys.actorAccount,
+      limit: readPositiveInteger(
+        process.env.MEMORIZATION_ATTEMPTS_PER_HOUR,
+        300,
+        10_000
+      ),
+      windowMs: MEMORIZATION_ATTEMPT_WINDOW_MS,
+      scope: "actor_account"
     }
   ];
 }
@@ -387,8 +448,34 @@ export function consumeDonationCheckoutRateLimit(input: { request: Request }) {
   );
 }
 
+export function consumeMemorizationRecommendationRateLimit(input: {
+  request: Request;
+  userId: string;
+}) {
+  return consumeRules(
+    getMemorizationRecommendationRules({
+      headers: input.request.headers,
+      userId: input.userId
+    })
+  );
+}
+
+export function consumeMemorizationAttemptRateLimit(input: {
+  request: Request;
+  userId: string;
+}) {
+  return consumeRules(
+    getMemorizationAttemptRules({
+      headers: input.request.headers,
+      userId: input.userId
+    })
+  );
+}
+
 export const __testables = {
   buildRuleKeys,
   getDonationCheckoutRules,
+  getMemorizationRecommendationRules,
+  getMemorizationAttemptRules,
   readPositiveInteger
 };
