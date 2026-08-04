@@ -30,9 +30,13 @@ declare global {
 
 type TurnstileSubmitProps = {
   siteKey: string;
+  label?: string;
 };
 
-export function TurnstileSubmit({ siteKey }: TurnstileSubmitProps) {
+export function TurnstileSubmit({
+  siteKey,
+  label = "Create account"
+}: TurnstileSubmitProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<TurnstileWidgetId | null>(null);
   const [token, setToken] = useState("");
@@ -91,7 +95,7 @@ export function TurnstileSubmit({ siteKey }: TurnstileSubmitProps) {
         </p>
       ) : null}
       <button type="submit" disabled={!token || scriptFailed}>
-        Create account
+        {label}
       </button>
     </>
   );

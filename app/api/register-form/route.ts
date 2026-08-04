@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { consumeRegistrationRateLimit } from "@/lib/auth-rate-limit";
+import { sendVerificationEmail } from "@/lib/account-email";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readUrlEncodedBody, RequestBodyError } from "@/lib/request-body";
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name: name ? name : null,
         email,
@@ -120,10 +121,27 @@ export async function POST(req: Request) {
       }
     });
 
+    let emailSent = true;
+    try {
+      await sendVerificationEmail(user);
+    } catch (error) {
+      emailSent = false;
+      captureServerException(error, {
+        route: "/api/register-form",
+        requestId
+      });
+      logEvent("error", "register_form.verification_email_failed", {
+        ...requestMeta,
+        error
+      });
+    }
+
     logEvent("info", "register_form.ok", requestMeta);
-    const target = new URL("/login", getOrigin(req));
+    const target = new URL("/verify-email", getOrigin(req));
     target.searchParams.set("registered", "1");
-    target.searchParams.set("email", email);
+    if (!emailSent) {
+      target.searchParams.set("delivery", "failed");
+    }
     return NextResponse.redirect(target, 303);
   } catch (error) {
     if (error instanceof RequestBodyError) {

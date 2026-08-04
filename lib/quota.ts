@@ -17,28 +17,93 @@ function readPositiveInteger(
   return Math.min(parsed, maximum);
 }
 
-const DAILY_LIMITS: Record<QuotaFeature, number> = {
-  STUDY: readPositiveInteger(process.env.STUDY_DAILY_LIMIT, 40, 10_000),
-  INTERLINEAR: readPositiveInteger(
-    process.env.INTERLINEAR_DAILY_LIMIT,
-    120,
-    10_000
-  )
-};
+export type QuotaTier = "ANONYMOUS" | "FREE" | "PAID";
 
-const BURST_PER_MINUTE: Record<QuotaFeature, number> = {
-  STUDY: readPositiveInteger(process.env.STUDY_BURST_PER_MINUTE, 8, 1_000),
-  INTERLINEAR: readPositiveInteger(
-    process.env.INTERLINEAR_BURST_PER_MINUTE,
-    20,
-    1_000
-  )
-};
+function getQuotaPolicy(tier: QuotaTier, feature: QuotaFeature) {
+  if (tier === "ANONYMOUS") {
+    return feature === "STUDY"
+      ? {
+          daily: readPositiveInteger(
+            process.env.ANONYMOUS_STUDY_DAILY_LIMIT,
+            5,
+            10_000
+          ),
+          burst: readPositiveInteger(
+            process.env.ANONYMOUS_STUDY_BURST_PER_MINUTE,
+            3,
+            1_000
+          )
+        }
+      : {
+          daily: readPositiveInteger(
+            process.env.ANONYMOUS_INTERLINEAR_DAILY_LIMIT,
+            20,
+            10_000
+          ),
+          burst: readPositiveInteger(
+            process.env.ANONYMOUS_INTERLINEAR_BURST_PER_MINUTE,
+            8,
+            1_000
+          )
+        };
+  }
+
+  if (tier === "PAID") {
+    return feature === "STUDY"
+      ? {
+          daily: readPositiveInteger(
+            process.env.PAID_STUDY_DAILY_LIMIT,
+            2_000,
+            100_000
+          ),
+          burst: readPositiveInteger(
+            process.env.PAID_STUDY_BURST_PER_MINUTE,
+            30,
+            10_000
+          )
+        }
+      : {
+          daily: readPositiveInteger(
+            process.env.PAID_INTERLINEAR_DAILY_LIMIT,
+            5_000,
+            100_000
+          ),
+          burst: readPositiveInteger(
+            process.env.PAID_INTERLINEAR_BURST_PER_MINUTE,
+            60,
+            10_000
+          )
+        };
+  }
+
+  return feature === "STUDY"
+    ? {
+        daily: readPositiveInteger(process.env.STUDY_DAILY_LIMIT, 40, 10_000),
+        burst: readPositiveInteger(
+          process.env.STUDY_BURST_PER_MINUTE,
+          8,
+          1_000
+        )
+      }
+    : {
+        daily: readPositiveInteger(
+          process.env.INTERLINEAR_DAILY_LIMIT,
+          120,
+          10_000
+        ),
+        burst: readPositiveInteger(
+          process.env.INTERLINEAR_BURST_PER_MINUTE,
+          20,
+          1_000
+        )
+      };
+}
 
 type QuotaDecision =
   | {
       allowed: true;
       feature: QuotaFeature;
+      tier: QuotaTier;
       limit: number;
       remaining: number;
       resetAt: string;
@@ -46,6 +111,7 @@ type QuotaDecision =
   | {
       allowed: false;
       feature: QuotaFeature;
+      tier: QuotaTier;
       limit: number;
       remaining: number;
       resetAt: string;
@@ -77,8 +143,21 @@ export const __testables = {
   startOfUtcDay,
   nextUtcDayStart,
   getActorKey,
-  readPositiveInteger
+  readPositiveInteger,
+  getQuotaPolicy
 };
+
+async function resolveQuotaTier(userId?: string | null): Promise<QuotaTier> {
+  if (!userId) {
+    return "ANONYMOUS";
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { accountTier: true }
+  });
+  return user?.accountTier === "PAID" ? "PAID" : "FREE";
+}
 
 function isRetryableQuotaConflict(error: unknown) {
   if (!error || typeof error !== "object") {
@@ -101,9 +180,10 @@ export async function consumeQuota(input: {
     userId: input.userId,
     request: input.request
   });
-
-  const limit = DAILY_LIMITS[input.feature];
-  const burstLimit = BURST_PER_MINUTE[input.feature];
+  const tier = await resolveQuotaTier(input.userId);
+  const policy = getQuotaPolicy(tier, input.feature);
+  const limit = policy.daily;
+  const burstLimit = policy.burst;
   const oneMinuteMs = 60_000;
 
   async function consumeInTransaction() {
@@ -136,6 +216,7 @@ export async function consumeQuota(input: {
           return {
             allowed: true as const,
             feature: input.feature,
+            tier,
             limit,
             remaining: Math.max(0, limit - 1),
             resetAt
@@ -146,6 +227,7 @@ export async function consumeQuota(input: {
           return {
             allowed: false as const,
             feature: input.feature,
+            tier,
             limit,
             remaining: 0,
             resetAt,
@@ -166,6 +248,7 @@ export async function consumeQuota(input: {
           return {
             allowed: false as const,
             feature: input.feature,
+            tier,
             limit,
             remaining: Math.max(0, limit - usage.requestCount),
             resetAt,
@@ -194,6 +277,7 @@ export async function consumeQuota(input: {
         return {
           allowed: true as const,
           feature: input.feature,
+          tier,
           limit,
           remaining: Math.max(0, limit - updated.requestCount),
           resetAt

@@ -277,7 +277,8 @@ export async function POST(req: Request) {
       passage: passagesPayload[0]?.reference,
       passages: passagesPayload.map((item) => item.reference),
       prompt: effectivePrompt,
-      history: input.history
+      history: input.history,
+      tier: quotaDecision.tier
     });
 
     if (passagesPayload.length === 0 && response.recommendations.length > 0) {

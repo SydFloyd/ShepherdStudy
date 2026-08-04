@@ -42,11 +42,19 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             defaultValue={email}
             placeholder="you@example.com"
             required
+            autoComplete="email"
           />
         </label>
         <label>
           Password
-          <input name="password" type="password" required minLength={8} />
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
+          />
         </label>
         <TurnstileSubmit siteKey={siteKey} />
       </form>

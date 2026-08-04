@@ -41,6 +41,7 @@ export async function GET(req: Request) {
         id: true,
         email: true,
         name: true,
+        accountTier: true,
         createdAt: true
       }
     });
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
+        accountTier: user.accountTier,
         createdAt: user.createdAt.toISOString()
       }
     });
@@ -113,12 +115,17 @@ export async function PATCH(req: Request) {
       }
     }
 
-    const data: { name?: string | null; passwordHash?: string } = {};
+    const data: {
+      name?: string | null;
+      passwordHash?: string;
+      authVersion?: { increment: number };
+    } = {};
     if (input.name !== undefined) {
       data.name = nextName;
     }
     if (wantsPasswordChange && input.newPassword) {
       data.passwordHash = await bcrypt.hash(input.newPassword, 12);
+      data.authVersion = { increment: 1 };
     }
 
     if (Object.keys(data).length === 0) {

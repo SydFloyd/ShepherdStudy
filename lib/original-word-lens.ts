@@ -60,18 +60,15 @@ function getClient() {
   });
 }
 
-function getModel() {
-  return process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-}
-
 async function callRows<S extends z.ZodTypeAny>(input: {
   systemPrompt: string;
   userPayload: object;
   rowSchema: S;
+  model?: string;
 }) {
   const client = getClient();
   const completion = await client.chat.completions.create({
-    model: getModel(),
+    model: input.model ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
     response_format: { type: "json_object" },
     temperature: 0.1,
     messages: [
@@ -199,10 +196,12 @@ export async function generateWordLensInterlinearMap(input: {
   targetTranslationName: string;
   targetVerseText: string;
   words: WordLensToken[];
+  model?: string;
 }) {
   const rows = await callRows({
     systemPrompt: interlinearMapSystemPrompt,
     rowSchema: interlinearMapRowSchema,
+    model: input.model,
     userPayload: {
       reference: input.reference,
       sourceTranslationName: input.sourceTranslationName,
@@ -220,10 +219,12 @@ export async function generateWordLensTransliterations(input: {
   reference: string;
   sourceTranslationName: string;
   words: WordLensToken[];
+  model?: string;
 }) {
   return callRows({
     systemPrompt: transliterationSystemPrompt,
     rowSchema: transliterationRowSchema,
+    model: input.model,
     userPayload: {
       reference: input.reference,
       sourceTranslationName: input.sourceTranslationName,
@@ -239,10 +240,12 @@ export async function generateWordLensNotes(input: {
   targetTranslationName: string;
   targetVerseText: string;
   words: WordLensToken[];
+  model?: string;
 }) {
   return callRows({
     systemPrompt: notesSystemPrompt,
     rowSchema: noteRowSchema,
+    model: input.model,
     userPayload: {
       reference: input.reference,
       sourceTranslationName: input.sourceTranslationName,
@@ -258,10 +261,12 @@ export async function generateWordLensMorphology(input: {
   reference: string;
   sourceTranslationName: string;
   words: WordLensToken[];
+  model?: string;
 }) {
   return callRows({
     systemPrompt: morphologySystemPrompt,
     rowSchema: morphologyRowSchema,
+    model: input.model,
     userPayload: {
       reference: input.reference,
       sourceTranslationName: input.sourceTranslationName,

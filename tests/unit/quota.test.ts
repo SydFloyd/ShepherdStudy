@@ -28,6 +28,21 @@ describe("quota helpers", () => {
     expect(__testables.readPositiveInteger("500", 40, 100)).toBe(100);
   });
 
+  it("assigns smaller anonymous limits and very high paid limits", () => {
+    expect(__testables.getQuotaPolicy("ANONYMOUS", "STUDY")).toEqual({
+      daily: 5,
+      burst: 3
+    });
+    expect(__testables.getQuotaPolicy("FREE", "STUDY")).toEqual({
+      daily: 40,
+      burst: 8
+    });
+    expect(__testables.getQuotaPolicy("PAID", "STUDY")).toEqual({
+      daily: 2000,
+      burst: 30
+    });
+  });
+
   it("calculates UTC day boundaries", () => {
     const date = new Date("2026-02-14T23:59:59.900Z");
     const start = __testables.startOfUtcDay(date);

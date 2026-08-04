@@ -15,7 +15,11 @@ const REDACT_KEYS = new Set([
   "reply",
   "answer",
   "context",
-  "email"
+  "email",
+  "token",
+  "tokenhash",
+  "apikey",
+  "api_key"
 ]);
 
 function sanitize(value: unknown): unknown {

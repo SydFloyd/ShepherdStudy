@@ -15,8 +15,8 @@ describePostgres("PostgreSQL concurrency controls", () => {
   it(
     "does not exceed a burst quota under concurrent requests",
     async () => {
-      vi.stubEnv("STUDY_DAILY_LIMIT", "100");
-      vi.stubEnv("STUDY_BURST_PER_MINUTE", "5");
+      vi.stubEnv("ANONYMOUS_STUDY_DAILY_LIMIT", "100");
+      vi.stubEnv("ANONYMOUS_STUDY_BURST_PER_MINUTE", "5");
       vi.resetModules();
       const quota = await import("@/lib/quota");
       const uniqueIp = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;

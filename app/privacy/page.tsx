@@ -2,12 +2,13 @@ export default function PrivacyPage() {
   return (
     <section className="card legalPage">
       <h1>Privacy Policy</h1>
-      <p className="muted">Last updated: February 14, 2026</p>
+      <p className="muted">Last updated: August 4, 2026</p>
 
       <h2>What We Collect</h2>
       <p>
         ShepherdStudy stores account details (email, display name), study conversation
-        history, and operational logs required to keep the service secure and reliable.
+        history, short-lived hashed account-recovery tokens, and operational logs
+        required to keep the service secure and reliable.
       </p>
 
       <h2>How We Use Data</h2>
@@ -18,16 +19,17 @@ export default function PrivacyPage() {
 
       <h2>Third-Party Services</h2>
       <p>
-        AI responses are generated through OpenAI. Error monitoring is handled by
-        Sentry. Hosting and database infrastructure may process data as required to
-        operate the service.
+        AI responses are generated through OpenAI. Postmark processes account emails.
+        Error monitoring is handled by Sentry. Hosting and database infrastructure may
+        process data as required to operate the service.
       </p>
 
       <h2>Retention</h2>
       <p>
         Study history remains available until you request deletion or we remove data
-        for legal/compliance reasons. Operational logs are retained according to
-        infrastructure defaults and security needs.
+        for legal/compliance reasons. Verification and password-reset links expire
+        automatically. Operational logs are retained according to infrastructure
+        defaults and security needs.
       </p>
 
       <h2>Your Choices</h2>

@@ -12,6 +12,7 @@ type AccountPayload = {
     id: string;
     email: string;
     name: string | null;
+    accountTier: "FREE" | "PAID";
     createdAt: string;
   };
 };
@@ -22,6 +23,7 @@ export default function AccountPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [createdAt, setCreatedAt] = useState("");
+  const [accountTier, setAccountTier] = useState<"FREE" | "PAID">("FREE");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -67,6 +69,7 @@ export default function AccountPage() {
       setEmail(data.account.email);
       setName(data.account.name ?? "");
       setCreatedAt(new Date(data.account.createdAt).toLocaleString());
+      setAccountTier(data.account.accountTier);
       setIsLoading(false);
     }
 
@@ -118,10 +121,7 @@ export default function AccountPage() {
       return;
     }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setMessage("Password updated.");
-    setIsSavingPassword(false);
+    await signOut({ callbackUrl: "/login?passwordChanged=1" });
   }
 
   async function onDeleteAccount(event: React.FormEvent<HTMLFormElement>) {
@@ -173,6 +173,9 @@ export default function AccountPage() {
         <h1>Account</h1>
         <p className="muted">Email: {email}</p>
         <p className="muted">Member since: {createdAt}</p>
+        <p className="muted">
+          Plan: {accountTier === "PAID" ? "Paid" : "Free"}
+        </p>
       </article>
 
       <article className="card">
