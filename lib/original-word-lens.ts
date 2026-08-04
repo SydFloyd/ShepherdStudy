@@ -70,7 +70,6 @@ async function callRows<S extends z.ZodTypeAny>(input: {
   const completion = await client.chat.completions.create({
     model: input.model ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
     response_format: { type: "json_object" },
-    temperature: 0.1,
     messages: [
       { role: "system", content: input.systemPrompt },
       { role: "user", content: JSON.stringify(input.userPayload, null, 2) }

@@ -41,7 +41,6 @@ export async function generateMemorizationRecommendations(input: {
   const completion = await getClient().chat.completions.create({
     model,
     response_format: { type: "json_object" },
-    temperature: 0.2,
     messages: [
       {
         role: "system",
