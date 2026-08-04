@@ -7,7 +7,8 @@ Last reviewed: August 4, 2026
 1. **Patched vulnerable dependencies (critical).** Updated the supported Next.js,
    NextAuth, Sentry, Prisma, adm-zip, ESLint, Playwright, and Vitest release lines.
    `npm audit` now reports zero known vulnerabilities, down from 27 including one
-   critical advisory.
+   critical advisory. The supported and CI runtime is Node.js 24 instead of the
+   end-of-life Node.js 20 line, and CI actions are pinned to reviewed release SHAs.
 2. **Bounded every API request body (high).** JSON routes now stream through a
    shared 256 KiB ceiling and reject oversized, malformed, invalid UTF-8, or
    dishonest `Content-Length` requests. Registration forms use a 16 KiB
