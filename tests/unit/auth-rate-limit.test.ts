@@ -59,4 +59,22 @@ describe("authentication rate-limit helpers", () => {
     expect(reset.actorAccount).not.toBe(verification.actorAccount);
     expect(JSON.stringify(reset)).not.toContain("person@example.com");
   });
+
+  it("uses one pseudonymous actor bucket for donation checkout creation", () => {
+    vi.stubEnv("RATE_LIMIT_SECRET", "rate-limit-test-secret");
+    vi.stubEnv("DONATION_CHECKOUTS_PER_15_MINUTES", "12");
+
+    const rules = __testables.getDonationCheckoutRules({
+      headers: { "x-forwarded-for": "203.0.113.25" }
+    });
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toEqual(
+      expect.objectContaining({ limit: 12, scope: "actor" })
+    );
+    expect(rules[0].key).toMatch(
+      /^donation_checkout:actor:[a-f0-9]{32}$/
+    );
+    expect(rules[0].key).not.toContain("203.0.113.25");
+  });
 });

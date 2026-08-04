@@ -2,7 +2,7 @@ export default function TermsPage() {
   return (
     <section className="card legalPage">
       <h1>Terms of Service</h1>
-      <p className="muted">Last updated: February 14, 2026</p>
+      <p className="muted">Last updated: August 4, 2026</p>
 
       <h2>Service Scope</h2>
       <p>
@@ -32,6 +32,12 @@ export default function TermsPage() {
       <p>
         The service may change, pause, or be discontinued at any time without
         guarantee of uninterrupted availability.
+      </p>
+
+      <h2>Optional Contributions</h2>
+      <p>
+        Voluntary contributions are processed by Stripe. They do not purchase
+        features, support priority, or service guarantees.
       </p>
     </section>
   );
