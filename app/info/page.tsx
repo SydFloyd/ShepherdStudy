@@ -45,6 +45,13 @@ export default function InfoPage() {
           Analyze one verse at a time in original language with AI-assisted
           word-by-word transliteration, translation, and morphology support.
         </p>
+        <h3>
+          <Link href="/memorize">Memorize</Link>
+        </h3>
+        <p>
+          Save a verse, contiguous passage, or whole chapter; practice recall
+          with word-level feedback; and test both the text and its address.
+        </p>
       </article>
 
       <article className="card infoLicenseCard">

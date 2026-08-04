@@ -2,6 +2,10 @@ export const BIBLE_TRANSLATION_IDS = ["web", "kjv", "asv", "uhb", "ugnt"] as con
 export type BibleTranslationId = (typeof BIBLE_TRANSLATION_IDS)[number];
 export const DEFAULT_BIBLE_TRANSLATION: BibleTranslationId = "web";
 
+export const MEMORIZATION_TRANSLATION_IDS = ["web", "kjv", "asv"] as const;
+export type MemorizationTranslationId =
+  (typeof MEMORIZATION_TRANSLATION_IDS)[number];
+
 export const BIBLE_TRANSLATIONS = [
   { value: "web", label: "WEB (default)" },
   { value: "kjv", label: "KJV" },
@@ -9,6 +13,18 @@ export const BIBLE_TRANSLATIONS = [
   { value: "uhb", label: "UHB (Hebrew OT)" },
   { value: "ugnt", label: "UGNT (Greek NT)" }
 ] as const;
+
+export const MEMORIZATION_TRANSLATIONS = [
+  { value: "web", label: "WEB" },
+  { value: "kjv", label: "KJV" },
+  { value: "asv", label: "ASV" }
+] as const;
+
+export function isMemorizationTranslation(
+  value: string
+): value is MemorizationTranslationId {
+  return (MEMORIZATION_TRANSLATION_IDS as readonly string[]).includes(value);
+}
 
 export const BIBLE_TRANSLATION_BY_ID = Object.fromEntries(
   BIBLE_TRANSLATIONS.map((item) => [item.value, item.label])

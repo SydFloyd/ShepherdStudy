@@ -229,6 +229,317 @@ a {
   margin-bottom: 6px;
 }
 
+.secondaryButton {
+  border: 1px solid var(--stroke);
+  background: #f3eee3;
+  color: var(--ink);
+}
+
+.dangerButton {
+  background: #8a3f37;
+}
+
+.memorizePage {
+  gap: 14px;
+}
+
+.memorizeHeaderCard {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.memorizeHeaderCard h1,
+.memorizeHeaderCard p {
+  margin-bottom: 0;
+}
+
+.memorizeTranslationControl {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) auto;
+  align-items: end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.memorizeAddForm {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.memorizeAddHint {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
+.memorizeMessage {
+  margin: 0;
+  border: 1px solid #bfd6b7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #eef6e9;
+}
+
+.memorizeTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.memorizeTabs button {
+  border: 1px solid var(--stroke);
+  background: #f3eee3;
+  color: var(--ink);
+}
+
+.memorizeTabs button.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.memorizeWorkspace {
+  display: grid;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.memorizeLibrary h2 {
+  margin-bottom: 10px;
+}
+
+.memorizeLibraryList {
+  display: grid;
+  gap: 8px;
+  max-height: min(70vh, 760px);
+  overflow-y: auto;
+}
+
+.memorizeLibraryList button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid var(--stroke);
+  background: #f8f4eb;
+  color: var(--ink);
+  text-align: left;
+}
+
+.memorizeLibraryList button.active {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: #eef6e9;
+}
+
+.memorizeLibraryList small {
+  color: var(--muted);
+}
+
+.memorizePracticeCard,
+.memorizeTestCard {
+  display: grid;
+  gap: 16px;
+}
+
+.memorizePracticeHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.memorizePracticeHeader h2 {
+  margin: 6px 0 0;
+}
+
+.memorizePracticeHeader .pill {
+  margin: 0;
+}
+
+.memorizePassageText {
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 12px;
+  background: #faf7f0;
+  font-size: 1.04rem;
+  line-height: 1.75;
+}
+
+.memorizeVerseText {
+  display: inline;
+}
+
+.memorizeAssessment {
+  border-top: 1px solid var(--stroke);
+  padding-top: 14px;
+}
+
+.memorizeAssessment h3,
+.memorizeAssessment h4 {
+  margin-bottom: 6px;
+}
+
+.memorizeAssessmentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.memorizeAssessmentGrid > div {
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 10px;
+  background: #faf7f0;
+}
+
+.memorizeRecallTokens {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  line-height: 1.7;
+}
+
+.memorizeRecallToken {
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+.memorizeRecallToken.correct {
+  background: #dff2d8;
+  color: #244d2a;
+}
+
+.memorizeRecallToken.incorrect,
+.memorizeRecallToken.missing {
+  background: #f9dede;
+  color: #7a2f29;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+.memorizeLegend {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.memorizeTestControls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.memorizeTestControls label {
+  min-width: 220px;
+}
+
+.memorizeTestPrompt {
+  display: grid;
+  gap: 14px;
+}
+
+.memorizeTestPrompt h2,
+.memorizeTestPrompt > .muted {
+  margin: 0;
+}
+
+.memorizeProgressList,
+.memorizeRecommendationList {
+  display: grid;
+  gap: 10px;
+}
+
+.memorizeProgressItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(360px, 2fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 12px;
+  background: #faf7f0;
+}
+
+.memorizeProgressItem h3,
+.memorizeProgressItem p {
+  margin: 0;
+}
+
+.memorizeProgressItem dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(80px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.memorizeProgressItem dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.memorizeProgressItem dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+
+.memorizeRecommendationsCard {
+  display: grid;
+  gap: 12px;
+}
+
+.memorizeRecommendationsCard > button {
+  width: fit-content;
+}
+
+.memorizeRecommendationList section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 12px;
+  background: #faf7f0;
+}
+
+.memorizeRecommendationList h3,
+.memorizeRecommendationList p {
+  margin: 0;
+}
+
+.memorizeRecommendationList p {
+  margin-top: 4px;
+}
+
+@media (max-width: 860px) {
+  .memorizeHeaderCard,
+  .memorizePracticeHeader,
+  .memorizeRecommendationList section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .memorizeTranslationControl,
+  .memorizeAddForm,
+  .memorizeWorkspace,
+  .memorizeAssessmentGrid,
+  .memorizeProgressItem {
+    grid-template-columns: 1fr;
+  }
+
+  .memorizeTestControls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .memorizeProgressItem dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .donationForm {
   max-width: 420px;
   margin: 20px 0;

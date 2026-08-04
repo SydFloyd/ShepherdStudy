@@ -77,4 +77,44 @@ describe("authentication rate-limit helpers", () => {
     );
     expect(rules[0].key).not.toContain("203.0.113.25");
   });
+
+  it("limits recommendation generation by pseudonymous user pair", () => {
+    vi.stubEnv("RATE_LIMIT_SECRET", "rate-limit-test-secret");
+    vi.stubEnv("MEMORIZATION_RECOMMENDATIONS_PER_HOUR", "7");
+
+    const rules = __testables.getMemorizationRecommendationRules({
+      headers: { "x-forwarded-for": "203.0.113.25" },
+      userId: "user-private-id"
+    });
+
+    expect(rules).toHaveLength(2);
+    expect(rules[0]).toEqual(
+      expect.objectContaining({ limit: 7, scope: "actor_account" })
+    );
+    expect(rules[0].key).toMatch(
+      /^memorization_recommendation:pair:[a-f0-9]{32}:hour$/
+    );
+    expect(rules[1].key).toMatch(
+      /^memorization_recommendation:pair:[a-f0-9]{32}:day$/
+    );
+    expect(rules[0].key).not.toContain("user-private-id");
+  });
+
+  it("allows substantial practice while bounding saved attempt writes", () => {
+    vi.stubEnv("RATE_LIMIT_SECRET", "rate-limit-test-secret");
+    vi.stubEnv("MEMORIZATION_ATTEMPTS_PER_HOUR", "450");
+
+    const rules = __testables.getMemorizationAttemptRules({
+      headers: { "x-forwarded-for": "203.0.113.25" },
+      userId: "user-private-id"
+    });
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toEqual(
+      expect.objectContaining({ limit: 450, scope: "actor_account" })
+    );
+    expect(rules[0].key).toMatch(
+      /^memorization_attempt:pair:[a-f0-9]{32}$/
+    );
+  });
 });

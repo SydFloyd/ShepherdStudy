@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuthStatus } from "@/hooks/use-auth-status";
+import {
+  MEMORIZATION_TRANSLATIONS,
+  MemorizationTranslationId
+} from "@/lib/bible";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
 type AccountPayload = {
@@ -13,6 +17,7 @@ type AccountPayload = {
     email: string;
     name: string | null;
     accountTier: "FREE" | "PAID";
+    preferredTranslation: MemorizationTranslationId;
     createdAt: string;
   };
 };
@@ -24,6 +29,8 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [accountTier, setAccountTier] = useState<"FREE" | "PAID">("FREE");
+  const [preferredTranslation, setPreferredTranslation] =
+    useState<MemorizationTranslationId>("web");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -70,6 +77,7 @@ export default function AccountPage() {
       setName(data.account.name ?? "");
       setCreatedAt(new Date(data.account.createdAt).toLocaleString());
       setAccountTier(data.account.accountTier);
+      setPreferredTranslation(data.account.preferredTranslation);
       setIsLoading(false);
     }
 
@@ -85,7 +93,7 @@ export default function AccountPage() {
     const response = await fetch("/api/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name, preferredTranslation })
     });
 
     const data = (await parseJsonSafe(response)) as { ok?: boolean; error?: string };
@@ -185,6 +193,23 @@ export default function AccountPage() {
             Display name
             <input value={name} onChange={(event) => setName(event.target.value)} />
           </label>
+          <label>
+            Preferred Bible translation
+            <select
+              value={preferredTranslation}
+              onChange={(event) =>
+                setPreferredTranslation(
+                  event.target.value as MemorizationTranslationId
+                )
+              }
+            >
+              {MEMORIZATION_TRANSLATIONS.map((translation) => (
+                <option key={translation.value} value={translation.value}>
+                  {translation.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="submit" disabled={isSavingProfile}>
             {isSavingProfile ? "Saving..." : "Save profile"}
           </button>
@@ -222,7 +247,8 @@ export default function AccountPage() {
       <article className="card">
         <h2>Delete account</h2>
         <p className="muted">
-          This permanently deletes your account and all saved study history.
+          This permanently deletes your account, saved study history, and
+          memorization progress.
         </p>
         <form className="grid" onSubmit={onDeleteAccount}>
           <label>

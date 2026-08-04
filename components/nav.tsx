@@ -110,6 +110,13 @@ export function Nav() {
             </Link>
             {isAuthenticated ? (
               <>
+                <Link
+                  href="/memorize"
+                  className={navLinkClass("/memorize")}
+                  role="menuitem"
+                >
+                  Memorize
+                </Link>
                 <Link href="/account" role="menuitem">
                   Settings
                 </Link>
@@ -148,38 +155,43 @@ export function Nav() {
           Interlinear
         </Link>
         {isAuthenticated ? (
-          <div className="navAccountMenu" ref={accountMenuRef}>
-            <button
-              type="button"
-              className="navAccountButton"
-              onClick={() => {
-                setAccountMenuOpen((current) => !current);
-                setMobileMenuOpen(false);
-              }}
-              aria-expanded={accountMenuOpen}
-              aria-haspopup="menu"
-            >
-              Account
-            </button>
-            {accountMenuOpen ? (
-              <div className="navAccountDropdown" role="menu">
-                <Link href="/account" onClick={() => setAccountMenuOpen(false)} role="menuitem">
-                  Settings
-                </Link>
-                <button
-                  type="button"
-                  className="navAccountSignout"
-                  role="menuitem"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    void signOut({ callbackUrl: "/" });
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : null}
-          </div>
+          <>
+            <Link href="/memorize" className={navLinkClass("/memorize")}>
+              Memorize
+            </Link>
+            <div className="navAccountMenu" ref={accountMenuRef}>
+              <button
+                type="button"
+                className="navAccountButton"
+                onClick={() => {
+                  setAccountMenuOpen((current) => !current);
+                  setMobileMenuOpen(false);
+                }}
+                aria-expanded={accountMenuOpen}
+                aria-haspopup="menu"
+              >
+                Account
+              </button>
+              {accountMenuOpen ? (
+                <div className="navAccountDropdown" role="menu">
+                  <Link href="/account" onClick={() => setAccountMenuOpen(false)} role="menuitem">
+                    Settings
+                  </Link>
+                  <button
+                    type="button"
+                    className="navAccountSignout"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      void signOut({ callbackUrl: "/" });
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </>
         ) : (
           <Link href="/login">Sign in</Link>
         )}
