@@ -103,6 +103,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        if (!user.emailVerifiedAt) {
+          logEvent("warn", "auth.login_unverified", { requestId });
+          return null;
+        }
+
         try {
           await clearLoginAccountFailures({
             headers: requestHeaders,
@@ -118,7 +123,8 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? undefined
+          name: user.name ?? undefined,
+          authVersion: user.authVersion
         };
       }
     })
@@ -127,12 +133,42 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        token.authVersion = user.authVersion;
+        token.authInvalid = false;
+        return token;
+      }
+
+      if (!token.sub || typeof token.authVersion !== "number") {
+        token.sub = undefined;
+        token.authInvalid = true;
+        return token;
+      }
+
+      try {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { authVersion: true, emailVerifiedAt: true }
+        });
+        if (
+          !currentUser?.emailVerifiedAt ||
+          currentUser.authVersion !== token.authVersion
+        ) {
+          token.sub = undefined;
+          token.authInvalid = true;
+        } else {
+          token.authInvalid = false;
+        }
+      } catch (error) {
+        logEvent("error", "auth.session_validation_failed", { error });
+        token.authInvalid = true;
       }
 
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
+      if (token.authInvalid || !token.sub) {
+        session.user = undefined;
+      } else if (session.user) {
         session.user.id = token.sub;
       }
 

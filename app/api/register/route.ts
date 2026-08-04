@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { consumeRegistrationRateLimit } from "@/lib/auth-rate-limit";
+import { sendVerificationEmail } from "@/lib/account-email";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await bcrypt.hash(input.password, 12);
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name: input.name?.trim() ? input.name.trim() : null,
         email,
@@ -81,8 +82,26 @@ export async function POST(req: Request) {
       }
     });
 
+    let emailSent = true;
+    try {
+      await sendVerificationEmail(user);
+    } catch (error) {
+      emailSent = false;
+      captureServerException(error, {
+        route: "/api/register",
+        requestId
+      });
+      logEvent("error", "register.verification_email_failed", {
+        ...requestMeta,
+        error
+      });
+    }
+
     logEvent("info", "register.ok", requestMeta);
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, verificationRequired: true, emailSent },
+      { status: 201 }
+    );
   } catch (error) {
     const bodyErrorResponse = requestBodyErrorResponse(error);
     if (bodyErrorResponse) {

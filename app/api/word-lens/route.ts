@@ -8,6 +8,7 @@ import {
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import { getOpenAIModelForTier } from "@/lib/model-tier";
 import {
   generateWordLensInterlinearMap,
   generateWordLensNotes
@@ -164,7 +165,7 @@ export async function POST(req: Request) {
     }
 
     const context = contextResult.data;
-    const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+    const model = getOpenAIModelForTier(quotaDecision.tier);
     const promptVersion = getWordLensPromptVersion();
     const cacheKey = buildWordLensCacheKey({
       kind: "full",
@@ -256,7 +257,8 @@ export async function POST(req: Request) {
         sourceVerseText: context.sourceText,
         targetTranslationName: context.translationName,
         targetVerseText: context.selectedVerse.text,
-        words: context.sourceWords
+        words: context.sourceWords,
+        model
       }),
       generateWordLensNotes({
         reference: context.reference,
@@ -264,7 +266,8 @@ export async function POST(req: Request) {
         sourceVerseText: context.sourceText,
         targetTranslationName: context.translationName,
         targetVerseText: context.selectedVerse.text,
-        words: context.sourceWords
+        words: context.sourceWords,
+        model
       })
     ]);
 

@@ -7,6 +7,9 @@ import { useState } from "react";
 type LoginFormProps = {
   initialEmail: string;
   wasRegistered: boolean;
+  wasVerified: boolean;
+  passwordWasReset: boolean;
+  passwordWasChanged: boolean;
   errorCode: string;
 };
 
@@ -23,7 +26,14 @@ function mapAuthError(errorCode: string): string {
   }
 }
 
-export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormProps) {
+export function LoginForm({
+  initialEmail,
+  wasRegistered,
+  wasVerified,
+  passwordWasReset,
+  passwordWasChanged,
+  errorCode
+}: LoginFormProps) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +72,7 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
             name="email"
             type="email"
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
         </label>
@@ -72,6 +83,7 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
             name="password"
             type="password"
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
         </label>
@@ -80,10 +92,26 @@ export function LoginForm({ initialEmail, wasRegistered, errorCode }: LoginFormP
         </button>
       </form>
       {wasRegistered ? <p className="muted">Account created. Please log in.</p> : null}
+      {wasVerified ? (
+        <p className="muted">Email verified. You can log in now.</p>
+      ) : null}
+      {passwordWasReset ? (
+        <p className="muted">
+          Password updated. Other signed-in sessions have been revoked.
+        </p>
+      ) : null}
+      {passwordWasChanged ? (
+        <p className="muted">Password updated. Please log in again.</p>
+      ) : null}
       {error ? <p className="muted">{error}</p> : null}
       {queryError ? <p className="muted">{queryError}</p> : null}
       <p className="muted">
         New here? <Link href="/register">Create an account</Link>
+      </p>
+      <p className="muted">
+        <Link href="/forgot-password">Forgot password?</Link>
+        {" · "}
+        <Link href="/verify-email">Resend verification email</Link>
       </p>
     </section>
   );

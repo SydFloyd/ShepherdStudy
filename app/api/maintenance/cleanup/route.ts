@@ -33,20 +33,23 @@ export async function GET(request: Request) {
 
   try {
     const now = new Date();
-    const [cache, rateLimits] = await prisma.$transaction([
+    const [cache, rateLimits, accountTokens] = await prisma.$transaction([
       prisma.wordLensCache.deleteMany({ where: { expiresAt: { lt: now } } }),
-      prisma.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: now } } })
+      prisma.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: now } } }),
+      prisma.accountToken.deleteMany({ where: { expiresAt: { lt: now } } })
     ]);
     logEvent("info", "maintenance.cleanup_ok", {
       ...requestMeta,
       expiredWordLensCacheRows: cache.count,
-      expiredRateLimitBuckets: rateLimits.count
+      expiredRateLimitBuckets: rateLimits.count,
+      expiredAccountTokens: accountTokens.count
     });
     return Response.json(
       {
         ok: true,
         expiredWordLensCacheRows: cache.count,
-        expiredRateLimitBuckets: rateLimits.count
+        expiredRateLimitBuckets: rateLimits.count,
+        expiredAccountTokens: accountTokens.count
       },
       { headers: PRIVATE_HEADERS }
     );

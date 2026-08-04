@@ -16,7 +16,8 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 
 ## Features
 
-- Register/login with email + password
+- Register/login with verified email + password
+- One-time email verification and password recovery through Postmark
 - Submit a passage and optional context
 - Study mode accepts passage-only, prompt-only, or both
 - AI-generated related references + practical applications
@@ -42,8 +43,10 @@ cp .env.example .env
 ```
 
 Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`,
-`TURNSTILE_HOSTNAMES`, and `CRON_SECRET`. Use `localhost,127.0.0.1` only for
-local development; production must list only its public registration hostnames.
+`TURNSTILE_HOSTNAMES`, `CRON_SECRET`, `POSTMARK_API_KEY`, and
+`POSTMARK_FROM_EMAIL`. The Postmark sender must be a confirmed sender signature
+or use a verified domain. Use `localhost,127.0.0.1` only for local development;
+production must list only its public registration hostnames.
 
 3. Generate Prisma client and migrate DB:
 
@@ -99,6 +102,9 @@ Open `http://localhost:3000`.
 
 - If not logged in, study responses are returned but not saved.
 - OpenAI model defaults to `gpt-4.1-mini` and can be overridden via `OPENAI_MODEL`.
+- Anonymous, free, and paid quota policies are separate. `OPENAI_PAID_MODEL`
+  opts paid accounts into an evaluated higher-quality model; if omitted, paid
+  accounts safely retain the standard model.
 - `/study` modes:
   - `passage_only`: "Passage Companion" with default behavior "Context & Companion"
   - `prompt_only`: "Topical Discovery" with default behavior "Topical Scout" and optional anchor passage from recommendations

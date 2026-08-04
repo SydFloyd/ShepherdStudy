@@ -4,6 +4,9 @@ type LoginPageProps = {
   searchParams: Promise<{
     email?: string | string[];
     registered?: string | string[];
+    verified?: string | string[];
+    reset?: string | string[];
+    passwordChanged?: string | string[];
     error?: string | string[];
   }>;
 };
@@ -22,6 +25,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <LoginForm
       initialEmail={firstValue(resolvedSearchParams.email)}
       wasRegistered={firstValue(resolvedSearchParams.registered) === "1"}
+      wasVerified={firstValue(resolvedSearchParams.verified) === "1"}
+      passwordWasReset={firstValue(resolvedSearchParams.reset) === "1"}
+      passwordWasChanged={
+        firstValue(resolvedSearchParams.passwordChanged) === "1"
+      }
       errorCode={firstValue(resolvedSearchParams.error)}
     />
   );

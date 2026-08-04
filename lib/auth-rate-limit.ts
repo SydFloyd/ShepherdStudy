@@ -9,6 +9,8 @@ import {
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+const ACCOUNT_EMAIL_WINDOW_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_CONFIRM_WINDOW_MS = 15 * 60 * 1000;
 const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type RateLimitRule = {
@@ -39,7 +41,12 @@ function readPositiveInteger(
 }
 
 function buildRuleKeys(input: {
-  action: "login" | "register";
+  action:
+    | "login"
+    | "register"
+    | "verify_email"
+    | "reset_password"
+    | "reset_confirm";
   headers: RequestHeaderSource;
   normalizedEmail: string;
 }) {
@@ -53,6 +60,69 @@ function buildRuleKeys(input: {
       `${actor}|${account}`
     )}`
   };
+}
+
+function getPasswordResetConfirmationRules(input: {
+  headers: RequestHeaderSource;
+  token: string;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys({
+    action: "reset_confirm",
+    headers: input.headers,
+    normalizedEmail: input.token
+  });
+  return [
+    {
+      key: keys.actor,
+      limit: readPositiveInteger(
+        process.env.PASSWORD_RESET_CONFIRMATIONS_PER_15_MINUTES,
+        20,
+        1_000
+      ),
+      windowMs: PASSWORD_RESET_CONFIRM_WINDOW_MS,
+      scope: "actor"
+    },
+    {
+      key: keys.actorAccount,
+      limit: readPositiveInteger(
+        process.env.PASSWORD_RESET_TOKEN_ATTEMPTS_PER_15_MINUTES,
+        5,
+        1_000
+      ),
+      windowMs: PASSWORD_RESET_CONFIRM_WINDOW_MS,
+      scope: "actor_account"
+    }
+  ];
+}
+
+function getAccountEmailRules(input: {
+  action: "verify_email" | "reset_password";
+  headers: RequestHeaderSource;
+  normalizedEmail: string;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys(input);
+  return [
+    {
+      key: keys.actor,
+      limit: readPositiveInteger(
+        process.env.ACCOUNT_EMAILS_PER_HOUR,
+        8,
+        1_000
+      ),
+      windowMs: ACCOUNT_EMAIL_WINDOW_MS,
+      scope: "actor"
+    },
+    {
+      key: keys.actorAccount,
+      limit: readPositiveInteger(
+        process.env.ACCOUNT_EMAIL_ATTEMPTS_PER_HOUR,
+        4,
+        1_000
+      ),
+      windowMs: ACCOUNT_EMAIL_WINDOW_MS,
+      scope: "actor_account"
+    }
+  ];
 }
 
 function getLoginRules(input: {
@@ -257,6 +327,32 @@ export function consumeRegistrationRateLimit(input: {
     getRegistrationRules({
       headers: input.request.headers,
       normalizedEmail: input.normalizedEmail
+    })
+  );
+}
+
+export function consumeAccountEmailRateLimit(input: {
+  request: Request;
+  normalizedEmail: string;
+  action: "verify_email" | "reset_password";
+}) {
+  return consumeRules(
+    getAccountEmailRules({
+      action: input.action,
+      headers: input.request.headers,
+      normalizedEmail: input.normalizedEmail
+    })
+  );
+}
+
+export function consumePasswordResetConfirmationRateLimit(input: {
+  request: Request;
+  token: string;
+}) {
+  return consumeRules(
+    getPasswordResetConfirmationRules({
+      headers: input.request.headers,
+      token: input.token
     })
   );
 }

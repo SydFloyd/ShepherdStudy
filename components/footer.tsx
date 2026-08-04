@@ -8,6 +8,7 @@ export function Footer() {
         <Link href="/info">Info</Link>
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
+        <Link href="/donate">Donate</Link>
       </div>
     </footer>
   );

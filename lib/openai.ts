@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { extractScriptureReferencesFromText } from "@/lib/scripture";
 import { StudyMode } from "@/lib/study-contract";
+import { getOpenAIModelForTier } from "@/lib/model-tier";
+import type { QuotaTier } from "@/lib/quota";
 
 const recommendationSchema = z.object({
   reference: z.string().min(1)
@@ -217,9 +219,10 @@ export async function generateStudyRecommendations(input: {
     role: "user" | "assistant";
     content: string;
   }>;
+  tier?: QuotaTier;
 }): Promise<StudyResponse> {
   const client = getClient();
-  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  const model = getOpenAIModelForTier(input.tier ?? "ANONYMOUS");
 
   const passages = (input.passages ?? []).filter((item) => item.trim().length > 0);
   const passageList =

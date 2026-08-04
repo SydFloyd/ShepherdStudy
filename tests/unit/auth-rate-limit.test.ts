@@ -38,4 +38,25 @@ describe("authentication rate-limit helpers", () => {
     expect(__testables.readPositiveInteger("0", 8, 100)).toBe(8);
     expect(__testables.readPositiveInteger("500", 8, 100)).toBe(100);
   });
+
+  it("separates password-reset and verification email buckets", () => {
+    vi.stubEnv("RATE_LIMIT_SECRET", "rate-limit-test-secret");
+    const common = {
+      headers: { "x-forwarded-for": "203.0.113.25" },
+      normalizedEmail: "person@example.com"
+    };
+
+    const reset = __testables.buildRuleKeys({
+      action: "reset_password",
+      ...common
+    });
+    const verification = __testables.buildRuleKeys({
+      action: "verify_email",
+      ...common
+    });
+
+    expect(reset.actor).not.toBe(verification.actor);
+    expect(reset.actorAccount).not.toBe(verification.actorAccount);
+    expect(JSON.stringify(reset)).not.toContain("person@example.com");
+  });
 });
