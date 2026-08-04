@@ -16,6 +16,9 @@ Quick operational reference for local development, deploys, and production check
 - `NEXT_PUBLIC_STUDY_HISTORY_RECENT_TURNS`
 - `WORD_LENS_CACHE_TTL_HOURS`
 - `ADMIN_METRICS_KEY`
+- `TURNSTILE_SECRET`
+- `TURNSTILE_HOSTNAMES`
+- `CRON_SECRET` (at least 16 random characters)
 
 Optional/observability:
 - `SENTRY_DSN`
@@ -26,6 +29,8 @@ Optional/observability:
 - `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`
 - `NEXT_PUBLIC_ANALYTICS_SCRIPT_SRC`
 - `NEXT_PUBLIC_ANALYTICS_DOMAIN`
+- `RATE_LIMIT_SECRET` (falls back to `QUOTA_ACTOR_SECRET`/`NEXTAUTH_SECRET`)
+- Authentication rate-limit overrides documented in `.env.example`
 
 Database admin/migrations:
 - `DIRECT_URL`
@@ -62,6 +67,8 @@ Database admin/migrations:
      - `GET /api/metrics/retention` with header `x-admin-key`.
    - Usage metrics endpoint (admin key required):
      - `GET /api/metrics/usage` with header `x-admin-key`.
+   - CSP report-only violations (`csp.violation`) and daily cleanup results
+     (`maintenance.cleanup_ok`).
 
 ## Critical Endpoints
 - Health: `GET /api/health`
@@ -70,9 +77,13 @@ Database admin/migrations:
 - Passage preview: `POST /api/passage-preview`
 - Retention metrics: `GET /api/metrics/retention`
 - Usage metrics: `GET /api/metrics/usage`
+- CSP reports: `POST /api/csp-report`
+- Scheduled cleanup: `GET /api/maintenance/cleanup` (Vercel cron bearer only)
 
 ## Known Constraints
 - Anonymous users are quota-limited by actor key derived from IP + user agent.
+- Failed logins and completed Turnstile registration attempts are limited by
+  expiring, pseudonymous PostgreSQL buckets shared across app instances.
 - Favicon/icon caching can be sticky in browsers; use hard refresh after brand updates.
 - Interlinear uses one-verse focus; multi-verse input defaults to first verse.
 - Interlinear deterministic fallback now depends on `BibleLexicon` data (`npm run import:lexicon`).

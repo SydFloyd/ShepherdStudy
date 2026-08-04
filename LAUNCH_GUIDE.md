@@ -13,6 +13,8 @@
    - `OPENAI_API_KEY`, `OPENAI_MODEL`
    - `SENTRY_DSN`, optional `NEXT_PUBLIC_SENTRY_DSN`
    - `ADMIN_METRICS_KEY`
+   - `TURNSTILE_SECRET`, `TURNSTILE_HOSTNAMES`
+   - `CRON_SECRET` (at least 16 random characters)
 
 ## 2) Privacy and Terms
 - Pages are now available at:
@@ -34,6 +36,7 @@
 ## 4) Launch Smoke Checklist
 1. `GET /api/health` returns `ok: true`.
 2. Register/login works.
+   - Confirm a fresh Turnstile token succeeds and replaying it fails.
 3. `/study` can generate and save history.
 4. Sentry receives test issue.
 5. `GET /api/metrics/retention` returns JSON for admin key.

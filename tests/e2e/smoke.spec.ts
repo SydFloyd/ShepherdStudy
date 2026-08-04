@@ -1,5 +1,36 @@
 import { expect, test } from "@playwright/test";
 
+test("security policy and reduced API surface", async ({ request }) => {
+  const register = await request.get("/register");
+  expect(register.ok()).toBe(true);
+  const policy = register.headers()["content-security-policy-report-only"];
+  expect(policy).toContain("default-src 'self'");
+  expect(policy).toContain("https://challenges.cloudflare.com");
+  expect(policy).toContain("report-uri /api/csp-report");
+
+  const report = await request.post("/api/csp-report", {
+    headers: { "Content-Type": "application/csp-report" },
+    data: {
+      "csp-report": {
+        "document-uri": "http://127.0.0.1:3000/register?private=value",
+        "blocked-uri": "inline",
+        "effective-directive": "script-src",
+        disposition: "report"
+      }
+    }
+  });
+  expect(report.status()).toBe(204);
+
+  const cleanup = await request.get("/api/maintenance/cleanup");
+  expect(cleanup.status()).toBe(401);
+
+  const retiredAppend = await request.post(
+    "/api/study/threads/retired/messages",
+    { data: {} }
+  );
+  expect(retiredAppend.status()).toBe(404);
+});
+
 test("study page smoke flow", async ({ page }) => {
   await page.route("**/api/study", async (route) => {
     await route.fulfill({

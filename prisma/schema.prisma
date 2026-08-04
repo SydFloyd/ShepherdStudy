@@ -213,6 +213,17 @@ model DailyQuotaUsage {
   @@index([feature, day])
 }
 
+model RateLimitBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
 model UsageEvent {
   id         String       @id @default(cuid())
   feature    UsageFeature

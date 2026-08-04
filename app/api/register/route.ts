@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { consumeRegistrationRateLimit } from "@/lib/auth-rate-limit";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -40,6 +41,25 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Verification failed. Please try again." },
         { status: 403 }
+      );
+    }
+
+    const rateLimit = await consumeRegistrationRateLimit({
+      request: req,
+      normalizedEmail: email
+    });
+    if (!rateLimit.allowed) {
+      logEvent("warn", "register.rate_limited", {
+        ...requestMeta,
+        scope: rateLimit.scope,
+        retryAfterSeconds: rateLimit.retryAfterSeconds
+      });
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimit.retryAfterSeconds) }
+        }
       );
     }
 

@@ -1,10 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-
-function safeEqual(left: string, right: string) {
-  const leftDigest = createHash("sha256").update(left).digest();
-  const rightDigest = createHash("sha256").update(right).digest();
-  return timingSafeEqual(leftDigest, rightDigest);
-}
+import { getBearerToken, safeEqualSecret } from "@/lib/secret-auth";
 
 export function isMetricsRequestAuthorized(request: Request) {
   const expected = process.env.ADMIN_METRICS_KEY?.trim();
@@ -13,13 +7,11 @@ export function isMetricsRequestAuthorized(request: Request) {
   }
 
   const header = request.headers.get("x-admin-key")?.trim();
-  const authorization = request.headers.get("authorization") ?? "";
-  const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
-  const candidates = [header, bearerMatch?.[1]?.trim()].filter(
+  const candidates = [header, getBearerToken(request)].filter(
     (value): value is string => Boolean(value)
   );
 
-  return candidates.some((candidate) => safeEqual(candidate, expected));
+  return candidates.some((candidate) => safeEqualSecret(candidate, expected));
 }
 
 export const PRIVATE_RESPONSE_HEADERS = {

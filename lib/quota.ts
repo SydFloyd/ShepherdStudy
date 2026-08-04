@@ -1,8 +1,9 @@
-import { createHash, createHmac } from "node:crypto";
-
 import { Prisma, QuotaFeature } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { getPseudonymousRequestActor } from "@/lib/request-actor";
+
+const MAX_QUOTA_TRANSACTION_ATTEMPTS = 8;
 
 function readPositiveInteger(
   value: string | undefined,
@@ -67,21 +68,9 @@ function getActorKey(input: { userId?: string | null; request: Request }) {
     return `user:${input.userId}`;
   }
 
-  const forwardedFor = input.request.headers.get("x-forwarded-for");
-  const firstIp =
-    input.request.headers.get("cf-connecting-ip")?.trim() ||
-    input.request.headers.get("x-real-ip")?.trim() ||
-    forwardedFor?.split(",")[0]?.trim() ||
-    "unknown-ip";
-  const userAgent = input.request.headers.get("user-agent") ?? "unknown";
-  const actorMaterial = `${firstIp}|${userAgent}`;
-  const actorSecret =
-    process.env.QUOTA_ACTOR_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim();
-  const digest = actorSecret
-    ? createHmac("sha256", actorSecret).update(actorMaterial).digest("hex")
-    : createHash("sha256").update(actorMaterial).digest("hex");
-  return `anon:${digest.slice(0, 32)}`;
+  return `anon:${getPseudonymousRequestActor(input.request.headers, {
+    includeUserAgent: true
+  })}`;
 }
 
 export const __testables = {
@@ -216,13 +205,21 @@ export async function consumeQuota(input: {
     );
   }
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (
+    let attempt = 0;
+    attempt < MAX_QUOTA_TRANSACTION_ATTEMPTS;
+    attempt += 1
+  ) {
     try {
       return await consumeInTransaction();
     } catch (error) {
-      if (!isRetryableQuotaConflict(error) || attempt === 2) {
+      if (
+        !isRetryableQuotaConflict(error) ||
+        attempt === MAX_QUOTA_TRANSACTION_ATTEMPTS - 1
+      ) {
         throw error;
       }
+      await new Promise((resolve) => setTimeout(resolve, 5 * (attempt + 1)));
     }
   }
 

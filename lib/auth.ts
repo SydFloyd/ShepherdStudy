@@ -2,7 +2,14 @@ import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+import {
+  checkLoginRateLimit,
+  clearLoginAccountFailures,
+  recordLoginFailure
+} from "@/lib/auth-rate-limit";
+import { logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { getRequestIdFromHeaders } from "@/lib/request-context";
 
 const isProduction = process.env.NODE_ENV === "production";
 const DUMMY_PASSWORD_HASH =
@@ -29,7 +36,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const rawEmail = credentials?.email?.trim();
         const password = credentials?.password;
         if (
@@ -42,6 +49,29 @@ export const authOptions: NextAuthOptions = {
         }
 
         const normalizedEmail = rawEmail.normalize("NFKC").toLowerCase();
+        const requestHeaders = request.headers ?? {};
+        const requestId = getRequestIdFromHeaders(requestHeaders) ?? "unknown";
+        try {
+          const rateLimit = await checkLoginRateLimit({
+            headers: requestHeaders,
+            normalizedEmail
+          });
+          if (!rateLimit.allowed) {
+            logEvent("warn", "auth.login_rate_limited", {
+              requestId,
+              scope: rateLimit.scope,
+              retryAfterSeconds: rateLimit.retryAfterSeconds
+            });
+            return null;
+          }
+        } catch (error) {
+          logEvent("error", "auth.login_rate_limit_failure", {
+            requestId,
+            error
+          });
+          return null;
+        }
+
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail }
         });
@@ -52,7 +82,37 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!user || !validPassword) {
+          try {
+            const rateLimit = await recordLoginFailure({
+              headers: requestHeaders,
+              normalizedEmail
+            });
+            if (!rateLimit.allowed) {
+              logEvent("warn", "auth.login_rate_limited", {
+                requestId,
+                scope: rateLimit.scope,
+                retryAfterSeconds: rateLimit.retryAfterSeconds
+              });
+            }
+          } catch (error) {
+            logEvent("error", "auth.login_failure_recording_failed", {
+              requestId,
+              error
+            });
+          }
           return null;
+        }
+
+        try {
+          await clearLoginAccountFailures({
+            headers: requestHeaders,
+            normalizedEmail
+          });
+        } catch (error) {
+          logEvent("warn", "auth.login_failure_cleanup_failed", {
+            requestId,
+            error
+          });
         }
 
         return {

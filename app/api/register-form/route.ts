@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { consumeRegistrationRateLimit } from "@/lib/auth-rate-limit";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readUrlEncodedBody, RequestBodyError } from "@/lib/request-body";
@@ -78,6 +79,28 @@ export async function POST(req: Request) {
         ),
         303
       );
+    }
+
+    const rateLimit = await consumeRegistrationRateLimit({
+      request: req,
+      normalizedEmail: email
+    });
+    if (!rateLimit.allowed) {
+      logEvent("warn", "register_form.rate_limited", {
+        ...requestMeta,
+        scope: rateLimit.scope,
+        retryAfterSeconds: rateLimit.retryAfterSeconds
+      });
+      const response = NextResponse.redirect(
+        buildRegisterRedirect(
+          req,
+          "Too many registration attempts. Please try again later.",
+          { email, name }
+        ),
+        303
+      );
+      response.headers.set("Retry-After", String(rateLimit.retryAfterSeconds));
+      return response;
     }
 
     const exists = await prisma.user.findUnique({ where: { email } });

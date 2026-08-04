@@ -47,30 +47,42 @@ Last reviewed: August 4, 2026
 11. **Expanded browser hardening headers (medium).** Added cross-origin isolation,
     DNS prefetch, and legacy cross-domain policy protections to the existing frame,
     MIME sniffing, referrer, permissions, and HSTS headers.
+12. **Added distributed authentication abuse controls (high).** PostgreSQL-backed
+    expiring buckets cap completed Turnstile registrations and failed credential
+    attempts across instances. Actor/account keys are HMAC pseudonyms, successful
+    login clears only its actor/account pair, and rate decisions are serializable.
+13. **Started observable CSP rollout (high).** A report-only policy inventories
+    script, connection, frame, and inline requirements while explicitly allowing
+    Turnstile and configured analytics/Sentry origins. Its bounded report endpoint
+    removes URL queries, fragments, data payloads, and excess batch entries.
+14. **Proved quota behavior under PostgreSQL contention (medium-high).** CI now
+    starts PostgreSQL, applies the full migration history, and verifies concurrent
+    quota and registration requests cannot exceed their configured ceilings.
+15. **Reduced and maintained server surface (medium).** Removed the unconsumed
+    client-side study-message append route. A bearer-authenticated daily Vercel
+    cron deletes expired word-lens cache rows and authentication rate buckets.
 
 ## Ranked next improvements
 
-1. **Close or gate public registration (highest value for this deployment).** The
-   service currently has one intended user. Add a fail-closed production switch
-   or invite-only bootstrap flow so the public registration surface can be turned
-   off entirely after owner setup; keep Turnstile for periods when signup is open.
-2. **Distributed registration and login abuse controls (high value).** Add a
-   dedicated datastore-backed limiter for account creation and failed credential
-   attempts, keyed by pseudonymous network actor plus normalized account. This
-   complements Turnstile and must not rely on process-local counters.
-3. **Content Security Policy rollout (high value).** Start with report-only mode,
-   inventory the configurable analytics and Sentry destinations, eliminate inline
-   exceptions, then enforce a nonce- or hash-based policy.
-4. **Quota concurrency integration test (medium-high value).** Exercise parallel
-   requests against ephemeral PostgreSQL in CI and assert the daily/burst ceilings
-   cannot be exceeded under transaction contention.
-5. **Retire the unused client-side study-message append endpoint (medium value).**
-   The current UI persists turns through `/api/study`; after confirming no external
-   client depends on the append endpoint, delete it to reduce surface area.
-6. **Major-version modernization (medium value).** Plan React 19, Prisma 7, OpenAI
+1. **Public-account trust lifecycle (highest value before broad sharing).** Add
+   email verification, password reset, address-change confirmation, and session
+   revocation without exposing whether an email is registered.
+2. **Free/advanced entitlement and cost accounting (high value).** Model plan and
+   entitlement state separately from usage meters. Define a useful free allowance,
+   calculate advanced-tier cost from attributable infrastructure/AI usage, and
+   make enforcement idempotent before adding a payment provider.
+3. **Enforce CSP after observation (high value).** Review production violation
+   telemetry, remove avoidable inline allowances, then graduate the report-only
+   policy to a nonce- or hash-based enforced policy without forcing static pages
+   into unnecessary dynamic rendering.
+4. **Major-version modernization (medium value).** Plan React 19, Prisma 7, OpenAI
    SDK 7, Zod 4, bcryptjs 3, and TypeScript 7 as separate reviewed upgrades with
    behavior and migration tests. They were intentionally excluded from this
    security pass to avoid bundling unrelated breaking changes.
-7. **Cache lifecycle maintenance (medium value).** Add a scheduled deletion job for
-   expired `WordLensCache` rows and track hit/miss/age metrics so cache growth and
-   prompt-version churn remain visible.
+5. **Cache effectiveness metrics (medium value).** Track word-lens hit/miss/age
+   without recording study text so prompt-version churn and avoidable AI cost are
+   visible.
+6. **Quiet donation path (product value, intentionally non-promotional).** Keep
+   donations separate from plan entitlements and billing; expose only a low-key,
+   user-initiated page once the payment foundation exists, with no nags or access
+   advantages.

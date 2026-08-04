@@ -11,7 +11,7 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 
 - Next.js (App Router, TypeScript)
 - NextAuth (credentials auth)
-- Prisma + SQLite
+- Prisma + PostgreSQL (Neon in production)
 - OpenAI Node SDK
 
 ## Features
@@ -41,15 +41,15 @@ npm install
 cp .env.example .env
 ```
 
-Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`, and
-`TURNSTILE_HOSTNAMES`. Use `localhost,127.0.0.1` only for local development;
-production must list only its public registration hostnames.
+Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`,
+`TURNSTILE_HOSTNAMES`, and `CRON_SECRET`. Use `localhost,127.0.0.1` only for
+local development; production must list only its public registration hostnames.
 
 3. Generate Prisma client and migrate DB:
 
 ```bash
 npx prisma generate
-npx prisma migrate dev --name init
+npm run db:migrate:deploy
 npm run import:bibles
 npm run import:usfm
 npm run import:original
@@ -72,7 +72,7 @@ Open `http://localhost:3000`.
 
 ## Self-hosted Bible data
 
-- Chapter text is loaded from your local SQLite DB (`BibleVerse` table).
+- Chapter text is loaded from PostgreSQL (`BibleVerse` table).
 - Import command downloads public-domain texts from eBible and loads:
   - `WEB` (default)
   - `KJV`
