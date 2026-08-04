@@ -13,23 +13,20 @@ export async function GET(req: Request) {
     method: req.method
   });
 
-  const startedAt = Date.now();
   try {
-    await prisma.$queryRawUnsafe("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     const payload = {
       ok: true,
       service: "shepherd-study",
       timestamp: new Date().toISOString(),
-      uptimeSeconds: Math.round(process.uptime()),
       checks: {
-        db: "ok",
-        openaiKey: Boolean(process.env.OPENAI_API_KEY),
-        sentryConfigured: Boolean(process.env.SENTRY_DSN)
-      },
-      latencyMs: Date.now() - startedAt
+        db: "ok"
+      }
     };
     logEvent("info", "health.ok", requestMeta);
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, {
+      headers: { "Cache-Control": "no-store, max-age=0" }
+    });
   } catch (error) {
     captureServerException(error, {
       route: "/api/health",
@@ -45,7 +42,10 @@ export async function GET(req: Request) {
           db: "error"
         }
       },
-      { status: 503 }
+      {
+        status: 503,
+        headers: { "Cache-Control": "no-store, max-age=0" }
+      }
     );
   }
 }

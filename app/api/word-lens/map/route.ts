@@ -11,6 +11,7 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { generateWordLensInterlinearMap } from "@/lib/original-word-lens";
 import { prisma } from "@/lib/prisma";
 import { consumeQuota } from "@/lib/quota";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
   });
 
   try {
-    const input = inputSchema.parse(await req.json());
+    const input = inputSchema.parse(await readJsonBody(req));
     const session = await getServerSession(authOptions);
     const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
@@ -228,6 +229,11 @@ export async function POST(req: Request) {
       cached: false
     });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid interlinear map request." },

@@ -5,6 +5,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 
 const isProduction = process.env.NODE_ENV === "production";
+const DUMMY_PASSWORD_HASH =
+  "$2a$12$WxRHto5.ew3mUPD8Q.ff0eqsFed0Za6XH0CSWvnCMYW35NgbHe9hK";
 
 if (isProduction && !process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET is required in production.");
@@ -28,25 +30,28 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) {
+        const rawEmail = credentials?.email?.trim();
+        const password = credentials?.password;
+        if (
+          !rawEmail ||
+          rawEmail.length > 254 ||
+          !password ||
+          password.length > 128
+        ) {
           return null;
         }
 
-        const normalizedEmail = credentials.email.toLowerCase();
+        const normalizedEmail = rawEmail.normalize("NFKC").toLowerCase();
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail }
         });
 
-        if (!user) {
-          return null;
-        }
-
         const validPassword = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
+          password,
+          user?.passwordHash ?? DUMMY_PASSWORD_HASH
         );
 
-        if (!validPassword) {
+        if (!user || !validPassword) {
           return null;
         }
 

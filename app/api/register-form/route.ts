@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { readUrlEncodedBody, RequestBodyError } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 
@@ -36,14 +38,22 @@ export async function POST(req: Request) {
   });
 
   try {
-    const formData = await req.formData();
+    const formData = await readUrlEncodedBody(req);
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "")
       .trim()
+      .normalize("NFKC")
       .toLowerCase();
     const password = String(formData.get("password") ?? "");
 
-    if (!email || !email.includes("@") || password.length < 8) {
+    if (
+      !email ||
+      email.length > 254 ||
+      !email.includes("@") ||
+      name.length > 80 ||
+      password.length < 8 ||
+      password.length > 128
+    ) {
       return NextResponse.redirect(
         buildRegisterRedirect(req, "Invalid registration input.", { email, name }),
         303
@@ -73,6 +83,23 @@ export async function POST(req: Request) {
     target.searchParams.set("email", email);
     return NextResponse.redirect(target, 303);
   } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return NextResponse.redirect(
+        buildRegisterRedirect(req, error.message),
+        303
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.redirect(
+        buildRegisterRedirect(req, "Email is already registered."),
+        303
+      );
+    }
+
     captureServerException(error, {
       route: "/api/register-form",
       requestId

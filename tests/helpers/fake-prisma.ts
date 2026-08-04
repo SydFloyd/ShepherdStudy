@@ -20,25 +20,6 @@ type StudyMessageRecord = {
   createdAt: Date;
 };
 
-type WwjdThreadRecord = {
-  id: string;
-  userId: string;
-  title: string | null;
-  archivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type WwjdMessageRecord = {
-  id: string;
-  threadId: string;
-  userId: string;
-  role: "USER" | "ASSISTANT";
-  content: string;
-  recommendations: unknown;
-  createdAt: Date;
-};
-
 let idCounter = 0;
 
 function nextId(prefix: string) {
@@ -49,8 +30,6 @@ function nextId(prefix: string) {
 export function createFakePrisma() {
   const studyThreads: StudyThreadRecord[] = [];
   const studyMessages: StudyMessageRecord[] = [];
-  const wwjdThreads: WwjdThreadRecord[] = [];
-  const wwjdMessages: WwjdMessageRecord[] = [];
 
   const tx = {
     studyThread: {
@@ -160,102 +139,6 @@ export function createFakePrisma() {
             content: item.content,
             translation: item.translation ?? null,
             response: item.response ?? null,
-            createdAt: new Date()
-          });
-        }
-        return { count: args.data.length };
-      }
-    },
-    wwjdThread: {
-      async findFirst(args: {
-        where: { id: string; userId: string; archivedAt?: null };
-        include?: { messages: { orderBy: { createdAt: "asc" | "desc" } } };
-      }) {
-        const match = wwjdThreads.find(
-          (thread) =>
-            thread.id === args.where.id &&
-            thread.userId === args.where.userId &&
-            (args.where.archivedAt === undefined || thread.archivedAt === null)
-        );
-        if (!match) {
-          return null;
-        }
-        if (!args.include) {
-          return { ...match };
-        }
-        const messages = wwjdMessages
-          .filter((message) => message.threadId === match.id)
-          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-          .map((message) => ({ ...message }));
-        return { ...match, messages };
-      },
-      async findMany(args: {
-        where: { userId: string; archivedAt: null };
-        orderBy: { updatedAt: "asc" | "desc" };
-        take: number;
-      }) {
-        return wwjdThreads
-          .filter(
-            (thread) =>
-              thread.userId === args.where.userId &&
-              thread.archivedAt === args.where.archivedAt
-          )
-          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-          .slice(0, args.take)
-          .map((thread) => ({ ...thread }));
-      },
-      async create(args: { data: { userId: string; title: string } }) {
-        const created: WwjdThreadRecord = {
-          id: nextId("wwjdThread"),
-          userId: args.data.userId,
-          title: args.data.title,
-          archivedAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        wwjdThreads.push(created);
-        return { ...created };
-      },
-      async update(args: {
-        where: { id: string };
-        data: { updatedAt?: Date; archivedAt?: Date | null; title?: string };
-      }) {
-        const idx = wwjdThreads.findIndex((thread) => thread.id === args.where.id);
-        if (idx === -1) {
-          throw new Error("wwjd thread not found");
-        }
-        const current = wwjdThreads[idx];
-        const updated: WwjdThreadRecord = {
-          ...current,
-          updatedAt: args.data.updatedAt ?? new Date(),
-          archivedAt:
-            args.data.archivedAt === undefined
-              ? current.archivedAt
-              : args.data.archivedAt,
-          title: args.data.title === undefined ? current.title : args.data.title
-        };
-        wwjdThreads[idx] = updated;
-        return { ...updated };
-      }
-    },
-    wwjdMessage: {
-      async createMany(args: {
-        data: Array<{
-          threadId: string;
-          userId: string;
-          role: "USER" | "ASSISTANT";
-          content: string;
-          recommendations?: unknown;
-        }>;
-      }) {
-        for (const item of args.data) {
-          wwjdMessages.push({
-            id: nextId("wwjdMessage"),
-            threadId: item.threadId,
-            userId: item.userId,
-            role: item.role,
-            content: item.content,
-            recommendations: item.recommendations ?? null,
             createdAt: new Date()
           });
         }

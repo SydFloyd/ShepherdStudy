@@ -10,10 +10,8 @@ Quick operational reference for local development, deploys, and production check
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (default: `gpt-4.1-mini`)
 - `STUDY_DAILY_LIMIT`
-- `WWJD_DAILY_LIMIT`
 - `INTERLINEAR_DAILY_LIMIT`
 - `STUDY_BURST_PER_MINUTE`
-- `WWJD_BURST_PER_MINUTE`
 - `INTERLINEAR_BURST_PER_MINUTE`
 - `NEXT_PUBLIC_STUDY_HISTORY_RECENT_TURNS`
 - `WORD_LENS_CACHE_TTL_HOURS`
@@ -57,7 +55,6 @@ Database admin/migrations:
    - Study (prompt-only, verse-only, prompt+verse).
    - Recommendation preview and continue flow.
    - Interlinear load and version switching.
-   - ShepherdAI chat and verse preview.
 4. Check logs/monitoring:
    - Vercel runtime logs.
    - Sentry issues.
@@ -69,7 +66,6 @@ Database admin/migrations:
 ## Critical Endpoints
 - Health: `GET /api/health`
 - Study: `POST /api/study`
-- ShepherdAI: `POST /api/wwjd`
 - Interlinear: `POST /api/word-lens`
 - Passage preview: `POST /api/passage-preview`
 - Retention metrics: `GET /api/metrics/retention`

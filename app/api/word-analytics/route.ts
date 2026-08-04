@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { consumeQuota } from "@/lib/quota";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
 import { resolveActiveUserId } from "@/lib/session-user";
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   });
 
   try {
-    const input = inputSchema.parse(await req.json());
+    const input = inputSchema.parse(await readJsonBody(req));
     const session = await getServerSession(authOptions);
     const userId = await resolveActiveUserId(session?.user?.id);
     const quotaDecision = await consumeQuota({
@@ -79,6 +80,11 @@ export async function POST(req: Request) {
       quota: quotaDecision
     });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid word analytics request." },

@@ -50,7 +50,6 @@ export default async function AdminPage() {
     totalUsers,
     usersCreated7d,
     totalStudyThreads,
-    totalWwjdThreads,
     totalUsageEvents,
     usageEvents24h,
     usageEvents7d,
@@ -68,7 +67,6 @@ export default async function AdminPage() {
       where: { createdAt: { gte: sevenDaysAgo } }
     }),
     prisma.studyThread.count(),
-    prisma.wwjdThread.count(),
     prisma.usageEvent.count(),
     prisma.usageEvent.count({
       where: { createdAt: { gte: oneDayAgo } }
@@ -153,7 +151,6 @@ export default async function AdminPage() {
         _count: {
           select: {
             studyThreads: true,
-            wwjdThreads: true,
             usageEvents: true
           }
         }
@@ -274,10 +271,6 @@ export default async function AdminPage() {
           <div className="adminStatCard">
             <p className="adminStatLabel">Study threads</p>
             <p className="adminStatValue">{formatCount(totalStudyThreads)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">WWJD threads</p>
-            <p className="adminStatValue">{formatCount(totalWwjdThreads)}</p>
           </div>
           <div className="adminStatCard">
             <p className="adminStatLabel">Total usage events</p>
@@ -426,7 +419,6 @@ export default async function AdminPage() {
                 <th>Created</th>
                 <th>Last activity</th>
                 <th>Study threads</th>
-                <th>WWJD threads</th>
                 <th>Usage events</th>
               </tr>
             </thead>
@@ -438,7 +430,6 @@ export default async function AdminPage() {
                   <td>{formatDate(user.createdAt)}</td>
                   <td>{formatDate(user.lastActivityAt)}</td>
                   <td>{formatCount(user._count.studyThreads)}</td>
-                  <td>{formatCount(user._count.wwjdThreads)}</td>
                   <td>{formatCount(user._count.usageEvents)}</td>
                 </tr>
               ))}

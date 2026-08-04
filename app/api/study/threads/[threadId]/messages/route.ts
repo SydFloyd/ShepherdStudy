@@ -4,10 +4,11 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import { studyResponsePayloadSchema } from "@/lib/persistence-schemas";
 import { getRequestId } from "@/lib/request-context";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { captureServerException } from "@/lib/sentry";
 import { persistStudyTurn } from "@/lib/study-history";
-import { StudyResponsePayload } from "@/lib/study-contract";
 
 const appendSchema = z.object({
   kind: z.enum(["prompt", "verse"]),
@@ -15,8 +16,8 @@ const appendSchema = z.object({
   passage: z.string().trim().max(120).optional().or(z.literal("")),
   passages: z.array(z.string().trim().min(1).max(120)).max(8).optional(),
   translation: z.string().trim().min(1).max(24),
-  response: z.custom<StudyResponsePayload>()
-});
+  response: studyResponsePayloadSchema
+}).strict();
 
 type Params = {
   params: Promise<{
@@ -38,7 +39,7 @@ export async function POST(req: Request, context: Params) {
   }
 
   try {
-    const input = appendSchema.parse(await req.json());
+    const input = appendSchema.parse(await readJsonBody(req));
     const { threadId } = await context.params;
     const thread = await persistStudyTurn({
       userId: session.user.id,
@@ -56,6 +57,18 @@ export async function POST(req: Request, context: Params) {
     });
     return NextResponse.json({ thread });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid study message." },
+        { status: 400 }
+      );
+    }
+
     captureServerException(error, {
       route: "/api/study/threads/[threadId]/messages",
       requestId

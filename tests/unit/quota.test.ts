@@ -9,7 +9,7 @@ describe("quota helpers", () => {
     expect(key).toBe("user:abc123");
   });
 
-  it("builds anon actor key from first forwarded ip + ua prefix", () => {
+  it("builds a stable pseudonymous actor key without retaining IP or user agent", () => {
     const request = new Request("http://localhost:3000", {
       headers: {
         "x-forwarded-for": "10.0.0.1, 10.0.0.2",
@@ -17,7 +17,15 @@ describe("quota helpers", () => {
       }
     });
     const key = __testables.getActorKey({ request });
-    expect(key.startsWith("anon:10.0.0.1:Mozilla/TestAgent/")).toBe(true);
+    expect(key).toMatch(/^anon:[a-f0-9]{32}$/);
+    expect(key).not.toContain("10.0.0.1");
+    expect(key).not.toContain("Mozilla");
+  });
+
+  it("falls back for invalid limits and clamps extreme limits", () => {
+    expect(__testables.readPositiveInteger("invalid", 40, 100)).toBe(40);
+    expect(__testables.readPositiveInteger("0", 40, 100)).toBe(40);
+    expect(__testables.readPositiveInteger("500", 40, 100)).toBe(100);
   });
 
   it("calculates UTC day boundaries", () => {

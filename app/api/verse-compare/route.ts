@@ -10,6 +10,7 @@ import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { prisma } from "@/lib/prisma";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
 import { getRequestId } from "@/lib/request-context";
+import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { parseScriptureReference } from "@/lib/scripture";
 import { trackUsageSuccess } from "@/lib/usage-tracking";
 
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
   const requestId = await getRequestId();
 
   try {
-    const input = inputSchema.parse(await req.json());
+    const input = inputSchema.parse(await readJsonBody(req));
     const parsed = parseScriptureReference(input.reference);
     if (!parsed) {
       return NextResponse.json(
@@ -165,6 +166,11 @@ export async function POST(req: Request) {
       }
     });
   } catch (error) {
+    const bodyErrorResponse = requestBodyErrorResponse(error);
+    if (bodyErrorResponse) {
+      return bodyErrorResponse;
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid verse comparison request." },

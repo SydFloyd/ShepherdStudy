@@ -16,11 +16,10 @@ This runbook covers the minimum operational routine for Neon-backed production.
 3. Run validation queries:
    - `SELECT COUNT(*) FROM "User";`
    - `SELECT COUNT(*) FROM "StudyThread";`
-   - `SELECT COUNT(*) FROM "WwjdThread";`
    - `SELECT COUNT(*) FROM "BibleVerse";`
 4. Run app smoke checks against temp branch:
    - `/api/health` returns `ok: true`
-   - `/study` and `/wwjd` can load and persist a test turn.
+   - `/study` can load and persist a test turn.
 5. Record drill date, duration, and issues in ops notes.
 
 ## Incident Restore Procedure

@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 
+import {
+  isMetricsRequestAuthorized,
+  PRIVATE_RESPONSE_HEADERS
+} from "@/lib/admin-metrics-auth";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getRequestId } from "@/lib/request-context";
-
-function isAuthorized(req: Request) {
-  const expected = process.env.ADMIN_METRICS_KEY;
-  if (!expected) {
-    return false;
-  }
-
-  const header = req.headers.get("x-admin-key");
-  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return header === expected || bearer === expected;
-}
 
 export async function GET(req: Request) {
   const requestId = await getRequestId();
@@ -23,9 +16,12 @@ export async function GET(req: Request) {
     method: req.method
   });
 
-  if (!isAuthorized(req)) {
+  if (!isMetricsRequestAuthorized(req)) {
     logEvent("warn", "retention.unauthorized", requestMeta);
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized." },
+      { status: 401, headers: PRIVATE_RESPONSE_HEADERS }
+    );
   }
 
   const now = new Date();
@@ -36,35 +32,20 @@ export async function GET(req: Request) {
     totalUsers,
     usersCreated7d,
     studyThreads,
-    wwjdThreads,
     studyActive7d,
-    wwjdActive7d,
     studyActive30d,
-    wwjdActive30d,
     recentRegistrations,
-    recentStudyMessages,
-    recentWwjdMessages
+    recentStudyMessages
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
     prisma.studyThread.count(),
-    prisma.wwjdThread.count(),
     prisma.studyMessage.findMany({
       where: { createdAt: { gte: sevenDaysAgo } },
       distinct: ["userId"],
       select: { userId: true }
     }),
-    prisma.wwjdMessage.findMany({
-      where: { createdAt: { gte: sevenDaysAgo } },
-      distinct: ["userId"],
-      select: { userId: true }
-    }),
     prisma.studyMessage.findMany({
-      where: { createdAt: { gte: thirtyDaysAgo } },
-      distinct: ["userId"],
-      select: { userId: true }
-    }),
-    prisma.wwjdMessage.findMany({
       where: { createdAt: { gte: thirtyDaysAgo } },
       distinct: ["userId"],
       select: { userId: true }
@@ -79,53 +60,25 @@ export async function GET(req: Request) {
         createdAt: true
       }
     }),
-    prisma.studyMessage.findMany({
-      orderBy: { createdAt: "desc" },
+    prisma.studyMessage.groupBy({
+      by: ["userId"],
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: "desc" } },
       take: 120,
-      select: {
-        userId: true,
-        createdAt: true
-      }
-    }),
-    prisma.wwjdMessage.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 120,
-      select: {
-        userId: true,
-        createdAt: true
-      }
     })
   ]);
 
-  const activeUsers7d = new Set([
-    ...studyActive7d.map((x) => x.userId),
-    ...wwjdActive7d.map((x) => x.userId)
-  ]).size;
-  const activeUsers30d = new Set([
-    ...studyActive30d.map((x) => x.userId),
-    ...wwjdActive30d.map((x) => x.userId)
-  ]).size;
+  const activeUsers7d = studyActive7d.length;
+  const activeUsers30d = studyActive30d.length;
 
   const latestStudyByUser = new Map<string, Date>();
   for (const row of recentStudyMessages) {
-    const existing = latestStudyByUser.get(row.userId);
-    if (!existing || row.createdAt > existing) {
-      latestStudyByUser.set(row.userId, row.createdAt);
+    if (row._max.createdAt) {
+      latestStudyByUser.set(row.userId, row._max.createdAt);
     }
   }
 
-  const latestWwjdByUser = new Map<string, Date>();
-  for (const row of recentWwjdMessages) {
-    const existing = latestWwjdByUser.get(row.userId);
-    if (!existing || row.createdAt > existing) {
-      latestWwjdByUser.set(row.userId, row.createdAt);
-    }
-  }
-
-  const activityUserIds = new Set<string>([
-    ...latestStudyByUser.keys(),
-    ...latestWwjdByUser.keys()
-  ]);
+  const activityUserIds = new Set<string>(latestStudyByUser.keys());
   const missingUserIds = Array.from(activityUserIds).filter(
     (id) => !recentRegistrations.some((user) => user.id === id)
   );
@@ -149,9 +102,7 @@ export async function GET(req: Request) {
   const recentUsers = Array.from(usersById.values())
     .map((user) => {
       const studyAt = latestStudyByUser.get(user.id);
-      const wwjdAt = latestWwjdByUser.get(user.id);
-      const lastActivityAt =
-        studyAt && wwjdAt ? (studyAt > wwjdAt ? studyAt : wwjdAt) : studyAt ?? wwjdAt ?? null;
+      const lastActivityAt = studyAt ?? null;
       const sortAt =
         lastActivityAt && lastActivityAt > user.createdAt
           ? lastActivityAt
@@ -164,8 +115,7 @@ export async function GET(req: Request) {
           email: user.email,
           createdAt: user.createdAt.toISOString(),
           lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
-          lastStudyAt: studyAt ? studyAt.toISOString() : null,
-          lastShepherdAiAt: wwjdAt ? wwjdAt.toISOString() : null
+          lastStudyAt: studyAt ? studyAt.toISOString() : null
         },
         sortAt
       };
@@ -175,18 +125,20 @@ export async function GET(req: Request) {
     .map((item) => item.row);
 
   logEvent("info", "retention.ok", requestMeta);
-  return NextResponse.json({
-    generatedAt: now.toISOString(),
-    users: {
-      total: totalUsers,
-      createdLast7d: usersCreated7d,
-      activeLast7d: activeUsers7d,
-      activeLast30d: activeUsers30d
+  return NextResponse.json(
+    {
+      generatedAt: now.toISOString(),
+      users: {
+        total: totalUsers,
+        createdLast7d: usersCreated7d,
+        activeLast7d: activeUsers7d,
+        activeLast30d: activeUsers30d
+      },
+      engagement: {
+        studyThreads
+      },
+      recentUsers
     },
-    engagement: {
-      studyThreads,
-      wwjdThreads
-    },
-    recentUsers
-  });
+    { headers: PRIVATE_RESPONSE_HEADERS }
+  );
 }

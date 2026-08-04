@@ -23,8 +23,6 @@ model User {
   usageEvents        UsageEvent[]
   studyThreads       StudyThread[]
   studyMessages      StudyMessage[]
-  wwjdThreads        WwjdThread[]
-  wwjdMessages       WwjdMessage[]
 }
 
 model StudySession {
@@ -91,17 +89,17 @@ model BibleWord {
 }
 
 model BibleLexicon {
-  id          Int      @id @default(autoincrement())
-  strong      String   @unique
-  language    String
-  lemma       String
-  translit    String?
+  id            Int      @id @default(autoincrement())
+  strong        String   @unique
+  language      String
+  lemma         String
+  translit      String?
   pronunciation String?
-  derivation  String?
-  strongsDef  String?
-  kjvDef      String?
-  source      String
-  importedAt  DateTime @default(now())
+  derivation    String?
+  strongsDef    String?
+  kjvDef        String?
+  source        String
+  importedAt    DateTime @default(now())
 
   @@index([language])
   @@index([lemma])
@@ -236,7 +234,6 @@ model UsageEvent {
 
 enum QuotaFeature {
   STUDY
-  WWJD
   INTERLINEAR
 }
 
@@ -244,7 +241,6 @@ enum UsageFeature {
   STUDY
   COMPARE
   WORD_LENS
-  WWJD
 }
 
 model StudyThread {
@@ -282,33 +278,4 @@ model StudyMessage {
 enum StudyMessageRole {
   USER
   ASSISTANT
-}
-
-model WwjdThread {
-  id         String        @id @default(cuid())
-  userId     String
-  title      String?
-  archivedAt DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages   WwjdMessage[]
-
-  @@index([userId, updatedAt])
-  @@index([userId, archivedAt, updatedAt])
-}
-
-model WwjdMessage {
-  id              String           @id @default(cuid())
-  threadId        String
-  userId          String
-  role            StudyMessageRole
-  content         String
-  recommendations Json?
-  createdAt       DateTime         @default(now())
-  thread          WwjdThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([threadId, createdAt])
-  @@index([userId, createdAt])
 }

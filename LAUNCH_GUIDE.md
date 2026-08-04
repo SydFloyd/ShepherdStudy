@@ -35,7 +35,6 @@
 1. `GET /api/health` returns `ok: true`.
 2. Register/login works.
 3. `/study` can generate and save history.
-4. `/wwjd` can generate and save history.
-5. Sentry receives test issue.
-6. `GET /api/metrics/retention` returns JSON for admin key.
-7. `GET /api/metrics/usage` returns JSON for admin key.
+4. Sentry receives test issue.
+5. `GET /api/metrics/retention` returns JSON for admin key.
+6. `GET /api/metrics/usage` returns JSON for admin key.
