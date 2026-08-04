@@ -256,8 +256,7 @@ Mode guidance:
       { role: "system", content: systemPrompt },
       ...historyMessages,
       { role: "user", content: userPrompt }
-    ],
-    temperature: 0.2
+      ]
   });
 
   const content = completion.choices[0]?.message?.content;
