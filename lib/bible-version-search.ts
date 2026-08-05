@@ -2,6 +2,12 @@ import type { BibleVersion } from "@/lib/bible";
 
 export const TRANSLATION_SEARCH_LIMIT = 50;
 
+export type BibleLanguageOption = {
+  iso: string;
+  name: string;
+  count: number;
+};
+
 function normalizeSearchText(value: string | null | undefined): string {
   return (value ?? "")
     .normalize("NFKD")
@@ -62,6 +68,52 @@ export function mergeBibleVersions(
     }
   }
   return [...byValue.values()];
+}
+
+export function getBibleLanguageOptions(
+  versions: readonly BibleVersion[]
+): BibleLanguageOption[] {
+  const byIso = new Map<string, BibleLanguageOption>();
+
+  for (const version of versions) {
+    const iso = version.languageIso.trim().toLowerCase();
+    if (!iso) {
+      continue;
+    }
+
+    const existing = byIso.get(iso);
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+
+    byIso.set(iso, {
+      iso,
+      name: version.languageName.trim() || iso.toUpperCase(),
+      count: 1
+    });
+  }
+
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  return [...byIso.values()].sort(
+    (left, right) =>
+      collator.compare(left.name, right.name) ||
+      collator.compare(left.iso, right.iso)
+  );
+}
+
+export function filterBibleVersionsByLanguage(
+  versions: readonly BibleVersion[],
+  languageIso: string
+): BibleVersion[] {
+  const normalizedIso = languageIso.trim().toLowerCase();
+  if (!normalizedIso) {
+    return [...versions];
+  }
+
+  return versions.filter(
+    (version) => version.languageIso.trim().toLowerCase() === normalizedIso
+  );
 }
 
 export function searchBibleVersions(

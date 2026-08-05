@@ -46,6 +46,7 @@ Rules:
 - The "answer" field must be plain text only (no Markdown syntax).
 - Do not use Markdown markers such as hashes, asterisks, underscores, list bullets, backticks, block quotes, or link formatting.
 - Keep all scripture references (Book Chapter:Verse) in "recommendations" only.
+- Write every recommendation reference with its canonical English Protestant book name, regardless of the language used in the answer or selected Bible (for example, "1 Peter 1:3", never "1 Pedro 1:3").
 - Do not place "recommended verses", "cross references", or verse lists in "answer".
 - Do not include recommendation summaries or explanations.
 - Provide 5 recommendations.

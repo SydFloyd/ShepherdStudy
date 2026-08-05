@@ -1,5 +1,7 @@
 import type { BibleVersion } from "@/lib/bible";
 import {
+  filterBibleVersionsByLanguage,
+  getBibleLanguageOptions,
   mergeBibleVersions,
   searchBibleVersions,
   TRANSLATION_SEARCH_LIMIT
@@ -79,5 +81,40 @@ describe("Bible version search", () => {
     const duplicate = version("web", { label: "Remote duplicate" });
 
     expect(mergeBibleVersions([local], [duplicate])).toEqual([local]);
+  });
+
+  it("builds an alphabetized language filter with edition counts", () => {
+    const catalog = [
+      version("dbs:SPA001", {
+        languageName: "Español",
+        languageIso: "spa"
+      }),
+      version("dbs:ENG001"),
+      version("dbs:SPA002", {
+        languageName: "Español",
+        languageIso: "SPA"
+      })
+    ];
+
+    expect(getBibleLanguageOptions(catalog)).toEqual([
+      { iso: "eng", name: "English", count: 1 },
+      { iso: "spa", name: "Español", count: 2 }
+    ]);
+  });
+
+  it("filters editions by language ISO without case sensitivity", () => {
+    const english = version("dbs:ENG001");
+    const spanish = version("dbs:SPA001", {
+      languageName: "Español",
+      languageIso: "spa"
+    });
+
+    expect(filterBibleVersionsByLanguage([english, spanish], "SPA")).toEqual([
+      spanish
+    ]);
+    expect(filterBibleVersionsByLanguage([english, spanish], "")).toEqual([
+      english,
+      spanish
+    ]);
   });
 });

@@ -341,7 +341,7 @@ export async function POST(req: Request) {
         .toLowerCase();
       return !normalizedAnchorReferences.has(normalizedReference);
     });
-    const recommendations = await Promise.all(
+    const recommendations = (await Promise.all(
       filteredRecommendations.map(async (item) => {
         const selectionTranslation = getRecommendationTranslation(
           item.reference,
@@ -353,9 +353,7 @@ export async function POST(req: Request) {
         });
 
         if (!preview.ok) {
-          return {
-            reference: item.reference
-          };
+          return null;
         }
 
         const previewText =
@@ -369,7 +367,7 @@ export async function POST(req: Request) {
           source: preview.source
         };
       })
-    );
+    )).filter((item) => item !== null);
 
     let thread: {
       id: string;
