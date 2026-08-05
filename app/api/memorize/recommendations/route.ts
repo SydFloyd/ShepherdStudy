@@ -8,6 +8,7 @@ import {
   isMemorizationTranslation,
   MemorizationTranslationId
 } from "@/lib/bible";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   getMemorizationSetFingerprint,
@@ -50,6 +51,7 @@ const CURATED_STARTERS: MemorizationRecommendation[] = [
 ];
 
 type SavedCoordinates = {
+  translation: string;
   bookOrder: number;
   chapter: number;
   verseStart: number;
@@ -62,6 +64,7 @@ function overlapsSaved(
 ) {
   return saved.some(
     (passage) =>
+      passage.translation === candidate.translation &&
       passage.bookOrder === candidate.bookOrder &&
       passage.chapter === candidate.chapter &&
       passage.verseStart <= candidate.verseEnd &&
@@ -86,7 +89,7 @@ async function validateRecommendations(input: {
       continue;
     }
 
-    const key = `${resolution.passage.bookOrder}:${resolution.passage.chapter}:${resolution.passage.verseStart}:${resolution.passage.verseEnd}`;
+    const key = `${resolution.passage.translation}:${resolution.passage.bookOrder}:${resolution.passage.chapter}:${resolution.passage.verseStart}:${resolution.passage.verseEnd}`;
     if (seen.has(key)) {
       continue;
     }
@@ -178,6 +181,7 @@ export async function POST(request: Request) {
     }
 
     const savedCoordinates = user.memorizationPassages.map((passage) => ({
+      translation: passage.translation,
       bookOrder: passage.bookOrder,
       chapter: passage.chapter,
       verseStart: passage.verseStart,
@@ -236,6 +240,12 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ recommendations, cached: false });
   } catch (error) {
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
+      );
+    }
     const openAiError = mapOpenAiErrorToResponse(error);
     if (openAiError) {
       logEvent("warn", "memorize.recommendations_upstream_error", {

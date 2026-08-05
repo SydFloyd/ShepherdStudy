@@ -1,8 +1,10 @@
 import {
   getTranslationLabel,
+  getLocalBibleVersion,
   isOldTestamentBook,
   isTranslationCompatibleWithBook,
-  resolveBibleBookCandidates
+  resolveBibleBookCandidates,
+  toBibleSourceInfo
 } from "@/lib/bible";
 import { prisma } from "@/lib/prisma";
 import {
@@ -53,6 +55,7 @@ export type PassageResolutionResult =
       chapterReference: string;
       chapterPath: string | null;
       translationName: string;
+      source: NonNullable<StudyPassageResult["source"]>;
     }
   | {
       ok: false;
@@ -87,6 +90,14 @@ export async function resolvePassageFromLocalBible(input: {
   reference: string;
   translation: string;
 }): Promise<PassageResolutionResult> {
+  const version = getLocalBibleVersion(input.translation);
+  if (!version) {
+    return {
+      ok: false,
+      reason: "not_found",
+      message: "That local Bible translation is not available."
+    };
+  }
   const parsed = parseScriptureReference(input.reference);
   if (!parsed) {
     return {
@@ -160,6 +171,21 @@ export async function resolvePassageFromLocalBible(input: {
         )
       : chapterVerses;
 
+    if (
+      verseStart &&
+      (selectedVerses[0]?.verse !== verseStart ||
+        selectedVerses[selectedVerses.length - 1]?.verse !== verseEnd ||
+        selectedVerses.length !== (verseEnd ?? verseStart) - verseStart + 1)
+    ) {
+      return {
+        ok: false,
+        reason: "not_found",
+        message: "One or more verses in that range do not exist.",
+        parsed,
+        bookCandidates: compatibleCandidates
+      };
+    }
+
     const chapterReference = `${book} ${parsed.chapter}`;
     const resolvedReference = formatResolvedReference(book, parsed);
     const chapterPath = buildPassagePath(
@@ -176,7 +202,8 @@ export async function resolvePassageFromLocalBible(input: {
       selectedVerses,
       chapterReference,
       chapterPath,
-      translationName: getTranslationLabel(input.translation)
+      translationName: getTranslationLabel(input.translation),
+      source: toBibleSourceInfo(version)
     };
   }
 
@@ -198,6 +225,13 @@ export async function getChapterFromLocalBible(input: {
   resolvedBook?: string;
   error?: string;
 }> {
+  const version = getLocalBibleVersion(input.translation);
+  if (!version) {
+    return {
+      data: null,
+      error: "That local Bible translation is not available."
+    };
+  }
   const compatibleBooks = input.books.filter((book) =>
     isTranslationCompatibleWithBook(input.translation, book)
   );
@@ -245,6 +279,7 @@ export async function getChapterFromLocalBible(input: {
         chapterReference: `${book} ${input.chapter}`,
         translation: input.translation,
         translationName: getTranslationLabel(input.translation),
+        source: toBibleSourceInfo(version),
         verses: attachNotesToVerses(rows, noteRows),
         chapterPath: null
       }

@@ -12,27 +12,73 @@ export type RecallAssessment = {
   submitted: RecallToken[];
 };
 
-const MAX_WORDS_PER_SIDE = 5_000;
-const WORD_PATTERN = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
+export type RecallLanguageMetadata = {
+  languageIso?: string | null;
+  script?: string | null;
+};
 
-function tokenize(input: string) {
-  return input.match(WORD_PATTERN) ?? [];
+const MAX_WORDS_PER_SIDE = 5_000;
+const SCRIPT_LOCALE_HINTS: Record<string, string> = {
+  Hans: "zh-Hans",
+  Hant: "zh-Hant",
+  Hani: "zh",
+  Jpan: "ja",
+  Khmr: "km",
+  Kore: "ko",
+  Laoo: "lo",
+  Mymr: "my",
+  Thai: "th"
+};
+const WORD_PATTERN = /[\p{L}\p{N}]+(?:['‘’ʼ][\p{L}\p{N}]+)*/gu;
+
+function resolveLocale(metadata?: RecallLanguageMetadata) {
+  const candidates = [
+    metadata?.languageIso?.trim().replace(/_/g, "-"),
+    metadata?.script ? SCRIPT_LOCALE_HINTS[metadata.script] : undefined
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+    try {
+      return Intl.getCanonicalLocales(candidate)[0];
+    } catch {
+      // DBS language identifiers are metadata, not trusted BCP 47 tags.
+    }
+  }
+
+  return undefined;
+}
+
+function tokenize(input: string, metadata?: RecallLanguageMetadata) {
+  if (typeof Intl.Segmenter !== "function") {
+    return input.match(WORD_PATTERN) ?? [];
+  }
+
+  const segmenter = new Intl.Segmenter(resolveLocale(metadata), {
+    granularity: "word"
+  });
+  return Array.from(segmenter.segment(input))
+    .filter((segment) => segment.isWordLike)
+    .map((segment) => segment.segment);
 }
 
 function normalizeToken(token: string) {
   return token
     .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .replace(/’/g, "'")
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .replace(/[‘’ʼ]/g, "'")
     .toLocaleLowerCase("en-US");
 }
 
 export function assessRecall(
   expectedText: string,
-  submittedText: string
+  submittedText: string,
+  language?: RecallLanguageMetadata
 ): RecallAssessment {
-  const expectedWords = tokenize(expectedText);
-  const submittedWords = tokenize(submittedText);
+  const expectedWords = tokenize(expectedText, language);
+  const submittedWords = tokenize(submittedText, language);
 
   if (
     expectedWords.length > MAX_WORDS_PER_SIDE ||

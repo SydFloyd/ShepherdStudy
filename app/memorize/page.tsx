@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ScriptureAttribution } from "@/components/scripture-attribution";
+import { TranslationPicker } from "@/components/translation-picker";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import {
-  MEMORIZATION_TRANSLATIONS,
-  MemorizationTranslationId
+  BibleSourceInfo,
+  getLocalBibleVersion,
+  getTranslationLabel,
+  MemorizationTranslationId,
+  toBibleSourceInfo
 } from "@/lib/bible";
 import type { RecallAssessment, RecallToken } from "@/lib/memorization-recall";
 import { parseJsonSafe } from "@/lib/study-client-utils";
@@ -23,6 +28,7 @@ type Passage = {
   isWholeChapter: boolean;
   text: string;
   verses: Array<{ verse: number; text: string }>;
+  editionSnapshot: BibleSourceInfo | null;
   textAttemptCount: number;
   latestTextScore: number | null;
   bestTextScore: number | null;
@@ -53,11 +59,45 @@ function formatScore(score: number | null) {
   return score === null ? "Not practiced" : `${score}%`;
 }
 
-function translationLabel(translation: string) {
+function translationLabel(
+  translation: string,
+  source?: BibleSourceInfo | null
+) {
   return (
-    MEMORIZATION_TRANSLATIONS.find((item) => item.value === translation)
-      ?.label ?? translation.toUpperCase()
+    source?.vernacularTitle ||
+    source?.title ||
+    getTranslationLabel(translation)
   );
+}
+
+function getTranslationSource(
+  translation: string,
+  source?: BibleSourceInfo | null
+): BibleSourceInfo | null {
+  if (source) {
+    return source;
+  }
+  const version = getLocalBibleVersion(translation);
+  return version ? toBibleSourceInfo(version) : null;
+}
+
+function TranslationName({
+  translation,
+  source
+}: {
+  translation: string;
+  source?: BibleSourceInfo | null;
+}) {
+  const resolvedSource = getTranslationSource(translation, source);
+  return (
+    <bdi dir="auto" lang={resolvedSource?.languageIso}>
+      {translationLabel(translation, source)}
+    </bdi>
+  );
+}
+
+function getPassageSource(passage: Passage): BibleSourceInfo | null {
+  return getTranslationSource(passage.translation, passage.editionSnapshot);
 }
 
 function RecallTokens({ tokens }: { tokens: RecallToken[] }) {
@@ -73,6 +113,7 @@ function RecallTokens({ tokens }: { tokens: RecallToken[] }) {
           className={`memorizeRecallToken ${token.status}`}
         >
           {token.text}
+          <span className="srOnly"> ({token.status})</span>
         </span>
       ))}
     </span>
@@ -80,19 +121,35 @@ function RecallTokens({ tokens }: { tokens: RecallToken[] }) {
 }
 
 function PassageText({ passage }: { passage: Passage }) {
+  const source = getPassageSource(passage);
   return (
-    <div className="memorizePassageText">
-      {passage.verses.map((verse) => (
-        <span key={verse.verse} className="memorizeVerseText">
-          <span className="verseNumber">{verse.verse}</span>
-          {verse.text}{" "}
-        </span>
-      ))}
-    </div>
+    <>
+      <div
+        className="memorizePassageText scriptureText"
+        dir={source?.direction ?? "ltr"}
+        lang={source?.languageIso}
+      >
+        {passage.verses.map((verse) => (
+          <span key={verse.verse} className="memorizeVerseText">
+            <span className="verseNumber">{verse.verse}</span>
+            {verse.text}{" "}
+          </span>
+        ))}
+      </div>
+      <ScriptureAttribution source={source} />
+    </>
   );
 }
 
-function AssessmentPanel({ assessment }: { assessment: RecallAssessment }) {
+function AssessmentPanel({
+  assessment,
+  source,
+  showAttribution = true
+}: {
+  assessment: RecallAssessment;
+  source?: BibleSourceInfo | null;
+  showAttribution?: boolean;
+}) {
   return (
     <section className="memorizeAssessment" aria-live="polite">
       <h3>{assessment.score}% correct</h3>
@@ -103,20 +160,22 @@ function AssessmentPanel({ assessment }: { assessment: RecallAssessment }) {
       <div className="memorizeAssessmentGrid">
         <div>
           <h4>Your answer</h4>
-          <p>
+          <p dir={source?.direction} lang={source?.languageIso}>
             <RecallTokens tokens={assessment.submitted} />
           </p>
         </div>
         <div>
           <h4>Expected</h4>
-          <p>
+          <p dir={source?.direction} lang={source?.languageIso}>
             <RecallTokens tokens={assessment.expected} />
           </p>
           <p className="muted memorizeLegend">
-            Green matched; red words were incorrect or missing.
+            Matched words are green. Incorrect or missing words are red and
+            underlined.
           </p>
         </div>
       </div>
+      {showAttribution ? <ScriptureAttribution source={source} /> : null}
     </section>
   );
 }
@@ -488,24 +547,13 @@ export default function MemorizePage() {
           </p>
         </div>
         <div className="memorizeTranslationControl">
-          <label>
-            Preferred translation
-            <select
-              value={preferredTranslation}
-              onChange={(event) =>
-                setPreferredTranslation(
-                  event.target.value as MemorizationTranslationId
-                )
-              }
-              disabled={isSaving}
-            >
-              {MEMORIZATION_TRANSLATIONS.map((translation) => (
-                <option key={translation.value} value={translation.value}>
-                  {translation.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <TranslationPicker
+            id="memorize-preferred-translation"
+            label="Preferred translation"
+            value={preferredTranslation}
+            onChange={setPreferredTranslation}
+            disabled={isSaving}
+          />
           <button
             type="button"
             onClick={() => void savePreferredTranslation()}
@@ -533,7 +581,7 @@ export default function MemorizePage() {
           </button>
         </form>
         <p className="muted memorizeAddHint">
-          The reference is verified against the selected local Bible text before
+          The reference is verified against the selected Bible edition before
           it is saved. A range or whole chapter remains one progress item.
         </p>
       </article>
@@ -582,7 +630,11 @@ export default function MemorizePage() {
                   >
                     <span>{passage.reference}</span>
                     <small>
-                      {translationLabel(passage.translation)} · Latest {formatScore(passage.latestTextScore)}
+                      <TranslationName
+                        translation={passage.translation}
+                        source={passage.editionSnapshot}
+                      />{" "}
+                      · Latest {formatScore(passage.latestTextScore)}
                     </small>
                   </button>
                 ))}
@@ -595,7 +647,12 @@ export default function MemorizePage() {
               <>
                 <div className="memorizePracticeHeader">
                   <div>
-                    <p className="pill">{translationLabel(selectedPassage.translation)}</p>
+                    <p className="pill">
+                      <TranslationName
+                        translation={selectedPassage.translation}
+                        source={selectedPassage.editionSnapshot}
+                      />
+                    </p>
                     <h2>Write {selectedPassage.reference} from memory</h2>
                   </div>
                   <button
@@ -621,6 +678,8 @@ export default function MemorizePage() {
                       )}
                       maxLength={50_000}
                       placeholder="Type the passage without looking..."
+                      dir={getPassageSource(selectedPassage)?.direction}
+                      lang={getPassageSource(selectedPassage)?.languageIso}
                     />
                   </label>
                   <button type="submit" disabled={isAssessing}>
@@ -629,7 +688,11 @@ export default function MemorizePage() {
                 </form>
 
                 {practiceAssessment ? (
-                  <AssessmentPanel assessment={practiceAssessment} />
+                  <AssessmentPanel
+                    assessment={practiceAssessment}
+                    source={getPassageSource(selectedPassage)}
+                    showAttribution={!showOriginal}
+                  />
                 ) : null}
               </>
             ) : (
@@ -665,7 +728,11 @@ export default function MemorizePage() {
           {testPassage ? (
             <div className="memorizeTestPrompt">
               <p className="muted">
-                Card {testIndex + 1} of {testQueue.length} · {translationLabel(testPassage.translation)}
+                Card {testIndex + 1} of {testQueue.length} ·{" "}
+                <TranslationName
+                  translation={testPassage.translation}
+                  source={testPassage.editionSnapshot}
+                />
               </p>
               {testMode === "TEXT" ? (
                 <h2>{testPassage.reference}</h2>
@@ -682,6 +749,8 @@ export default function MemorizePage() {
                       onChange={(event) => setTestInput(event.target.value)}
                       rows={Math.min(16, Math.max(5, testPassage.verses.length + 3))}
                       maxLength={50_000}
+                      dir={getPassageSource(testPassage)?.direction}
+                      lang={getPassageSource(testPassage)?.languageIso}
                     />
                   ) : (
                     <input
@@ -699,7 +768,11 @@ export default function MemorizePage() {
 
               {testAssessment ? (
                 <>
-                  <AssessmentPanel assessment={testAssessment} />
+                  <AssessmentPanel
+                    assessment={testAssessment}
+                    source={getPassageSource(testPassage)}
+                    showAttribution={testMode === "TEXT"}
+                  />
                   <button type="button" onClick={nextTestCard}>
                     {testIndex + 1 >= testQueue.length
                       ? "Start another round"
@@ -731,7 +804,12 @@ export default function MemorizePage() {
                     <div>
                       <h3>{passage.reference}</h3>
                       <p className="muted">
-                        {translationLabel(passage.translation)} · {passage.verses.length} {passage.verses.length === 1 ? "verse" : "verses"}
+                        <TranslationName
+                          translation={passage.translation}
+                          source={passage.editionSnapshot}
+                        />{" "}
+                        · {passage.verses.length}{" "}
+                        {passage.verses.length === 1 ? "verse" : "verses"}
                       </p>
                     </div>
                     <dl>
@@ -772,9 +850,9 @@ export default function MemorizePage() {
             <div>
               <h2>Suggested next passages</h2>
               <p className="muted">
-                AI-assisted suggestions are verified against the local Bible and
-                cached for your current saved set. Adding or removing a passage
-                makes the cache stale; practice scores do not.
+                AI-assisted suggestions are verified against your selected Bible
+                edition and cached for your current saved set. Adding or removing
+                a passage makes the cache stale; practice scores do not.
               </p>
             </div>
             <button

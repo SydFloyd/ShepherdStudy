@@ -46,6 +46,7 @@ model MemorizationPassage {
   isWholeChapter        Boolean               @default(false)
   text                  String
   verses                Json
+  editionSnapshot       Json?
   textAttemptCount      Int                   @default(0)
   latestTextScore       Int?
   bestTextScore         Int?

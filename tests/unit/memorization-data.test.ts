@@ -2,7 +2,9 @@ import {
   assessReferenceRecall,
   getMemorizationSetFingerprint,
   isExactPassageReference,
-  passagesOverlap
+  parseMemorizationEditionSnapshot,
+  passagesOverlap,
+  serializeMemorizationPassage
 } from "@/lib/memorization-data";
 
 const psalm23 = {
@@ -62,5 +64,54 @@ describe("memorization passage helpers", () => {
     expect(getMemorizationSetFingerprint([first])).not.toBe(
       getMemorizationSetFingerprint([first, second])
     );
+  });
+
+  it("returns an immutable edition snapshot with a saved passage", () => {
+    const editionSnapshot = {
+      translation: "dbs:TESTDBS",
+      provider: "dbs" as const,
+      providerId: "TESTDBS",
+      title: "Test Bible",
+      vernacularTitle: "Test Bible",
+      languageName: "English",
+      languageIso: "eng",
+      script: "Latn",
+      direction: "ltr" as const,
+      year: 2026,
+      copyright: "Used with permission."
+    };
+    const now = new Date("2026-08-05T12:00:00.000Z");
+
+    const serialized = serializeMemorizationPassage({
+      id: "passage-1",
+      translation: editionSnapshot.translation,
+      reference: "John 3:16",
+      book: "John",
+      bookOrder: 43,
+      chapter: 3,
+      verseStart: 16,
+      verseEnd: 16,
+      isWholeChapter: false,
+      text: "For God so loved the world.",
+      verses: [{ verse: 16, text: "For God so loved the world." }],
+      editionSnapshot,
+      textAttemptCount: 0,
+      latestTextScore: null,
+      bestTextScore: null,
+      referenceAttemptCount: 0,
+      latestReferenceScore: null,
+      bestReferenceScore: null,
+      lastPracticedAt: null,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    expect(serialized.editionSnapshot).toEqual(editionSnapshot);
+    expect(
+      parseMemorizationEditionSnapshot({
+        ...editionSnapshot,
+        provider: "untrusted"
+      })
+    ).toBeNull();
   });
 });

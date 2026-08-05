@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { bibleTranslationIdSchema } from "@/lib/bible";
+import { getBibleVersion } from "@/lib/bible-catalog";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { listStudyThreads, toThreadSummary } from "@/lib/study-history";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +15,7 @@ import { captureServerException } from "@/lib/sentry";
 
 const createThreadSchema = z.object({
   title: z.string().trim().max(120).optional().or(z.literal("")),
-  translation: z.string().trim().max(24).optional().or(z.literal(""))
+  translation: bibleTranslationIdSchema.optional().or(z.literal(""))
 });
 
 export async function GET() {
@@ -52,11 +55,21 @@ export async function POST(req: Request) {
 
   try {
     const payload = createThreadSchema.parse(await readJsonBody(req));
+    const requestedTranslation = payload.translation?.trim() || null;
+    const version = requestedTranslation
+      ? await getBibleVersion(requestedTranslation)
+      : null;
+    if (requestedTranslation && !version) {
+      return NextResponse.json(
+        { error: "That Bible translation is not available." },
+        { status: 400 }
+      );
+    }
     const thread = await prisma.studyThread.create({
       data: {
         userId: session.user.id,
         title: payload.title?.trim() || "Untitled Study",
-        translation: payload.translation?.trim() || null
+        translation: version?.value ?? null
       }
     });
 
@@ -74,6 +87,12 @@ export async function POST(req: Request) {
     if (error instanceof z.ZodError) {
       logEvent("warn", "study_threads.invalid_input", requestMeta);
       return NextResponse.json({ error: "Invalid thread payload." }, { status: 400 });
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The translation catalog is temporarily unavailable." },
+        { status: 503 }
+      );
     }
     captureServerException(error, {
       route: "/api/study/threads",

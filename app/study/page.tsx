@@ -3,11 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  BibleTranslationId,
-  BIBLE_TRANSLATIONS,
-  DEFAULT_BIBLE_TRANSLATION
-} from "@/lib/bible";
+import { TranslationPicker } from "@/components/translation-picker";
+import { ScriptureAttribution } from "@/components/scripture-attribution";
+import { BibleTranslationId, DEFAULT_BIBLE_TRANSLATION } from "@/lib/bible";
 import { StudyAssistantPanel } from "@/components/study/study-assistant-panel";
 import { StudyPassagePanel } from "@/components/study/study-passage-panel";
 import { StudyRecommendations } from "@/components/study/study-recommendations";
@@ -108,42 +106,64 @@ export default function StudyPage() {
   }, [turns]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
     async function loadPreview() {
       if (!previewSelection) {
         setPreviewData(null);
         setPreviewError(null);
+        setPreviewLoading(false);
         setPreviewPrompt("");
         return;
       }
 
       setPreviewLoading(true);
       setPreviewError(null);
+      setPreviewData(null);
 
-      const response = await fetch("/api/passage-preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reference: previewSelection.reference,
-          translation: previewSelection.translation
-        })
-      });
+      try {
+        const response = await fetch("/api/passage-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            reference: previewSelection.reference,
+            translation: previewSelection.translation
+          })
+        });
 
-      const data = (await response.json()) as
-        | (PassagePreviewPayload & { error?: undefined })
-        | { error: string };
+        const data = (await response.json()) as
+          | (PassagePreviewPayload & { error?: undefined })
+          | { error: string };
 
-      if (!response.ok || "error" in data) {
+        if (!active) {
+          return;
+        }
+        if (!response.ok || "error" in data) {
+          setPreviewError(data.error ?? "Unable to load verse preview.");
+          return;
+        }
+
+        setPreviewData(data);
+      } catch (error) {
+        if (!active || (error instanceof DOMException && error.name === "AbortError")) {
+          return;
+        }
         setPreviewData(null);
-        setPreviewError(data.error ?? "Unable to load verse preview.");
-        setPreviewLoading(false);
-        return;
+        setPreviewError("Unable to load verse preview.");
+      } finally {
+        if (active) {
+          setPreviewLoading(false);
+        }
       }
-
-      setPreviewData(data);
-      setPreviewLoading(false);
     }
 
     void loadPreview();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [previewSelection]);
 
   useEffect(() => {
@@ -235,9 +255,6 @@ export default function StudyPage() {
   }
 
   const hasStudyContent = turns.length > 0 || Boolean(pendingTurn);
-  const versionSelectWidthCh =
-    Math.max(...BIBLE_TRANSLATIONS.map((item) => item.label.length), 8) + 2;
-
   function onInputSubmitShortcut(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
@@ -273,8 +290,11 @@ export default function StudyPage() {
               setPreviewData(null);
               setPreviewError(null);
               setPreviewPrompt("");
-              const ok = await loadThread(threadId);
-              if (ok) {
+              const loadedThread = await loadThread(threadId);
+              if (loadedThread) {
+                if (loadedThread.thread.translation) {
+                  setTranslation(loadedThread.thread.translation);
+                }
                 window.scrollTo({ top: 0, behavior: "auto" });
               }
             }}
@@ -292,25 +312,14 @@ export default function StudyPage() {
         <article className="card studyTopSettings">
           <div className="studyTopHeader">
             <h1>Study Companion</h1>
-            <label className="versionField studyVersionField">
-              Version
-              <select
-                value={translation}
-                onChange={(event) =>
-                  setTranslation(event.target.value as BibleTranslationId)
-                }
-                style={{
-                  width: `calc(${versionSelectWidthCh}ch + 2.5rem)`,
-                  maxWidth: "100%"
-                }}
-              >
-                {BIBLE_TRANSLATIONS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <TranslationPicker
+              id="study-translation"
+              className="versionField studyVersionField"
+              label="Version"
+              value={translation}
+              onChange={setTranslation}
+              disabled={isLoading}
+            />
           </div>
         </article>
 
@@ -336,7 +345,6 @@ export default function StudyPage() {
                           <StudyPassagePanel
                             key={`${turn.id}-${passage.reference}`}
                             passage={passage}
-                            selectedTranslation={translation}
                           />
                         ))}
                       </div>
@@ -384,7 +392,6 @@ export default function StudyPage() {
                         <StudyPassagePanel
                           key={`${pendingTurn.id}-${passage.reference}`}
                           passage={passage}
-                          selectedTranslation={translation}
                         />
                       ))}
                     </div>
@@ -500,7 +507,11 @@ export default function StudyPage() {
                   {previewData.translationName}
                   {previewData.excerpted ? " | excerpted preview" : ""}
                 </p>
-                <div className="modalBody">
+                <div
+                  className="modalBody scriptureText"
+                  dir={previewData.source?.direction ?? "ltr"}
+                  lang={previewData.source?.languageIso}
+                >
                   {previewData.verses
                     .reduce<Array<{ paragraph: number; verses: PassagePreviewPayload["verses"] }>>(
                       (groups, verse) => {
@@ -528,6 +539,7 @@ export default function StudyPage() {
                       </p>
                     ))}
                 </div>
+                <ScriptureAttribution source={previewData.source ?? null} />
                 <div className="studyPreviewActions">
                   <input
                     aria-label="Ask a question (optional)"

@@ -117,4 +117,27 @@ describe("authentication rate-limit helpers", () => {
       /^memorization_attempt:pair:[a-f0-9]{32}$/
     );
   });
+
+  it("bounds public DBS chapter reads by pseudonymous actor", () => {
+    vi.stubEnv("RATE_LIMIT_SECRET", "rate-limit-test-secret");
+    vi.stubEnv("DBS_READS_PER_10_MINUTES", "75");
+    vi.stubEnv("DBS_GLOBAL_READS_PER_10_MINUTES", "2500");
+
+    const rules = __testables.getDbsReadRules({
+      headers: { "x-forwarded-for": "203.0.113.25" }
+    });
+
+    expect(rules).toHaveLength(2);
+    expect(rules[0]).toEqual(
+      expect.objectContaining({ limit: 75, scope: "actor" })
+    );
+    expect(rules[0].key).toMatch(/^dbs_read:actor:[a-f0-9]{32}$/);
+    expect(rules[1]).toEqual(
+      expect.objectContaining({
+        key: "dbs_read:global",
+        limit: 2500,
+        scope: "global"
+      })
+    );
+  });
 });

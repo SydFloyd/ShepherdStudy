@@ -4,7 +4,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { MEMORIZATION_TRANSLATION_IDS } from "@/lib/bible";
+import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
+import { bibleTranslationIdSchema, isDbsTranslation } from "@/lib/bible";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   resolveMemorizationPassage,
@@ -19,7 +21,7 @@ const MAX_SAVED_PASSAGES = 200;
 
 const createSchema = z.object({
   reference: z.string().trim().min(1).max(120),
-  translation: z.enum(MEMORIZATION_TRANSLATION_IDS)
+  translation: bibleTranslationIdSchema
 });
 
 const deleteSchema = z.object({
@@ -53,6 +55,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (isDbsTranslation(input.translation)) {
+      const rateLimit = await consumeDbsReadRateLimit({
+        headers: request.headers
+      });
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many Bible text requests. Please wait and retry." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(rateLimit.retryAfterSeconds)
+            }
+          }
+        );
+      }
+    }
+
     const resolution = await resolveMemorizationPassage(input);
     if (!resolution.ok) {
       return NextResponse.json({ error: resolution.message }, { status: 400 });
@@ -79,6 +98,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Enter a valid passage and translation." },
         { status: 400 }
+      );
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
     if (

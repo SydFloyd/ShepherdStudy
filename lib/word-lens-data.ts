@@ -1,20 +1,32 @@
 import {
+  BibleSourceInfo,
+  getLocalBibleVersion,
+  isOldTestamentBook,
+  resolveBibleBookCandidates,
+  toBibleSourceInfo
+} from "@/lib/bible";
+import {
+  resolvePassageFromBible
+} from "@/lib/bible-provider";
+import {
   formatResolvedReference,
-  getOriginalLanguageSnapshot,
-  resolvePassageFromLocalBible
+  getOriginalLanguageSnapshot
 } from "@/lib/local-bible";
+import { parseScriptureReference } from "@/lib/scripture";
 
 export type WordLensResolvedContext = {
   reference: string;
   chapterReference: string;
   translation: string;
   translationName: string;
+  targetSource: BibleSourceInfo;
   selectedVerse: {
     verse: number;
     text: string;
   };
   sourceTranslation: string;
   sourceTranslationName: string;
+  originalSource: BibleSourceInfo;
   sourceText: string;
   sourceWords: Array<{
     position: number;
@@ -39,11 +51,45 @@ export type WordLensContextResult =
       error: string;
     };
 
+export function getWordLensCacheCoordinates(input: {
+  reference: string;
+  translation: string;
+}): {
+  reference: string;
+  sourceTranslation: "uhb" | "ugnt";
+  targetTranslation: string;
+} | null {
+  const parsed = parseScriptureReference(input.reference);
+  if (!parsed) {
+    return null;
+  }
+
+  const candidates = resolveBibleBookCandidates(parsed.book);
+  const testamentFlags = new Set(
+    candidates
+      .map((book) => isOldTestamentBook(book))
+      .filter((value): value is boolean => value !== null)
+  );
+  if (candidates.length === 0 || testamentFlags.size !== 1) {
+    return null;
+  }
+  const isOt = testamentFlags.values().next().value as boolean;
+  const requestBookKey = parsed.book.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  return {
+    reference: `request:${requestBookKey} ${parsed.chapter}:${
+      parsed.verseStart ?? 1
+    }`,
+    sourceTranslation: isOt ? "uhb" : "ugnt",
+    targetTranslation: input.translation
+  };
+}
+
 export async function resolveWordLensContext(input: {
   reference: string;
   translation: string;
 }): Promise<WordLensContextResult> {
-  const resolution = await resolvePassageFromLocalBible({
+  const resolution = await resolvePassageFromBible({
     reference: input.reference,
     translation: input.translation
   });
@@ -100,6 +146,14 @@ export async function resolveWordLensContext(input: {
       error: "Original language data unavailable for this verse."
     };
   }
+  const originalVersion = getLocalBibleVersion(original.sourceTranslation);
+  if (!originalVersion) {
+    return {
+      ok: false,
+      status: 404,
+      error: "Original language edition metadata is unavailable."
+    };
+  }
 
   const chapterIndex = resolution.chapterVerses.findIndex(
     (verse) => verse.verse === selectedVerseNumber
@@ -113,23 +167,31 @@ export async function resolveWordLensContext(input: {
 
   const rangeRequested =
     defaultToFirstVerse || Boolean(resolution.parsed.verseEnd);
-  const notice = rangeRequested
-    ? `Showing ${resolvedReference} from your selection.`
-    : null;
+  const notices = [
+    rangeRequested
+      ? `Showing ${resolvedReference} from your selection.`
+      : null,
+    resolution.source.provider === "dbs"
+      ? "The local Hebrew or Greek source is aligned by chapter and verse number; editions with alternate versification may differ."
+      : null
+  ].filter((value): value is string => Boolean(value));
+  const notice = notices.length > 0 ? notices.join(" ") : null;
 
   return {
     ok: true,
     data: {
       reference: resolvedReference,
       chapterReference: resolution.chapterReference,
-      translation: input.translation,
+      translation: resolution.source.translation,
       translationName: resolution.translationName,
+      targetSource: resolution.source,
       selectedVerse: {
         verse: selectedVerse.verse,
         text: selectedVerse.text
       },
       sourceTranslation: original.sourceTranslation,
       sourceTranslationName: original.sourceTranslationName,
+      originalSource: toBibleSourceInfo(originalVersion),
       sourceText: sourceVerse.text,
       sourceWords: sourceVerse.words,
       notice,

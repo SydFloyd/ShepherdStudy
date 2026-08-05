@@ -4,11 +4,14 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import {
-  BIBLE_TRANSLATION_IDS,
+  BibleSourceInfo,
+  bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION,
   isTranslationCompatibleWithBook
 } from "@/lib/bible";
-import { resolvePassageFromLocalBible } from "@/lib/local-bible";
+import { resolvePassageFromBible } from "@/lib/bible-provider";
+import { getBibleVersion } from "@/lib/bible-catalog";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { generateStudyRecommendations } from "@/lib/openai";
@@ -45,9 +48,7 @@ const inputSchema = z
       .max(200)
       .optional()
       .default([]),
-    translation: z
-      .enum(BIBLE_TRANSLATION_IDS)
-      .default(DEFAULT_BIBLE_TRANSLATION),
+    translation: bibleTranslationIdSchema.default(DEFAULT_BIBLE_TRANSLATION),
     threadId: z.string().trim().cuid().optional(),
     kind: z.enum(["prompt", "verse"]).optional(),
     userText: z.string().trim().max(4000).optional().or(z.literal(""))
@@ -132,6 +133,7 @@ function buildInputPassagePayload(input: {
   chapterReference: string;
   translation: string;
   translationName: string;
+  source: BibleSourceInfo;
   verses: StudyPassageResult["verses"];
   chapterPath: string | null;
 }): StudyPassageResult {
@@ -141,6 +143,7 @@ function buildInputPassagePayload(input: {
     chapterReference: input.chapterReference,
     translation: input.translation,
     translationName: input.translationName,
+    source: input.source,
     verses: input.verses,
     chapterPath: input.chapterPath
   };
@@ -206,6 +209,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const selectedVersion = await getBibleVersion(input.translation);
+    if (!selectedVersion) {
+      return NextResponse.json(
+        { error: "That Bible translation is not available." },
+        { status: 400 }
+      );
+    }
+    const selectedTranslation = selectedVersion.value;
+
     const normalizedPrompt = input.prompt?.trim() || "";
     const promptExtraction = extractScriptureReferencesFromText(normalizedPrompt);
     const normalizedPassages = normalizeReferences([
@@ -231,9 +243,9 @@ export async function POST(req: Request) {
 
     const passageResolutions = await Promise.all(
       normalizedPassages.map((reference) =>
-        resolvePassageFromLocalBible({
+        resolvePassageFromBible({
           reference,
-          translation: input.translation
+          translation: selectedTranslation
         })
       )
     );
@@ -254,8 +266,9 @@ export async function POST(req: Request) {
         buildInputPassagePayload({
           reference: resolution.resolvedReference,
           chapterReference: resolution.chapterReference,
-          translation: input.translation,
+          translation: resolution.source.translation,
           translationName: resolution.translationName,
+          source: resolution.source,
           verses: resolution.selectedVerses,
           chapterPath: resolution.chapterPath
         })
@@ -283,9 +296,9 @@ export async function POST(req: Request) {
 
     if (passagesPayload.length === 0 && response.recommendations.length > 0) {
       for (const recommendation of response.recommendations) {
-        const anchor = await resolvePassageFromLocalBible({
+        const anchor = await resolvePassageFromBible({
           reference: recommendation.reference,
-          translation: input.translation
+          translation: selectedTranslation
         });
         if (!anchor.ok) {
           continue;
@@ -300,8 +313,9 @@ export async function POST(req: Request) {
           origin: "anchor",
           reference: anchor.resolvedReference,
           chapterReference: anchor.chapterReference,
-          translation: input.translation,
+          translation: anchor.source.translation,
           translationName: anchor.translationName,
+          source: anchor.source,
           verses,
           chapterPath: anchor.chapterPath,
           excerpted: !anchor.parsed.verseStart
@@ -331,9 +345,9 @@ export async function POST(req: Request) {
       filteredRecommendations.map(async (item) => {
         const selectionTranslation = getRecommendationTranslation(
           item.reference,
-          input.translation
+          selectedTranslation
         );
-        const preview = await resolvePassageFromLocalBible({
+        const preview = await resolvePassageFromBible({
           reference: item.reference,
           translation: selectionTranslation
         });
@@ -349,7 +363,10 @@ export async function POST(req: Request) {
 
         return {
           reference: preview.resolvedReference,
-          preview: previewText
+          preview: previewText,
+          translation: preview.source.translation,
+          translationName: preview.translationName,
+          source: preview.source
         };
       })
     );
@@ -384,7 +401,7 @@ export async function POST(req: Request) {
           passagesPayload.length > 0
             ? passagesPayload.map((item) => item.reference)
             : normalizedPassages,
-        translation: input.translation,
+        translation: selectedTranslation,
         response: {
           mode,
           modeName: modeMeta.modeName,
@@ -451,6 +468,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid study request. Provide a passage, a prompt, or both." },
         { status: 400 }
+      );
+    }
+
+    if (error instanceof DbsBibleError) {
+      logEvent("warn", "study.scripture_provider_unavailable", {
+        ...requestMeta,
+        providerStatus: error.status
+      });
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
 

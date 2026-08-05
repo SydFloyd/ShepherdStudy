@@ -4,11 +4,9 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { TranslationPicker } from "@/components/translation-picker";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import {
-  MEMORIZATION_TRANSLATIONS,
-  MemorizationTranslationId
-} from "@/lib/bible";
+import { MemorizationTranslationId } from "@/lib/bible";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
 type AccountPayload = {
@@ -193,23 +191,14 @@ export default function AccountPage() {
             Display name
             <input value={name} onChange={(event) => setName(event.target.value)} />
           </label>
-          <label>
-            Preferred Bible translation
-            <select
-              value={preferredTranslation}
-              onChange={(event) =>
-                setPreferredTranslation(
-                  event.target.value as MemorizationTranslationId
-                )
-              }
-            >
-              {MEMORIZATION_TRANSLATIONS.map((translation) => (
-                <option key={translation.value} value={translation.value}>
-                  {translation.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <TranslationPicker
+            id="account-preferred-translation"
+            label="Preferred Bible translation"
+            value={preferredTranslation}
+            onChange={setPreferredTranslation}
+            disabled={isSavingProfile}
+            required
+          />
           <button type="submit" disabled={isSavingProfile}>
             {isSavingProfile ? "Saving..." : "Save profile"}
           </button>

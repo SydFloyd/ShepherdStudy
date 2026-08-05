@@ -15,13 +15,14 @@ const DONATION_CHECKOUT_WINDOW_MS = 15 * 60 * 1000;
 const MEMORIZATION_RECOMMENDATION_WINDOW_MS = 60 * 60 * 1000;
 const MEMORIZATION_RECOMMENDATION_DAY_MS = 24 * 60 * 60 * 1000;
 const MEMORIZATION_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
+const DBS_READ_WINDOW_MS = 10 * 60 * 1000;
 const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type RateLimitRule = {
   key: string;
   limit: number;
   windowMs: number;
-  scope: "actor" | "actor_account";
+  scope: "actor" | "actor_account" | "global";
 };
 
 export type AuthRateLimitDecision =
@@ -53,7 +54,8 @@ function buildRuleKeys(input: {
     | "reset_confirm"
     | "donation_checkout"
     | "memorization_recommendation"
-    | "memorization_attempt";
+    | "memorization_attempt"
+    | "dbs_read";
   headers: RequestHeaderSource;
   normalizedEmail: string;
 }) {
@@ -67,6 +69,38 @@ function buildRuleKeys(input: {
       `${actor}|${account}`
     )}`
   };
+}
+
+function getDbsReadRules(input: {
+  headers: RequestHeaderSource;
+}): RateLimitRule[] {
+  const keys = buildRuleKeys({
+    action: "dbs_read",
+    headers: input.headers,
+    normalizedEmail: "scripture"
+  });
+  return [
+    {
+      key: keys.actor,
+      limit: readPositiveInteger(
+        process.env.DBS_READS_PER_10_MINUTES,
+        120,
+        10_000
+      ),
+      windowMs: DBS_READ_WINDOW_MS,
+      scope: "actor"
+    },
+    {
+      key: "dbs_read:global",
+      limit: readPositiveInteger(
+        process.env.DBS_GLOBAL_READS_PER_10_MINUTES,
+        5_000,
+        100_000
+      ),
+      windowMs: DBS_READ_WINDOW_MS,
+      scope: "global"
+    }
+  ];
 }
 
 function getDonationCheckoutRules(input: {
@@ -472,10 +506,17 @@ export function consumeMemorizationAttemptRateLimit(input: {
   );
 }
 
+export function consumeDbsReadRateLimit(input: {
+  headers: RequestHeaderSource;
+}) {
+  return consumeRules(getDbsReadRules(input));
+}
+
 export const __testables = {
   buildRuleKeys,
   getDonationCheckoutRules,
   getMemorizationRecommendationRules,
   getMemorizationAttemptRules,
+  getDbsReadRules,
   readPositiveInteger
 };

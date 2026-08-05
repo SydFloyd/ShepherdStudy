@@ -13,6 +13,19 @@ type DiffOp =
   | { type: "removed"; text: string };
 
 function tokenize(input: string) {
+  if (typeof Intl.Segmenter === "function") {
+    const segments = Array.from(
+      new Intl.Segmenter(undefined, { granularity: "word" }).segment(input),
+      (segment) => segment.segment
+    ).filter((token) => token.length > 0);
+
+    // Keep the quadratic LCS matrix bounded if an upstream verse is malformed.
+    if (segments.length <= 1_000) {
+      return segments;
+    }
+    return [input];
+  }
+
   return input
     .split(/(\s+|[\p{P}\p{S}]+)/u)
     .filter((token) => token.length > 0);

@@ -1,7 +1,12 @@
+import type { BibleSourceInfo } from "@/lib/bible";
+
 export type StudyRecommendation = {
   reference: string;
   preview?: string;
   summary?: string;
+  translation?: string;
+  translationName?: string;
+  source?: BibleSourceInfo;
 };
 
 export type StudyMode = "passage_only" | "prompt_only" | "passage_and_prompt";
@@ -25,6 +30,7 @@ export type StudyPassageResult = {
   chapterReference: string;
   translation: string;
   translationName: string;
+  source?: BibleSourceInfo;
   verses: PassageVerse[];
   chapterPath: string | null;
   excerpted?: boolean;

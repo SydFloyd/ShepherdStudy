@@ -414,12 +414,6 @@ export function buildPassagePath(
   return `/passage/${bookSlug}/${parsed.chapter}?ref=${encodedRef}${translationQuery}`;
 }
 
-export function buildBibleApiUrl(reference: string, translation = "web"): string {
-  const encodedRef = encodeURIComponent(reference.trim());
-  const encodedTranslation = encodeURIComponent(translation);
-  return `https://bible-api.com/${encodedRef}?translation=${encodedTranslation}`;
-}
-
 export function parseBookSlug(bookSlug: string): string {
   return bookSlug
     .split("-")

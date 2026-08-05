@@ -2,12 +2,13 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
+import type { BibleSourceInfo } from "@/lib/bible";
 import {
   getBookOrderByName,
   MemorizationTranslationId,
   resolveBibleBookCandidates
 } from "@/lib/bible";
-import { resolvePassageFromLocalBible } from "@/lib/local-bible";
+import { resolvePassageFromBible } from "@/lib/bible-provider";
 import { assessRecall, RecallAssessment } from "@/lib/memorization-recall";
 import { parseScriptureReference } from "@/lib/scripture";
 
@@ -20,6 +21,27 @@ const verseSnapshotSchema = z.array(
     text: z.string()
   })
 );
+
+export const memorizationEditionSnapshotSchema = z
+  .object({
+    translation: z.string().trim().min(1).max(64),
+    provider: z.enum(["local", "dbs"]),
+    providerId: z.string().trim().min(1).max(64),
+    title: z.string().trim().min(1).max(500),
+    vernacularTitle: z.string().trim().max(500).nullable(),
+    languageName: z.string().trim().min(1).max(200),
+    languageIso: z.string().trim().min(1).max(12),
+    script: z.string().trim().min(1).max(12),
+    direction: z.enum(["ltr", "rtl"]),
+    year: z.number().int().min(0).max(3000).nullable(),
+    copyright: z.string().max(2_000).nullable()
+  })
+  .strict();
+
+export type MemorizationEditionSnapshot = BibleSourceInfo &
+  z.infer<typeof memorizationEditionSnapshotSchema> & {
+    [key: string]: string | number | null;
+  };
 
 export const recommendationPayloadSchema = z.array(
   z.object({
@@ -43,6 +65,7 @@ export type ResolvedMemorizationPassage = {
   isWholeChapter: boolean;
   text: string;
   verses: Array<{ verse: number; text: string }>;
+  editionSnapshot: MemorizationEditionSnapshot;
 };
 
 export type MemorizationPassageCoordinates = Pick<
@@ -57,6 +80,7 @@ type MemorizationPassageRecord = MemorizationPassageCoordinates & {
   isWholeChapter: boolean;
   text: string;
   verses: unknown;
+  editionSnapshot: unknown | null;
   textAttemptCount: number;
   latestTextScore: number | null;
   bestTextScore: number | null;
@@ -100,7 +124,7 @@ export async function resolveMemorizationPassage(input: {
     };
   }
 
-  const resolution = await resolvePassageFromLocalBible(input);
+  const resolution = await resolvePassageFromBible(input);
   if (!resolution.ok) {
     return { ok: false, message: resolution.message };
   }
@@ -148,10 +172,14 @@ export async function resolveMemorizationPassage(input: {
     return { ok: false, message: "Unable to resolve that Bible book." };
   }
 
+  const editionSnapshot = memorizationEditionSnapshotSchema.parse(
+    resolution.source
+  ) as MemorizationEditionSnapshot;
+
   return {
     ok: true,
     passage: {
-      translation: input.translation,
+      translation: editionSnapshot.translation,
       reference: formatReference({
         book: resolution.resolvedBook,
         chapter: parsed.chapter,
@@ -166,13 +194,23 @@ export async function resolveMemorizationPassage(input: {
       verseEnd,
       isWholeChapter,
       text,
-      verses
+      verses,
+      editionSnapshot
     }
   };
 }
 
 export function parseVerseSnapshots(value: unknown) {
   return verseSnapshotSchema.parse(value);
+}
+
+export function parseMemorizationEditionSnapshot(
+  value: unknown
+): MemorizationEditionSnapshot | null {
+  const parsed = memorizationEditionSnapshotSchema.safeParse(value);
+  return parsed.success
+    ? (parsed.data as MemorizationEditionSnapshot)
+    : null;
 }
 
 export function serializeMemorizationPassage(
@@ -190,6 +228,9 @@ export function serializeMemorizationPassage(
     isWholeChapter: passage.isWholeChapter,
     text: passage.text,
     verses: parseVerseSnapshots(passage.verses),
+    editionSnapshot: parseMemorizationEditionSnapshot(
+      passage.editionSnapshot
+    ),
     textAttemptCount: passage.textAttemptCount,
     latestTextScore: passage.latestTextScore,
     bestTextScore: passage.bestTextScore,

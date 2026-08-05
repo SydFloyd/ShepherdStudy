@@ -28,10 +28,15 @@ describePostgres("memorization persistence", () => {
     userIds.push(user.id);
     expect(user.preferredTranslation).toBe("web");
 
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { preferredTranslation: "dbs:TESTDBS" }
+    });
+
     const passage = await prisma.memorizationPassage.create({
       data: {
         userId: user.id,
-        translation: "web",
+        translation: "dbs:TESTDBS",
         reference: "Romans 8:1-4",
         book: "Romans",
         bookOrder: 45,
@@ -45,8 +50,26 @@ describePostgres("memorization persistence", () => {
           { verse: 2, text: "For the law of the Spirit of life set me free." },
           { verse: 3, text: "For what the law could not do, God did." },
           { verse: 4, text: "That the ordinance might be fulfilled." }
-        ]
+        ],
+        editionSnapshot: {
+          translation: "dbs:TESTDBS",
+          provider: "dbs",
+          providerId: "TESTDBS",
+          title: "Test Bible",
+          vernacularTitle: "Test Bible",
+          languageName: "English",
+          languageIso: "eng",
+          script: "Latn",
+          direction: "ltr",
+          year: 2026,
+          copyright: "Used with permission."
+        }
       }
+    });
+
+    expect(passage.editionSnapshot).toMatchObject({
+      provider: "dbs",
+      providerId: "TESTDBS"
     });
 
     await prisma.memorizationAttempt.create({
@@ -62,7 +85,7 @@ describePostgres("memorization persistence", () => {
       data: {
         userId: user.id,
         sourceFingerprint: "fingerprint",
-        translation: "web",
+        translation: "dbs:TESTDBS",
         model: "test-model",
         payload: [{ reference: "Romans 12:1-2", reason: "Next passage" }]
       }

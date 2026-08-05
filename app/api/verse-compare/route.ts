@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  BIBLE_TRANSLATION_IDS,
+  bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION,
-  getTranslationLabel
+  isDbsTranslation
 } from "@/lib/bible";
-import { resolvePassageFromLocalBible } from "@/lib/local-bible";
+import { resolvePassageFromBible } from "@/lib/bible-provider";
+import { DbsBibleError } from "@/lib/dbs-bible";
+import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { prisma } from "@/lib/prisma";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
 import { getRequestId } from "@/lib/request-context";
@@ -16,8 +18,8 @@ import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
-  leftTranslation: z.enum(BIBLE_TRANSLATION_IDS).default(DEFAULT_BIBLE_TRANSLATION),
-  rightTranslation: z.enum(BIBLE_TRANSLATION_IDS).default("kjv")
+  leftTranslation: bibleTranslationIdSchema.default(DEFAULT_BIBLE_TRANSLATION),
+  rightTranslation: bibleTranslationIdSchema.default("kjv")
 });
 
 function formatChapterReference(book: string, chapter: number) {
@@ -108,12 +110,32 @@ export async function POST(req: Request) {
       );
     }
 
+    if (
+      isDbsTranslation(input.leftTranslation) ||
+      isDbsTranslation(input.rightTranslation)
+    ) {
+      const rateLimit = await consumeDbsReadRateLimit({
+        headers: req.headers
+      });
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many Bible text requests. Please wait and retry." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(rateLimit.retryAfterSeconds)
+            }
+          }
+        );
+      }
+    }
+
     const [left, right] = await Promise.all([
-      resolvePassageFromLocalBible({
+      resolvePassageFromBible({
         reference: input.reference,
         translation: input.leftTranslation
       }),
-      resolvePassageFromLocalBible({
+      resolvePassageFromBible({
         reference: input.reference,
         translation: input.rightTranslation
       })
@@ -128,7 +150,8 @@ export async function POST(req: Request) {
 
     const { previousReference, nextReference } =
       await getAdjacentChapterReferences({
-        translation: input.leftTranslation,
+        translation:
+          left.source.provider === "dbs" ? "web" : input.leftTranslation,
         book: left.resolvedBook,
         chapter: parsed.chapter
       });
@@ -147,8 +170,9 @@ export async function POST(req: Request) {
       previousReference,
       nextReference,
       left: {
-        translation: input.leftTranslation,
-        translationName: getTranslationLabel(input.leftTranslation),
+        translation: left.source.translation,
+        translationName: left.translationName,
+        source: left.source,
         verses: left.selectedVerses.map((item) => ({
           verse: item.verse,
           paragraph: item.paragraph,
@@ -156,8 +180,9 @@ export async function POST(req: Request) {
         }))
       },
       right: {
-        translation: input.rightTranslation,
-        translationName: getTranslationLabel(input.rightTranslation),
+        translation: right.source.translation,
+        translationName: right.translationName,
+        source: right.source,
         verses: right.selectedVerses.map((item) => ({
           verse: item.verse,
           paragraph: item.paragraph,
@@ -175,6 +200,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid verse comparison request." },
         { status: 400 }
+      );
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
     if (isPrismaDatabaseUnavailableError(error)) {

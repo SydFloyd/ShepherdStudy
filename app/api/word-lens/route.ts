@@ -4,9 +4,11 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import {
-  BIBLE_TRANSLATION_IDS,
+  BibleSourceInfo,
+  bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { getOpenAIModelForTier } from "@/lib/model-tier";
 import {
@@ -24,19 +26,23 @@ import {
   buildWordLensCacheKey,
   getWordLensPromptVersion,
   readWordLensCache,
-  writeWordLensCache
+  writeWordLensCache,
+  writeWordLensCacheAlias
 } from "@/lib/word-lens-cache";
 import {
   parseMorphFields,
   transliterateToken
 } from "@/lib/word-lens-deterministic";
-import { resolveWordLensContext } from "@/lib/word-lens-data";
+import {
+  getWordLensCacheCoordinates,
+  resolveWordLensContext
+} from "@/lib/word-lens-data";
 import { resolveActiveUserId } from "@/lib/session-user";
 import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
-  translation: z.enum(BIBLE_TRANSLATION_IDS).default(DEFAULT_BIBLE_TRANSLATION)
+  translation: bibleTranslationIdSchema.default(DEFAULT_BIBLE_TRANSLATION)
 });
 
 type WordLensPayload = {
@@ -44,9 +50,11 @@ type WordLensPayload = {
   chapterReference: string;
   translation: string;
   translationName: string;
+  targetSource: BibleSourceInfo;
   selectedVerse: { verse: number; text: string };
   sourceTranslation: string;
   sourceTranslationName: string;
+  originalSource: BibleSourceInfo;
   sourceText: string;
   rows: Array<{
     position: number;
@@ -76,6 +84,7 @@ type WordLensMapPayload = {
   reference: string;
   translation: string;
   translationName: string;
+  targetSource: BibleSourceInfo;
   selectedVerse: { verse: number; text: string };
   rows: Array<{ position: number; aiTranslation: string }>;
 };
@@ -156,39 +165,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const contextResult = await resolveWordLensContext(input);
-    if (!contextResult.ok) {
-      return NextResponse.json(
-        { error: contextResult.error },
-        { status: contextResult.status }
-      );
-    }
-
-    const context = contextResult.data;
     const model = getOpenAIModelForTier(quotaDecision.tier);
     const promptVersion = getWordLensPromptVersion();
-    const cacheKey = buildWordLensCacheKey({
-      kind: "full",
-      reference: context.reference,
-      sourceTranslation: context.sourceTranslation,
-      targetTranslation: context.translation,
-      model,
-      promptVersion
-    });
-    const mapCacheKey = buildWordLensCacheKey({
-      kind: "map",
-      reference: context.reference,
-      sourceTranslation: context.sourceTranslation,
-      targetTranslation: context.translation,
-      model,
-      promptVersion
-    });
+    const requestCacheCoordinates = getWordLensCacheCoordinates(input);
+    const requestCacheKey = requestCacheCoordinates
+      ? buildWordLensCacheKey({
+          kind: "full",
+          ...requestCacheCoordinates,
+          model,
+          promptVersion
+        })
+      : null;
 
-    const cached = await readWordLensCache<WordLensPayload>({ cacheKey });
+    const cached = requestCacheKey
+      ? await readWordLensCache<WordLensPayload>({ cacheKey: requestCacheKey })
+      : null;
     if (cached) {
       logEvent("info", "word_lens.cache_hit", {
         ...requestMeta,
-        reference: context.reference
+        reference: requestCacheCoordinates?.reference
       });
       await trackUsageSuccess({
         request: req,
@@ -205,6 +200,77 @@ export async function POST(req: Request) {
         cached: true
       });
     }
+
+    const contextResult = await resolveWordLensContext(input);
+    if (!contextResult.ok) {
+      return NextResponse.json(
+        { error: contextResult.error },
+        { status: contextResult.status }
+      );
+    }
+
+    const context = contextResult.data;
+    const cacheKey = buildWordLensCacheKey({
+      kind: "full",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+    if (cacheKey !== requestCacheKey) {
+      const canonicalCached = await readWordLensCache<WordLensPayload>({
+        cacheKey
+      });
+      if (canonicalCached) {
+        if (requestCacheKey) {
+          await writeWordLensCacheAlias({
+            cacheKey: requestCacheKey,
+            canonicalCacheKey: cacheKey,
+            kind: "full",
+            reference: context.reference,
+            sourceTranslation: context.sourceTranslation,
+            targetTranslation: context.translation,
+            model,
+            promptVersion
+          });
+        }
+        logEvent("info", "word_lens.canonical_cache_hit", {
+          ...requestMeta,
+          reference: context.reference
+        });
+        await trackUsageSuccess({
+          request: req,
+          feature: "WORD_LENS",
+          pagePath: "/word-lens",
+          apiRoute: "/api/word-lens",
+          action: "analyze",
+          userId,
+          requestId
+        });
+        return NextResponse.json({
+          ...canonicalCached,
+          quota: quotaDecision,
+          cached: true
+        });
+      }
+    }
+    const mapCacheKey = buildWordLensCacheKey({
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+    const mapRequestCacheKey = requestCacheCoordinates
+      ? buildWordLensCacheKey({
+          kind: "map",
+          ...requestCacheCoordinates,
+          model,
+          promptVersion
+        })
+      : null;
 
     const strongCodes = Array.from(
       new Set(
@@ -335,9 +401,11 @@ export async function POST(req: Request) {
       chapterReference: context.chapterReference,
       translation: context.translation,
       translationName: context.translationName,
+      targetSource: context.targetSource,
       selectedVerse: context.selectedVerse,
       sourceTranslation: context.sourceTranslation,
       sourceTranslationName: context.sourceTranslationName,
+      originalSource: context.originalSource,
       sourceText: context.sourceText,
       rows,
       notice: context.notice,
@@ -355,11 +423,24 @@ export async function POST(req: Request) {
       promptVersion,
       payload
     });
+    if (requestCacheKey && requestCacheKey !== cacheKey) {
+      await writeWordLensCacheAlias({
+        cacheKey: requestCacheKey,
+        canonicalCacheKey: cacheKey,
+        kind: "full",
+        reference: context.reference,
+        sourceTranslation: context.sourceTranslation,
+        targetTranslation: context.translation,
+        model,
+        promptVersion
+      });
+    }
 
     const mapPayload: WordLensMapPayload = {
       reference: context.reference,
       translation: context.translation,
       translationName: context.translationName,
+      targetSource: context.targetSource,
       selectedVerse: context.selectedVerse,
       rows: rows.map((row) => ({
         position: row.position,
@@ -376,6 +457,18 @@ export async function POST(req: Request) {
       promptVersion,
       payload: mapPayload
     });
+    if (mapRequestCacheKey && mapRequestCacheKey !== mapCacheKey) {
+      await writeWordLensCacheAlias({
+        cacheKey: mapRequestCacheKey,
+        canonicalCacheKey: mapCacheKey,
+        kind: "map",
+        reference: context.reference,
+        sourceTranslation: context.sourceTranslation,
+        targetTranslation: context.translation,
+        model,
+        promptVersion
+      });
+    }
 
     logEvent("info", "word_lens.ai_output", {
       ...requestMeta,
@@ -410,6 +503,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid word-lens request." },
         { status: 400 }
+      );
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
     if (isPrismaDatabaseUnavailableError(error)) {

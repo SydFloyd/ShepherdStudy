@@ -8,6 +8,7 @@ import { consumeMemorizationAttemptRateLimit } from "@/lib/auth-rate-limit";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   assessReferenceRecall,
+  parseMemorizationEditionSnapshot,
   serializeMemorizationPassage
 } from "@/lib/memorization-data";
 import { assessRecall } from "@/lib/memorization-recall";
@@ -138,7 +139,12 @@ export async function POST(request: Request) {
 
     const assessment =
       input.mode === "TEXT"
-        ? assessRecall(passage.text, input.response)
+        ? assessRecall(
+            passage.text,
+            input.response,
+            parseMemorizationEditionSnapshot(passage.editionSnapshot) ??
+              undefined
+          )
         : assessReferenceRecall(passage, input.response);
     const updated = await persistAttempt({
       passageId: passage.id,

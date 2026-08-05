@@ -1,7 +1,5 @@
-import {
-  BIBLE_TRANSLATIONS,
-  BibleTranslationId
-} from "@/lib/bible";
+import { TranslationPicker } from "@/components/translation-picker";
+import { BibleTranslationId } from "@/lib/bible";
 
 type Props = {
   passage: string;
@@ -35,21 +33,14 @@ export function StudyForm({
             onChange={(event) => onPassageChange(event.target.value)}
           />
         </label>
-        <label className="versionField">
-          Version
-          <select
-            value={translation}
-            onChange={(event) =>
-              onTranslationChange(event.target.value as BibleTranslationId)
-            }
-          >
-            {BIBLE_TRANSLATIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TranslationPicker
+          id="study-form-translation"
+          className="versionField"
+          label="Version"
+          value={translation}
+          onChange={onTranslationChange}
+          disabled={isLoading}
+        />
       </div>
       <label>
         Prompt
