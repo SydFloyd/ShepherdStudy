@@ -4,9 +4,11 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import {
-  BIBLE_TRANSLATION_IDS,
+  BibleSourceInfo,
+  bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { getOpenAIModelForTier } from "@/lib/model-tier";
 import { generateWordLensInterlinearMap } from "@/lib/original-word-lens";
@@ -21,15 +23,19 @@ import {
   buildWordLensCacheKey,
   getWordLensPromptVersion,
   readWordLensCache,
-  writeWordLensCache
+  writeWordLensCache,
+  writeWordLensCacheAlias
 } from "@/lib/word-lens-cache";
-import { resolveWordLensContext } from "@/lib/word-lens-data";
+import {
+  getWordLensCacheCoordinates,
+  resolveWordLensContext
+} from "@/lib/word-lens-data";
 import { resolveActiveUserId } from "@/lib/session-user";
 import { trackUsageSuccess } from "@/lib/usage-tracking";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
-  translation: z.enum(BIBLE_TRANSLATION_IDS).default(DEFAULT_BIBLE_TRANSLATION)
+  translation: bibleTranslationIdSchema.default(DEFAULT_BIBLE_TRANSLATION)
 });
 
 function compactGloss(input: string | null | undefined) {
@@ -47,6 +53,7 @@ type MapPayload = {
   reference: string;
   translation: string;
   translationName: string;
+  targetSource: BibleSourceInfo;
   selectedVerse: { verse: number; text: string };
   rows: Array<{ position: number; aiTranslation: string }>;
 };
@@ -84,31 +91,24 @@ export async function POST(req: Request) {
       );
     }
 
-    const contextResult = await resolveWordLensContext(input);
-    if (!contextResult.ok) {
-      return NextResponse.json(
-        { error: contextResult.error },
-        { status: contextResult.status }
-      );
-    }
-
-    const context = contextResult.data;
     const model = getOpenAIModelForTier(quotaDecision.tier);
     const promptVersion = getWordLensPromptVersion();
-    const cacheKey = buildWordLensCacheKey({
-      kind: "map",
-      reference: context.reference,
-      sourceTranslation: context.sourceTranslation,
-      targetTranslation: context.translation,
-      model,
-      promptVersion
-    });
-
-    const cached = await readWordLensCache<MapPayload>({ cacheKey });
+    const requestCacheCoordinates = getWordLensCacheCoordinates(input);
+    const requestCacheKey = requestCacheCoordinates
+      ? buildWordLensCacheKey({
+          kind: "map",
+          ...requestCacheCoordinates,
+          model,
+          promptVersion
+        })
+      : null;
+    const cached = requestCacheKey
+      ? await readWordLensCache<MapPayload>({ cacheKey: requestCacheKey })
+      : null;
     if (cached) {
       logEvent("info", "word_lens.map_cache_hit", {
         ...requestMeta,
-        reference: context.reference
+        reference: requestCacheCoordinates?.reference
       });
       await trackUsageSuccess({
         request: req,
@@ -124,6 +124,59 @@ export async function POST(req: Request) {
         quota: quotaDecision,
         cached: true
       });
+    }
+
+    const contextResult = await resolveWordLensContext(input);
+    if (!contextResult.ok) {
+      return NextResponse.json(
+        { error: contextResult.error },
+        { status: contextResult.status }
+      );
+    }
+
+    const context = contextResult.data;
+    const cacheKey = buildWordLensCacheKey({
+      kind: "map",
+      reference: context.reference,
+      sourceTranslation: context.sourceTranslation,
+      targetTranslation: context.translation,
+      model,
+      promptVersion
+    });
+    if (cacheKey !== requestCacheKey) {
+      const canonicalCached = await readWordLensCache<MapPayload>({ cacheKey });
+      if (canonicalCached) {
+        if (requestCacheKey) {
+          await writeWordLensCacheAlias({
+            cacheKey: requestCacheKey,
+            canonicalCacheKey: cacheKey,
+            kind: "map",
+            reference: context.reference,
+            sourceTranslation: context.sourceTranslation,
+            targetTranslation: context.translation,
+            model,
+            promptVersion
+          });
+        }
+        logEvent("info", "word_lens.map_canonical_cache_hit", {
+          ...requestMeta,
+          reference: context.reference
+        });
+        await trackUsageSuccess({
+          request: req,
+          feature: "WORD_LENS",
+          pagePath: "/word-lens",
+          apiRoute: "/api/word-lens/map",
+          action: "translation_map",
+          userId,
+          requestId
+        });
+        return NextResponse.json({
+          ...canonicalCached,
+          quota: quotaDecision,
+          cached: true
+        });
+      }
     }
 
     const strongCodes = Array.from(
@@ -193,6 +246,7 @@ export async function POST(req: Request) {
       reference: context.reference,
       translation: context.translation,
       translationName: context.translationName,
+      targetSource: context.targetSource,
       selectedVerse: context.selectedVerse,
       rows
     };
@@ -207,6 +261,18 @@ export async function POST(req: Request) {
       promptVersion,
       payload
     });
+    if (requestCacheKey && requestCacheKey !== cacheKey) {
+      await writeWordLensCacheAlias({
+        cacheKey: requestCacheKey,
+        canonicalCacheKey: cacheKey,
+        kind: "map",
+        reference: context.reference,
+        sourceTranslation: context.sourceTranslation,
+        targetTranslation: context.translation,
+        model,
+        promptVersion
+      });
+    }
 
     logEvent("info", "word_lens.map_only_ok", {
       ...requestMeta,
@@ -240,6 +306,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid interlinear map request." },
         { status: 400 }
+      );
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
     if (isPrismaDatabaseUnavailableError(error)) {

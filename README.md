@@ -23,7 +23,8 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 - AI-generated related references + practical applications
 - Clickable references that open chapter view with highlighted verses
 - Fuzzy/alias book matching (e.g. `corinthians`, `corinthans`)
-- Translation selector in study and passage views
+- Searchable multilingual translation selector across reading and study tools
+- Dynamically loaded Digital Bible Society editions with source attribution
 - Optional original-language versions: UHB (Hebrew OT), UGNT (Greek NT)
 - Save study sessions for authenticated users
 - Dashboard showing recent sessions
@@ -52,6 +53,12 @@ The Postmark sender must be a confirmed sender signature or use a verified
 domain. Use `localhost,127.0.0.1` only for local development; production must
 list only its public registration hostnames.
 
+Direct Vercel deployments use Vercel's authenticated forwarded-IP header for
+anonymous quotas and rate limits. If Cloudflare proxies the site, set a random
+32+ character `CLOUDFLARE_PROXY_SECRET` in the app and configure Cloudflare to
+overwrite `x-shepherdstudy-cloudflare-proxy-secret` with the same value. Keep
+the direct Vercel origin restricted; never accept that header from visitors.
+
 3. Generate Prisma client and migrate DB:
 
 ```bash
@@ -79,10 +86,16 @@ Open `http://localhost:3000`.
 - `GET /api/memorize` and authenticated memorization passage/attempt/recommendation routes
 - `GET|POST /api/auth/[...nextauth]`
 
-## Self-hosted Bible data
+## Bible data architecture
 
-- Chapter text is loaded from PostgreSQL (`BibleVerse` table).
-- Import command downloads public-domain texts from eBible and loads:
+- WEB, KJV, and ASV chapter text is loaded from PostgreSQL (`BibleVerse` table)
+  to keep common English reading fast and independent.
+- Additional translated editions are requested on demand from the Digital
+  Bible Society and cached without bulk-ingesting their library. The catalog is
+  cached for 24 hours and chapter responses for 7 days to minimize upstream
+  traffic. Edition copyright and source metadata travel with displayed and
+  saved Scripture snapshots.
+- The public-domain import command downloads texts from eBible and loads:
   - `WEB` (default)
   - `KJV`
   - `ASV`
@@ -95,14 +108,15 @@ Open `http://localhost:3000`.
 - `npm run import:usfm` upgrades WEB/KJV/ASV imports to USFM-backed structure:
   - paragraph grouping
   - verse-level footnotes and cross-references
-- Recommendation links open local route: `/passage/[book]/[chapter]?ref=...`
+- Recommendation links open the app route: `/passage/[book]/[chapter]?ref=...`
 - Translation is preserved in links via `&translation=...`.
 - Approximate or ambiguous book names are resolved using aliases/fuzzy matching.
-- If a reference cannot be parsed, the app falls back to an external `bible-api.com` link.
 - Testament compatibility is enforced for original-language versions:
   - `UHB` supports Old Testament books
   - `UGNT` supports New Testament books
 - UHB/UGNT source attribution: unfoldingWord resources (CC BY-SA 4.0).
+- Digital Bible Society source and edition copyright details are shown with
+  remotely provided Scripture. See `/info` for the full attribution.
 
 ## Notes
 

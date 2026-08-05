@@ -2,8 +2,10 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { ScriptureAttribution } from "@/components/scripture-attribution";
+import { TranslationPicker } from "@/components/translation-picker";
 import {
-  BIBLE_TRANSLATIONS,
+  BibleSourceInfo,
   BibleTranslationId,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
@@ -34,12 +36,14 @@ type WordLensResponse = {
   chapterReference: string;
   translation: string;
   translationName: string;
+  targetSource: BibleSourceInfo;
   selectedVerse: {
     verse: number;
     text: string;
   };
   sourceTranslation: string;
   sourceTranslationName: string;
+  originalSource: BibleSourceInfo;
   sourceText: string;
   rows: WordLensRow[];
   notice: string | null;
@@ -177,9 +181,6 @@ export default function WordLensPage() {
   );
   const autoLoadedRef = useRef(false);
 
-  const versionSelectWidthCh =
-    Math.max(...BIBLE_TRANSLATIONS.map((item) => item.label.length), 8) + 2;
-
   const canSubmit = useMemo(
     () => referenceInput.trim().length > 0 && !isLoading,
     [referenceInput, isLoading]
@@ -193,38 +194,44 @@ export default function WordLensPage() {
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch("/api/word-lens", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-source-route": "/word-lens"
-      },
-      body: JSON.stringify({
-        reference,
-        translation: nextTranslation
-      })
-    });
+    try {
+      const response = await fetch("/api/word-lens", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-source-route": "/word-lens"
+        },
+        body: JSON.stringify({
+          reference,
+          translation: nextTranslation
+        })
+      });
 
-    const payload = (await parseJsonSafe(response)) as
-      | WordLensResponse
-      | { error: string };
+      const payload = (await parseJsonSafe(response)) as
+        | WordLensResponse
+        | { error: string };
 
-    if (!response.ok || "error" in payload) {
+      if (!response.ok || "error" in payload) {
+        setData(null);
+        const nextError =
+          "error" in payload ? payload.error : "Unable to load word lens.";
+        setError(nextError);
+        return;
+      }
+
+      setData(payload);
+      if (options?.syncInput !== false) {
+        setReferenceInput(payload.reference);
+      }
+      setTranslation(payload.translation as BibleTranslationId);
+      setExpandedRows({});
+      setHoveredWordPosition(null);
+    } catch {
       setData(null);
-      const nextError = "error" in payload ? payload.error : "Unable to load word lens.";
-      setError(nextError);
+      setError("Unable to load word lens.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    setData(payload);
-    if (options?.syncInput !== false) {
-      setReferenceInput(payload.reference);
-    }
-    setTranslation(payload.translation as BibleTranslationId);
-    setExpandedRows({});
-    setHoveredWordPosition(null);
-    setIsLoading(false);
   }
 
   useEffect(() => {
@@ -248,7 +255,6 @@ export default function WordLensPage() {
     if (isLoading) {
       return;
     }
-    setTranslation(nextTranslation);
     if (!data) {
       const targetReference = referenceInput.trim();
       if (targetReference) {
@@ -259,59 +265,67 @@ export default function WordLensPage() {
 
     setIsLoading(true);
     setError(null);
-    const response = await fetch("/api/word-lens/map", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-source-route": "/word-lens"
-      },
-      body: JSON.stringify({
-        reference: data.reference,
-        translation: nextTranslation
-      })
-    });
+    try {
+      const response = await fetch("/api/word-lens/map", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-source-route": "/word-lens"
+        },
+        body: JSON.stringify({
+          reference: data.reference,
+          translation: nextTranslation
+        })
+      });
 
-    const payload = (await parseJsonSafe(response)) as
-      | {
-          reference: string;
-          translation: string;
-          translationName: string;
-          selectedVerse: { verse: number; text: string };
-          rows: Array<{ position: number; aiTranslation: string }>;
-          error?: undefined;
-        }
-      | { error: string };
-
-    if (!response.ok || "error" in payload) {
-      const nextError =
-        ("error" in payload ? payload.error : null) ||
-        "Unable to update translation.";
-      setError(nextError);
-      setIsLoading(false);
-      return;
-    }
-
-    const mapByPosition = new Map(
-      payload.rows.map((row) => [row.position, row.aiTranslation])
-    );
-    setData((current) =>
-      current
-        ? {
-            ...current,
-            translation: payload.translation,
-            translationName: payload.translationName,
-            selectedVerse: {
-              ...current.selectedVerse,
-              text: payload.selectedVerse.text
-            },
-            rows: current.rows.map((row) => ({
-              ...row,
-              aiTranslation: mapByPosition.get(row.position) ?? row.aiTranslation
-            }))
+      const payload = (await parseJsonSafe(response)) as
+        | {
+            reference: string;
+            translation: string;
+            translationName: string;
+            targetSource: BibleSourceInfo;
+            selectedVerse: { verse: number; text: string };
+            rows: Array<{ position: number; aiTranslation: string }>;
+            error?: undefined;
           }
-        : current
-    );
-    setIsLoading(false);
+        | { error: string };
+
+      if (!response.ok || "error" in payload) {
+        const nextError =
+          ("error" in payload ? payload.error : null) ||
+          "Unable to update translation.";
+        setError(nextError);
+        return;
+      }
+
+      const mapByPosition = new Map(
+        payload.rows.map((row) => [row.position, row.aiTranslation])
+      );
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              translation: payload.translation,
+              translationName: payload.translationName,
+              targetSource: payload.targetSource,
+              selectedVerse: {
+                ...current.selectedVerse,
+                text: payload.selectedVerse.text
+              },
+              rows: current.rows.map((row) => ({
+                ...row,
+                aiTranslation:
+                  mapByPosition.get(row.position) ?? row.aiTranslation
+              }))
+            }
+          : current
+      );
+      setTranslation(payload.translation as BibleTranslationId);
+    } catch {
+      setError("Unable to update translation.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -374,9 +388,9 @@ export default function WordLensPage() {
 
           <section className="wordLensVerseBlock">
             <p
-              className={`wordLensOriginalText paragraphText${
-                data.sourceTranslation === "uhb" ? " rtl" : ""
-              }`}
+              className="wordLensOriginalText paragraphText scriptureText"
+              dir={data.originalSource.direction}
+              lang={data.originalSource.languageIso}
             >
               {data.rows.length > 0
                 ? data.rows.map((row, index) => (
@@ -393,39 +407,31 @@ export default function WordLensPage() {
                 : data.sourceText}
             </p>
             <p
-              className={`muted wordLensSourceLabel${
-                data.sourceTranslation === "uhb" ? " rtl" : ""
-              }`}
+              className="muted wordLensSourceLabel"
+              dir={data.originalSource.direction}
+              lang={data.originalSource.languageIso}
             >
               {data.sourceTranslationName} (original)
             </p>
             <p
               key={`${data.reference}-${data.translation}`}
-              className="wordLensTranslationText"
+              className="wordLensTranslationText scriptureText"
+              dir={data.targetSource.direction}
+              lang={data.targetSource.languageIso}
             >
               {data.selectedVerse.text}
             </p>
-            <p className="muted wordLensTranslationLabel">
-              <label className="wordLensVersionField">
-                Version
-                <select
-                  value={(data?.translation as BibleTranslationId) ?? translation}
-                  onChange={(event) =>
-                    void onTranslationChange(event.target.value as BibleTranslationId)
-                  }
-                  style={{
-                    width: `calc(${versionSelectWidthCh}ch + 2.5rem)`,
-                    maxWidth: "100%"
-                  }}
-                >
-                  {BIBLE_TRANSLATIONS.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </p>
+            <div className="muted wordLensTranslationLabel">
+              <TranslationPicker
+                id="word-lens-translation"
+                className="wordLensVersionField"
+                label="Version"
+                value={(data?.translation as BibleTranslationId) ?? translation}
+                onChange={(value) => void onTranslationChange(value)}
+                disabled={isLoading}
+              />
+            </div>
+            <ScriptureAttribution source={data.targetSource} />
           </section>
 
           <div className="wordLensTableWrap">
@@ -458,8 +464,16 @@ export default function WordLensPage() {
                           }))
                         }
                       >
-                        <td>{row.aiTranslation || "-"}</td>
-                        <td>
+                        <td
+                          dir={data.targetSource.direction}
+                          lang={data.targetSource.languageIso}
+                        >
+                          {row.aiTranslation || "-"}
+                        </td>
+                        <td
+                          dir={data.originalSource.direction}
+                          lang={data.originalSource.languageIso}
+                        >
                           <span>{row.original}</span>
                         </td>
                         <td>{row.transliteration || "-"}</td>

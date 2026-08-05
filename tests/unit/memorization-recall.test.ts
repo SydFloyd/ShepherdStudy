@@ -54,4 +54,36 @@ describe("memorization recall assessment", () => {
       { text: "wept", status: "missing" }
     ]);
   });
+
+  it("segments Chinese text into words without requiring spaces", () => {
+    const assessment = assessRecall(
+      "\u4e0a\u5e1d\u7231\u4e16\u4e0a\u7684\u4eba",
+      "\u4e0a\u5e1d\u4e16\u4e0a\u7684\u4eba",
+      { languageIso: "cmn", script: "Hans" }
+    );
+
+    expect(assessment.score).toBe(80);
+    expect(assessment.expectedWordCount).toBe(5);
+    expect(
+      assessment.expected
+        .filter((token) => token.status === "missing")
+        .map((token) => token.text)
+    ).toEqual(["\u7231"]);
+  });
+
+  it("segments Thai text while preserving combining vowel and tone marks", () => {
+    const assessment = assessRecall(
+      "\u0e1e\u0e23\u0e30\u0e40\u0e08\u0e49\u0e32\u0e17\u0e23\u0e07\u0e23\u0e31\u0e01\u0e42\u0e25\u0e01",
+      "\u0e1e\u0e23\u0e30\u0e40\u0e08\u0e49\u0e32\u0e23\u0e31\u0e01\u0e42\u0e25\u0e01",
+      { languageIso: "tha", script: "Thai" }
+    );
+
+    expect(assessment.score).toBe(75);
+    expect(assessment.expectedWordCount).toBe(4);
+    expect(
+      assessment.expected
+        .filter((token) => token.status === "missing")
+        .map((token) => token.text)
+    ).toEqual(["\u0e17\u0e23\u0e07"]);
+  });
 });

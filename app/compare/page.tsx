@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ScriptureAttribution } from "@/components/scripture-attribution";
+import { TranslationPicker } from "@/components/translation-picker";
 import {
-  BIBLE_TRANSLATIONS,
+  BibleSourceInfo,
   BibleTranslationId,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
@@ -18,6 +20,7 @@ type CompareResponse = {
   left: {
     translation: string;
     translationName: string;
+    source: BibleSourceInfo;
     verses: Array<{
       verse: number;
       paragraph: number;
@@ -27,6 +30,7 @@ type CompareResponse = {
   right: {
     translation: string;
     translationName: string;
+    source: BibleSourceInfo;
     verses: Array<{
       verse: number;
       paragraph: number;
@@ -95,6 +99,7 @@ function DiffVerseParagraphs(input: {
   onHoverVerse: (verse: number | null) => void;
   hoveredTokenKey: string | null;
   onHoverToken: (tokenKey: string | null) => void;
+  source: BibleSourceInfo;
 }) {
   const paragraphGroups = input.verses.reduce<
     Array<{
@@ -113,7 +118,9 @@ function DiffVerseParagraphs(input: {
 
   return (
     <div
-      className="paragraphList compareParagraphList"
+      className="paragraphList compareParagraphList scriptureText"
+      dir={input.source.direction}
+      lang={input.source.languageIso}
       onMouseLeave={() => {
         input.onHoverVerse(null);
         input.onHoverToken(null);
@@ -214,31 +221,39 @@ export default function ComparePage() {
     setHoveredVerse(null);
     setHoveredTokenKey(null);
 
-    const response = await fetch("/api/verse-compare", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-source-route": "/compare"
-      },
-      body: JSON.stringify({
-        reference: input.reference,
-        leftTranslation: input.left,
-        rightTranslation: input.right
-      })
-    });
+    try {
+      const response = await fetch("/api/verse-compare", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-source-route": "/compare"
+        },
+        body: JSON.stringify({
+          reference: input.reference,
+          leftTranslation: input.left,
+          rightTranslation: input.right
+        })
+      });
 
-    const payload = (await parseJsonSafe(response)) as
-      | CompareResponse
-      | { error: string };
-    if (!response.ok || "error" in payload) {
-      setError("error" in payload ? payload.error : "Unable to compare verses.");
+      const payload = (await parseJsonSafe(response)) as
+        | CompareResponse
+        | { error: string };
+      if (!response.ok || "error" in payload) {
+        setError(
+          "error" in payload ? payload.error : "Unable to compare verses."
+        );
+        return;
+      }
+
+      setData(payload);
+      setActiveReference(payload.reference);
+      setLeftTranslation(payload.left.translation as BibleTranslationId);
+      setRightTranslation(payload.right.translation as BibleTranslationId);
+    } catch {
+      setError("Unable to compare verses.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    setData(payload);
-    setActiveReference(payload.reference);
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -286,7 +301,11 @@ export default function ComparePage() {
             </button>
           </form>
         </div>
-        {error ? <p className="muted">{error}</p> : null}
+        {error ? (
+          <p className="muted" role="alert">
+            {error}
+          </p>
+        ) : null}
       </article>
 
       {data ? (
@@ -323,11 +342,11 @@ export default function ComparePage() {
           <div className="compareGrid">
             <section className="comparePanel">
               <div className="comparePanelHeader">
-                <select
+                <TranslationPicker
+                  id="compare-left-translation"
+                  label="Left translation"
                   value={leftTranslation}
-                  onChange={(event) => {
-                    const next = event.target.value as BibleTranslationId;
-                    setLeftTranslation(next);
+                  onChange={(next) => {
                     void runCompare({
                       reference: activeReference,
                       left: next,
@@ -335,13 +354,7 @@ export default function ComparePage() {
                     });
                   }}
                   disabled={isLoading}
-                >
-                  {BIBLE_TRANSLATIONS.map((item) => (
-                    <option key={`left-${item.value}`} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <DiffVerseParagraphs
                 verses={computedDiffBySide.left}
@@ -350,15 +363,17 @@ export default function ComparePage() {
                 onHoverVerse={setHoveredVerse}
                 hoveredTokenKey={hoveredTokenKey}
                 onHoverToken={setHoveredTokenKey}
+                source={data.left.source}
               />
+              <ScriptureAttribution source={data.left.source} />
             </section>
             <section className="comparePanel">
               <div className="comparePanelHeader">
-                <select
+                <TranslationPicker
+                  id="compare-right-translation"
+                  label="Right translation"
                   value={rightTranslation}
-                  onChange={(event) => {
-                    const next = event.target.value as BibleTranslationId;
-                    setRightTranslation(next);
+                  onChange={(next) => {
                     void runCompare({
                       reference: activeReference,
                       left: leftTranslation,
@@ -366,13 +381,7 @@ export default function ComparePage() {
                     });
                   }}
                   disabled={isLoading}
-                >
-                  {BIBLE_TRANSLATIONS.map((item) => (
-                    <option key={`right-${item.value}`} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <DiffVerseParagraphs
                 verses={computedDiffBySide.right}
@@ -381,7 +390,9 @@ export default function ComparePage() {
                 onHoverVerse={setHoveredVerse}
                 hoveredTokenKey={hoveredTokenKey}
                 onHoverToken={setHoveredTokenKey}
+                source={data.right.source}
               />
+              <ScriptureAttribution source={data.right.source} />
             </section>
           </div>
         </article>

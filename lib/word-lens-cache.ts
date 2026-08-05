@@ -3,7 +3,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 const CACHE_TTL_HOURS = Number(process.env.WORD_LENS_CACHE_TTL_HOURS ?? 168);
-const PROMPT_VERSION = "word-lens-v5";
+const PROMPT_VERSION = "word-lens-v7";
+const CACHE_ALIAS_VERSION = 1;
+
+type WordLensCacheAlias = {
+  __wordLensCacheAlias: typeof CACHE_ALIAS_VERSION;
+  canonicalCacheKey: string;
+};
 
 export function getWordLensPromptVersion() {
   return PROMPT_VERSION;
@@ -24,14 +30,14 @@ export function buildWordLensCacheKey(input: {
   model: string;
   promptVersion: string;
 }) {
-  const raw = [
-    input.kind,
-    input.reference.trim().toLowerCase(),
-    input.sourceTranslation.trim().toLowerCase(),
-    input.targetTranslation.trim().toLowerCase(),
-    input.model.trim().toLowerCase(),
-    input.promptVersion.trim().toLowerCase()
-  ].join("|");
+  const raw = JSON.stringify({
+    kind: input.kind,
+    reference: input.reference.trim(),
+    sourceTranslation: input.sourceTranslation.trim(),
+    targetTranslation: input.targetTranslation.trim(),
+    model: input.model.trim(),
+    promptVersion: input.promptVersion.trim()
+  });
   return createHash("sha256").update(raw).digest("hex");
 }
 
@@ -46,10 +52,41 @@ export async function readWordLensCache<T>(input: {
         AND "expiresAt" > NOW()
       LIMIT 1
     `) as Array<{ payload: T }>;
-    return rows[0]?.payload ?? null;
+    const payload = rows[0]?.payload;
+    if (!payload) {
+      return null;
+    }
+
+    if (isWordLensCacheAlias(payload)) {
+      const canonicalRows = (await prisma.$queryRaw`
+        SELECT "payload"
+        FROM "WordLensCache"
+        WHERE "cacheKey" = ${payload.canonicalCacheKey}
+          AND "expiresAt" > NOW()
+        LIMIT 1
+      `) as Array<{ payload: T }>;
+      return canonicalRows[0]?.payload ?? null;
+    }
+
+    return payload;
   } catch {
     return null;
   }
+}
+
+export function isWordLensCacheAlias(
+  payload: unknown
+): payload is WordLensCacheAlias {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return false;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  return (
+    candidate.__wordLensCacheAlias === CACHE_ALIAS_VERSION &&
+    typeof candidate.canonicalCacheKey === "string" &&
+    /^[a-f0-9]{64}$/.test(candidate.canonicalCacheKey)
+  );
 }
 
 export async function writeWordLensCache(input: {
@@ -105,4 +142,33 @@ export async function writeWordLensCache(input: {
   } catch {
     // Cache failures should not break response path.
   }
+}
+
+export async function writeWordLensCacheAlias(input: {
+  cacheKey: string;
+  canonicalCacheKey: string;
+  kind: "full" | "map";
+  reference: string;
+  sourceTranslation: string;
+  targetTranslation: string;
+  model: string;
+  promptVersion: string;
+}) {
+  if (input.cacheKey === input.canonicalCacheKey) {
+    return;
+  }
+
+  await writeWordLensCache({
+    cacheKey: input.cacheKey,
+    kind: input.kind,
+    reference: input.reference,
+    sourceTranslation: input.sourceTranslation,
+    targetTranslation: input.targetTranslation,
+    model: input.model,
+    promptVersion: input.promptVersion,
+    payload: {
+      __wordLensCacheAlias: CACHE_ALIAS_VERSION,
+      canonicalCacheKey: input.canonicalCacheKey
+    } satisfies WordLensCacheAlias
+  });
 }

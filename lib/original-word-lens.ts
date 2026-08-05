@@ -91,14 +91,14 @@ async function callRows<S extends z.ZodTypeAny>(input: {
 }
 
 const interlinearMapSystemPrompt = `
-You produce interlinear mapping from original-language tokens to a selected English verse translation.
+You produce interlinear mapping from original-language tokens to a selected Bible edition, which may be in any language.
 
 Return only valid JSON:
 {
   "rows": [
     {
       "position": 1,
-      "aiTranslation": "lexical gloss mapped to the selected English version"
+      "aiTranslation": "short lexical gloss aligned to the selected edition"
     }
   ]
 }
@@ -109,7 +109,7 @@ Rules:
 - Keep aiTranslation short (usually 1-6 words).
 - Prefer lexical sense over polished paraphrase.
 - If uncertain, use blank string instead of guessing.
-- Keep output language English.
+- Match the language and script of the selected target verse. If the target language cannot be identified reliably, use a concise English lexical gloss.
 `.trim();
 
 const transliterationSystemPrompt = `
@@ -149,7 +149,7 @@ Rules:
 - Return one row for every input token.
 - Use exact input position values (1-based).
 - Set most notes to blank.
-- Add a note only when the token gives meaningful insight that is not obvious from the English verse.
+- Add a note only when the token gives meaningful insight that is not obvious from the selected target verse.
 - Good note types:
   - translation-impact nuance (alternate sense that changes how the line reads),
   - title/name nuance,

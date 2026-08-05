@@ -1,37 +1,218 @@
-export const BIBLE_TRANSLATION_IDS = ["web", "kjv", "asv", "uhb", "ugnt"] as const;
-export type BibleTranslationId = (typeof BIBLE_TRANSLATION_IDS)[number];
-export const DEFAULT_BIBLE_TRANSLATION: BibleTranslationId = "web";
+import { z } from "zod";
 
-export const MEMORIZATION_TRANSLATION_IDS = ["web", "kjv", "asv"] as const;
-export type MemorizationTranslationId =
-  (typeof MEMORIZATION_TRANSLATION_IDS)[number];
-
-export const BIBLE_TRANSLATIONS = [
-  { value: "web", label: "WEB (default)" },
-  { value: "kjv", label: "KJV" },
-  { value: "asv", label: "ASV" },
-  { value: "uhb", label: "UHB (Hebrew OT)" },
-  { value: "ugnt", label: "UGNT (Greek NT)" }
+export const LOCAL_BIBLE_TRANSLATION_IDS = [
+  "web",
+  "kjv",
+  "asv",
+  "uhb",
+  "ugnt"
 ] as const;
+export type LocalBibleTranslationId =
+  (typeof LOCAL_BIBLE_TRANSLATION_IDS)[number];
+export type BibleTranslationId = string;
+export const DEFAULT_BIBLE_TRANSLATION = "web";
 
-export const MEMORIZATION_TRANSLATIONS = [
-  { value: "web", label: "WEB" },
-  { value: "kjv", label: "KJV" },
-  { value: "asv", label: "ASV" }
-] as const;
+export const DBS_TRANSLATION_PREFIX = "dbs:";
+const DBS_BIBLE_ID_RE = /^[A-Za-z0-9_-]{2,48}$/;
+
+export function isDbsBibleId(value: string): boolean {
+  return DBS_BIBLE_ID_RE.test(value);
+}
+
+export const bibleTranslationIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .refine(
+    (value) =>
+      (LOCAL_BIBLE_TRANSLATION_IDS as readonly string[]).includes(value) ||
+      (value.startsWith(DBS_TRANSLATION_PREFIX) &&
+        isDbsBibleId(value.slice(DBS_TRANSLATION_PREFIX.length))),
+    "Invalid Bible translation."
+  );
+
+export function isDbsTranslation(translation: string): boolean {
+  return (
+    translation.startsWith(DBS_TRANSLATION_PREFIX) &&
+    isDbsBibleId(translation.slice(DBS_TRANSLATION_PREFIX.length))
+  );
+}
+
+export function getDbsBibleId(translation: string): string | null {
+  return isDbsTranslation(translation)
+    ? translation.slice(DBS_TRANSLATION_PREFIX.length)
+    : null;
+}
+
+export function toDbsTranslationId(bibleId: string): string {
+  if (!isDbsBibleId(bibleId)) {
+    throw new Error("Invalid DBS Bible identifier.");
+  }
+  return `${DBS_TRANSLATION_PREFIX}${bibleId}`;
+}
+
+export type MemorizationTranslationId = BibleTranslationId;
+
+export type BibleTextDirection = "ltr" | "rtl";
+export type BibleProvider = "local" | "dbs";
+
+export type BibleVersion = {
+  value: string;
+  provider: BibleProvider;
+  providerId: string;
+  label: string;
+  title: string;
+  vernacularTitle: string | null;
+  languageName: string;
+  languageIso: string;
+  script: string;
+  direction: BibleTextDirection;
+  year: number | null;
+  copyright: string | null;
+  originalLanguage: boolean;
+};
+
+export type BibleSourceInfo = Pick<
+  BibleVersion,
+  | "provider"
+  | "providerId"
+  | "title"
+  | "vernacularTitle"
+  | "languageName"
+  | "languageIso"
+  | "script"
+  | "direction"
+  | "year"
+  | "copyright"
+> & {
+  translation: string;
+};
+
+const LOCAL_VERSION_DETAILS: Record<LocalBibleTranslationId, BibleVersion> = {
+  web: {
+    value: "web",
+    provider: "local",
+    providerId: "web",
+    label: "WEB (default)",
+    title: "World English Bible",
+    vernacularTitle: "World English Bible",
+    languageName: "English",
+    languageIso: "eng",
+    script: "Latn",
+    direction: "ltr",
+    year: 2000,
+    copyright: "Public Domain",
+    originalLanguage: false
+  },
+  kjv: {
+    value: "kjv",
+    provider: "local",
+    providerId: "kjv",
+    label: "KJV",
+    title: "King James Version",
+    vernacularTitle: "King James Version",
+    languageName: "English",
+    languageIso: "eng",
+    script: "Latn",
+    direction: "ltr",
+    year: 1611,
+    copyright: "Public Domain",
+    originalLanguage: false
+  },
+  asv: {
+    value: "asv",
+    provider: "local",
+    providerId: "asv",
+    label: "ASV",
+    title: "American Standard Version",
+    vernacularTitle: "American Standard Version",
+    languageName: "English",
+    languageIso: "eng",
+    script: "Latn",
+    direction: "ltr",
+    year: 1901,
+    copyright: "Public Domain",
+    originalLanguage: false
+  },
+  uhb: {
+    value: "uhb",
+    provider: "local",
+    providerId: "uhb",
+    label: "UHB (Hebrew OT)",
+    title: "unfoldingWord Hebrew Bible",
+    vernacularTitle: null,
+    languageName: "Hebrew",
+    languageIso: "heb",
+    script: "Hebr",
+    direction: "rtl",
+    year: null,
+    copyright: "CC BY-SA 4.0",
+    originalLanguage: true
+  },
+  ugnt: {
+    value: "ugnt",
+    provider: "local",
+    providerId: "ugnt",
+    label: "UGNT (Greek NT)",
+    title: "unfoldingWord Greek New Testament",
+    vernacularTitle: null,
+    languageName: "Greek",
+    languageIso: "grc",
+    script: "Grek",
+    direction: "ltr",
+    year: null,
+    copyright: "CC BY-SA 4.0",
+    originalLanguage: true
+  }
+};
+
+export const LOCAL_BIBLE_VERSIONS = LOCAL_BIBLE_TRANSLATION_IDS.map(
+  (translation) => LOCAL_VERSION_DETAILS[translation]
+);
+
+export const DBS_LOCAL_EQUIVALENTS: Record<string, LocalBibleTranslationId> = {
+  ENGWEB: "web",
+  ENGKJV: "kjv",
+  ENGASV: "asv"
+};
+
+export function getLocalBibleVersion(
+  translation: string
+): BibleVersion | null {
+  return (LOCAL_BIBLE_TRANSLATION_IDS as readonly string[]).includes(translation)
+    ? LOCAL_VERSION_DETAILS[translation as LocalBibleTranslationId]
+    : null;
+}
+
+export function toBibleSourceInfo(version: BibleVersion): BibleSourceInfo {
+  return {
+    translation: version.value,
+    provider: version.provider,
+    providerId: version.providerId,
+    title: version.title,
+    vernacularTitle: version.vernacularTitle,
+    languageName: version.languageName,
+    languageIso: version.languageIso,
+    script: version.script,
+    direction: version.direction,
+    year: version.year,
+    copyright: version.copyright
+  };
+}
 
 export function isMemorizationTranslation(
   value: string
 ): value is MemorizationTranslationId {
-  return (MEMORIZATION_TRANSLATION_IDS as readonly string[]).includes(value);
+  return bibleTranslationIdSchema.safeParse(value).success;
 }
 
-export const BIBLE_TRANSLATION_BY_ID = Object.fromEntries(
-  BIBLE_TRANSLATIONS.map((item) => [item.value, item.label])
-) as Record<string, string>;
-
 export function getTranslationLabel(translation: string): string {
-  return BIBLE_TRANSLATION_BY_ID[translation] ?? translation.toUpperCase();
+  return (
+    getLocalBibleVersion(translation)?.label ??
+    getDbsBibleId(translation) ??
+    translation.toUpperCase()
+  );
 }
 
 export function getBookOrderByName(book: string): number | null {
@@ -70,8 +251,71 @@ export function isTranslationCompatibleWithBook(
   return true;
 }
 
-export function isRtlTranslation(translation: string): boolean {
-  return translation === "uhb";
+const RTL_SCRIPTS = new Set([
+  "Adlm",
+  "Arab",
+  "Aran",
+  "Armi",
+  "Avst",
+  "Chrs",
+  "Cprt",
+  "Elym",
+  "Hatr",
+  "Hebr",
+  "Hung",
+  "Khar",
+  "Khoj",
+  "Lydi",
+  "Mand",
+  "Mani",
+  "Mend",
+  "Merc",
+  "Mero",
+  "Narb",
+  "Nbat",
+  "Nkoo",
+  "Orkh",
+  "Palm",
+  "Phli",
+  "Phlp",
+  "Phlv",
+  "Phnx",
+  "Prti",
+  "Rohg",
+  "Samr",
+  "Sarb",
+  "Sogd",
+  "Sogo",
+  "Syrc",
+  "Syre",
+  "Syrj",
+  "Syrn",
+  "Thaa",
+  "Yezi"
+]);
+
+export function getBibleTextDirection(input: {
+  translation?: string;
+  script?: string | null;
+}): BibleTextDirection {
+  const script = input.script?.trim();
+  const normalizedScript = script
+    ? `${script.charAt(0).toUpperCase()}${script.slice(1).toLowerCase()}`
+    : null;
+  if (
+    input.translation === "uhb" ||
+    (normalizedScript && RTL_SCRIPTS.has(normalizedScript))
+  ) {
+    return "rtl";
+  }
+  return "ltr";
+}
+
+export function isRtlTranslation(
+  translation: string,
+  script?: string | null
+): boolean {
+  return getBibleTextDirection({ translation, script }) === "rtl";
 }
 
 const CANONICAL_BOOKS = [

@@ -2,7 +2,7 @@ export default function PrivacyPage() {
   return (
     <section className="card legalPage">
       <h1>Privacy Policy</h1>
-      <p className="muted">Last updated: August 4, 2026</p>
+      <p className="muted">Last updated: August 5, 2026</p>
 
       <h2>What We Collect</h2>
       <p>
@@ -26,9 +26,11 @@ export default function PrivacyPage() {
       <p>
         AI responses are generated through OpenAI. Postmark processes account emails.
         Stripe processes optional contributions and associated payment information;
-        ShepherdStudy does not receive full card details. Error monitoring is handled
-        by Sentry. Hosting and database infrastructure may process data as required to
-        operate the service.
+        ShepherdStudy does not receive full card details. The Digital Bible Society
+        provides many translated Scripture editions; ShepherdStudy requests the
+        selected edition and chapter from its service without sending your account
+        identity. Error monitoring is handled by Sentry. Hosting and database
+        infrastructure may process data as required to operate the service.
       </p>
 
       <h2>Retention</h2>

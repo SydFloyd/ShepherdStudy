@@ -3,7 +3,16 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="footer">
-      <span className="muted">ShepherdStudy</span>
+      <div className="footerIdentity">
+        <span className="muted">ShepherdStudy</span>
+        <span className="footerDbsCredit">
+          With gratitude to the{" "}
+          <a href="https://dbs.org/" target="_blank" rel="noreferrer">
+            Digital Bible Society
+          </a>{" "}
+          for global Scripture resources.
+        </span>
+      </div>
       <div className="footerLinks">
         <Link href="/info">Info</Link>
         <Link href="/privacy">Privacy</Link>

@@ -4,7 +4,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { MEMORIZATION_TRANSLATION_IDS } from "@/lib/bible";
+import { bibleTranslationIdSchema } from "@/lib/bible";
+import { getBibleVersion } from "@/lib/bible-catalog";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -13,7 +15,7 @@ import { captureServerException } from "@/lib/sentry";
 
 const updateSchema = z.object({
   name: z.string().trim().max(80).optional(),
-  preferredTranslation: z.enum(MEMORIZATION_TRANSLATION_IDS).optional(),
+  preferredTranslation: bibleTranslationIdSchema.optional(),
   currentPassword: z.string().min(1).max(128).optional(),
   newPassword: z.string().min(8).max(128).optional()
 });
@@ -123,13 +125,20 @@ export async function PATCH(req: Request) {
       name?: string | null;
       passwordHash?: string;
       authVersion?: { increment: number };
-      preferredTranslation?: (typeof MEMORIZATION_TRANSLATION_IDS)[number];
+      preferredTranslation?: string;
     } = {};
     if (input.name !== undefined) {
       data.name = nextName;
     }
     if (input.preferredTranslation !== undefined) {
-      data.preferredTranslation = input.preferredTranslation;
+      const version = await getBibleVersion(input.preferredTranslation);
+      if (!version) {
+        return NextResponse.json(
+          { error: "That Bible translation is not available." },
+          { status: 400 }
+        );
+      }
+      data.preferredTranslation = version.value;
     }
     if (wantsPasswordChange && input.newPassword) {
       data.passwordHash = await bcrypt.hash(input.newPassword, 12);
@@ -155,6 +164,12 @@ export async function PATCH(req: Request) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid account update input." }, { status: 400 });
+    }
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The translation catalog is temporarily unavailable." },
+        { status: 503 }
+      );
     }
 
     captureServerException(error, { route: "/api/account", requestId });

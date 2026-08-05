@@ -1,85 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { BibleTranslationId, isRtlTranslation } from "@/lib/bible";
+import { ScriptureAttribution } from "@/components/scripture-attribution";
 import {
-  buildPassagePreviewKey,
-  fetchPassagePreviewCached
-} from "@/lib/passage-preview-client";
+  getLocalBibleVersion,
+  toBibleSourceInfo
+} from "@/lib/bible";
 import { StudyPassageResult } from "@/lib/study-contract";
-import { getStudySelectionTranslation } from "@/lib/study-translation";
 
 type Props = {
   passage: StudyPassageResult;
-  selectedTranslation: BibleTranslationId;
 };
 
-export function StudyPassagePanel({ passage, selectedTranslation }: Props) {
-  const targetTranslation = getStudySelectionTranslation(
-    passage.reference,
-    selectedTranslation
-  );
-  const displayKey = buildPassagePreviewKey(passage.reference, targetTranslation);
-  const [previewByKey, setPreviewByKey] = useState<{
-    key: string;
-    passage: StudyPassageResult;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadTranslatedPassage() {
-      if (targetTranslation === passage.translation) {
-        setPreviewByKey(null);
-        return;
-      }
-
-      const preview = await fetchPassagePreviewCached({
-        reference: passage.reference,
-        translation: targetTranslation
-      });
-
-      if (cancelled) {
-        return;
-      }
-
-      if (!preview) {
-        setPreviewByKey(null);
-        return;
-      }
-
-      setPreviewByKey({
-        key: displayKey,
-        passage: {
-          origin: passage.origin,
-          reference: preview.reference,
-          chapterReference: preview.chapterReference,
-          translation: preview.translation,
-          translationName: preview.translationName,
-          verses: preview.verses,
-          chapterPath: preview.chapterPath,
-          excerpted: preview.excerpted
-        }
-      });
-    }
-
-    void loadTranslatedPassage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    displayKey,
-    passage.origin,
-    passage.reference,
-    passage.translation,
-    targetTranslation
-  ]);
-
-  const displayPassage =
-    previewByKey && previewByKey.key === displayKey ? previewByKey.passage : passage;
-  const isRtl = isRtlTranslation(displayPassage.translation);
+export function StudyPassagePanel({ passage }: Props) {
+  const displayPassage = passage;
+  const source =
+    displayPassage.source ??
+    (() => {
+      const localVersion = getLocalBibleVersion(displayPassage.translation);
+      return localVersion ? toBibleSourceInfo(localVersion) : undefined;
+    })();
   const paragraphGroups = displayPassage.verses.reduce<
     Array<{
       paragraph: number;
@@ -106,9 +45,9 @@ export function StudyPassagePanel({ passage, selectedTranslation }: Props) {
         )}
       </div>
       <div
-        className="paragraphList"
-        dir={isRtl ? "rtl" : "ltr"}
-        lang={isRtl ? "he" : undefined}
+        className="paragraphList scriptureText"
+        dir={source?.direction ?? "ltr"}
+        lang={source?.languageIso}
       >
         {paragraphGroups.map((group) => (
           <p className="paragraphText" key={group.paragraph}>
@@ -124,6 +63,7 @@ export function StudyPassagePanel({ passage, selectedTranslation }: Props) {
           </p>
         ))}
       </div>
+      <ScriptureAttribution source={source ?? null} />
     </article>
   );
 }

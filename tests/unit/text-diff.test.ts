@@ -46,4 +46,20 @@ describe("buildSideBySideDiff", () => {
     expect(result.left.map((segment) => segment.text).join("")).toContain("flesh");
     expect(result.right.map((segment) => segment.text).join("")).toContain("flesh");
   });
+
+  it("finds localized changes in text that does not use spaces", () => {
+    const result = buildSideBySideDiff({
+      leftText: "上帝爱世上的人",
+      rightText: "上帝深爱世上的人"
+    });
+
+    expect(result.left.some((segment) => segment.type === "same")).toBe(true);
+    expect(result.right.some((segment) => segment.type === "added")).toBe(true);
+    expect(
+      result.right
+        .filter((segment) => segment.type === "added")
+        .map((segment) => segment.text)
+        .join("")
+    ).toContain("深");
+  });
 });

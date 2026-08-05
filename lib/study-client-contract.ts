@@ -12,6 +12,7 @@ export type PassagePreviewPayload = {
   chapterReference: string;
   translation: string;
   translationName: string;
+  source?: NonNullable<StudyResponsePayload["passage"]>["source"];
   verses: NonNullable<StudyResponsePayload["passage"]>["verses"];
   chapterPath: string | null;
   excerpted: boolean;

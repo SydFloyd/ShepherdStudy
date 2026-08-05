@@ -1,10 +1,17 @@
+import { headers } from "next/headers";
+
 import { PassageVersionSelect } from "@/components/passage-version-select";
+import { ScriptureAttribution } from "@/components/scripture-attribution";
 import {
+  BibleSourceInfo,
+  bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION,
-  isRtlTranslation,
+  isDbsTranslation,
   resolveBibleBookCandidates
 } from "@/lib/bible";
-import { getChapterFromLocalBible } from "@/lib/local-bible";
+import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
+import { getChapterFromBible } from "@/lib/bible-provider";
+import { DbsBibleError } from "@/lib/dbs-bible";
 import {
   buildPassagePath,
   isSameBook,
@@ -46,6 +53,7 @@ type ChapterFetchResult = {
   data: {
     reference: string;
     translationName: string;
+    source: BibleSourceInfo;
     verses: Array<{
       verse: number;
       paragraph: number;
@@ -66,11 +74,22 @@ async function getChapter(
   chapter: number,
   translation: string
 ): Promise<ChapterFetchResult> {
-  const chapterResult = await getChapterFromLocalBible({
-    books,
-    chapter,
-    translation
-  });
+  let chapterResult: Awaited<ReturnType<typeof getChapterFromBible>>;
+  try {
+    chapterResult = await getChapterFromBible({
+      books,
+      chapter,
+      translation
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error:
+        error instanceof DbsBibleError
+          ? "The selected Bible edition is temporarily unavailable."
+          : "Unable to load this chapter right now."
+    };
+  }
 
   if (!chapterResult.data) {
     return {
@@ -84,6 +103,7 @@ async function getChapter(
     data: {
       reference: chapterResult.data.reference,
       translationName: chapterResult.data.translationName,
+      source: chapterResult.data.source!,
       verses: chapterResult.data.verses
     }
   };
@@ -114,20 +134,46 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
   const allCandidates = Array.from(
     new Set([book, ...bookCandidates, ...queryBookCandidates])
   ).filter(Boolean);
-  const translation =
-    firstQueryValue(resolvedSearchParams.translation) ??
-    DEFAULT_BIBLE_TRANSLATION;
+  const requestedTranslation = firstQueryValue(
+    resolvedSearchParams.translation
+  );
+  const parsedTranslation = bibleTranslationIdSchema.safeParse(
+    requestedTranslation ?? DEFAULT_BIBLE_TRANSLATION
+  );
+  const translation = parsedTranslation.success
+    ? parsedTranslation.data
+    : DEFAULT_BIBLE_TRANSLATION;
+  if (isDbsTranslation(translation)) {
+    const rateLimit = await consumeDbsReadRateLimit({
+      headers: await headers()
+    });
+    if (!rateLimit.allowed) {
+      return (
+        <section className="card">
+          <div className="passagePanelHeader">
+            <h1>Too many Bible text requests</h1>
+            <PassageVersionSelect currentValue={translation} />
+          </div>
+          <p className="muted">
+            Please wait a few minutes, then try opening this chapter again.
+          </p>
+        </section>
+      );
+    }
+  }
   const chapterResult = await getChapter(allCandidates, chapter, translation);
   const chapterData = chapterResult.data;
   const highlightedBook = chapterResult.resolvedBook ?? book;
-  const isRtl = isRtlTranslation(translation);
 
   if (!chapterData) {
     return (
       <section className="card">
-        <h1>Passage unavailable</h1>
+        <div className="passagePanelHeader">
+          <h1>Passage unavailable</h1>
+          <PassageVersionSelect currentValue={translation} />
+        </div>
         <p className="muted">
-          Could not load this chapter from the local Bible database.
+          Could not load this chapter from the selected Bible edition.
         </p>
         {allCandidates.length > 1 ? (
           <div>
@@ -190,16 +236,16 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
       <article className="card">
         <div className="passagePanelHeader">
           <h1>{chapterData.reference}</h1>
-          <PassageVersionSelect currentValue={translation} />
+          <PassageVersionSelect currentValue={chapterData.source.translation} />
         </div>
       </article>
 
       <article className="card">
         <h2>Chapter text</h2>
         <div
-          className="paragraphList"
-          dir={isRtl ? "rtl" : "ltr"}
-          lang={isRtl ? "he" : undefined}
+          className="paragraphList scriptureText"
+          dir={chapterData.source.direction}
+          lang={chapterData.source.languageIso}
         >
           {paragraphGroups.map((group) => (
             <p className="paragraphText" key={group.paragraph}>
@@ -235,6 +281,7 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
             </p>
           ))}
         </div>
+        <ScriptureAttribution source={chapterData.source} />
       </article>
     </section>
   );

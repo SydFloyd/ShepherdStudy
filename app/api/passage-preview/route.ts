@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  BIBLE_TRANSLATION_IDS,
-  DEFAULT_BIBLE_TRANSLATION
+  bibleTranslationIdSchema,
+  DEFAULT_BIBLE_TRANSLATION,
+  isDbsTranslation
 } from "@/lib/bible";
+import { resolvePassageFromBible } from "@/lib/bible-provider";
+import { DbsBibleError } from "@/lib/dbs-bible";
+import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { getRequestMeta, logEvent } from "@/lib/logger";
-import { resolvePassageFromLocalBible } from "@/lib/local-bible";
 import { getRequestId } from "@/lib/request-context";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
 import { captureServerException } from "@/lib/sentry";
 
 const inputSchema = z.object({
   reference: z.string().trim().min(1).max(120),
-  translation: z.enum(BIBLE_TRANSLATION_IDS).default(DEFAULT_BIBLE_TRANSLATION)
+  translation: bibleTranslationIdSchema.default(DEFAULT_BIBLE_TRANSLATION)
 });
 
 export async function POST(req: Request) {
@@ -29,7 +32,24 @@ export async function POST(req: Request) {
     const json = await readJsonBody(req);
     const input = inputSchema.parse(json);
 
-    const resolution = await resolvePassageFromLocalBible({
+    if (isDbsTranslation(input.translation)) {
+      const rateLimit = await consumeDbsReadRateLimit({
+        headers: req.headers
+      });
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many Bible text requests. Please wait and retry." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(rateLimit.retryAfterSeconds)
+            }
+          }
+        );
+      }
+    }
+
+    const resolution = await resolvePassageFromBible({
       reference: input.reference,
       translation: input.translation
     });
@@ -47,8 +67,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       reference: resolution.resolvedReference,
       chapterReference: resolution.chapterReference,
-      translation: input.translation,
+      translation: resolution.source.translation,
       translationName: resolution.translationName,
+      source: resolution.source,
       verses,
       chapterPath: resolution.chapterPath,
       excerpted: !resolution.parsed.verseStart
@@ -64,6 +85,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid passage preview request." },
         { status: 400 }
+      );
+    }
+
+    if (error instanceof DbsBibleError) {
+      return NextResponse.json(
+        { error: "The selected Bible edition is temporarily unavailable." },
+        { status: 503 }
       );
     }
 

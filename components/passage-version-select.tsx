@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { BIBLE_TRANSLATIONS } from "@/lib/bible";
+import { TranslationPicker } from "@/components/translation-picker";
 
 type Props = {
   currentValue: string;
@@ -21,17 +21,12 @@ export function PassageVersionSelect({ currentValue }: Props) {
 
   return (
     <div className="passageVersionSelect">
-      <select
-        aria-label="Bible version"
+      <TranslationPicker
+        id="passage-translation"
+        label="Bible version"
         value={currentValue}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {BIBLE_TRANSLATIONS.map((item) => (
-          <option key={item.value} value={item.value}>
-            {item.label}
-          </option>
-        ))}
-      </select>
+        onChange={onChange}
+      />
     </div>
   );
 }

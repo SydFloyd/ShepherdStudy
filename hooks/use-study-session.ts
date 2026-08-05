@@ -70,7 +70,7 @@ export function useStudySession() {
         "error" in data ? data.error : "Unable to load study thread.";
       setError(message);
       setIsHistoryLoading(false);
-      return false;
+      return null;
     }
 
     setTurns(data.turns);
@@ -78,7 +78,7 @@ export function useStudySession() {
     upsertThread(data.thread);
     setError(null);
     setIsHistoryLoading(false);
-    return true;
+    return data;
   }
 
   async function archiveThread(threadId: string) {
@@ -147,6 +147,7 @@ export function useStudySession() {
       chapterReference: preview.chapterReference,
       translation: preview.translation,
       translationName: preview.translationName,
+      source: preview.source,
       verses: preview.verses,
       chapterPath: preview.chapterPath,
       excerpted: preview.excerpted

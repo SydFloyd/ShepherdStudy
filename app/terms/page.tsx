@@ -2,7 +2,7 @@ export default function TermsPage() {
   return (
     <section className="card legalPage">
       <h1>Terms of Service</h1>
-      <p className="muted">Last updated: August 4, 2026</p>
+      <p className="muted">Last updated: August 5, 2026</p>
 
       <h2>Service Scope</h2>
       <p>
@@ -26,6 +26,13 @@ export default function TermsPage() {
       <p>
         AI output can be inaccurate. Always test responses against Scripture and
         wise pastoral counsel.
+      </p>
+
+      <h2>Scripture Editions</h2>
+      <p>
+        Scripture editions remain subject to their respective source, copyright,
+        and license notices. Do not use ShepherdStudy to scrape, redistribute, or
+        republish an edition in a way its rights holder does not permit.
       </p>
 
       <h2>Availability</h2>
