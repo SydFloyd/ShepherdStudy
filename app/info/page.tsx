@@ -23,38 +23,6 @@ export default function InfoPage() {
         </p>
       </article>
 
-      <article className="card infoFeaturesCard">
-        <h2>Features</h2>
-        <h3>
-          <Link href="/study">Study</Link>
-        </h3>
-        <p>
-          Explore passages and receive context with recommendations for deeper
-          study and practical application.
-        </p>
-        <h3>
-          <Link href="/compare">Compare</Link>
-        </h3>
-        <p>
-          View two Bible translations side by side with linked verse-level
-          differences and quick chapter navigation.
-        </p>
-        <h3>
-          <Link href="/word-lens">Interlinear</Link>
-        </h3>
-        <p>
-          Analyze one verse at a time in original language with AI-assisted
-          word-by-word transliteration, translation, and morphology support.
-        </p>
-        <h3>
-          <Link href="/memorize">Memorize</Link>
-        </h3>
-        <p>
-          Save a verse, contiguous passage, or whole chapter; practice recall
-          with word-level feedback; and test both the text and its address.
-        </p>
-      </article>
-
       <article className="card infoLicenseCard">
         <h2>Scripture Sources &amp; Licensing</h2>
         <p className="infoDbsThanks">
@@ -95,6 +63,38 @@ export default function InfoPage() {
           >
             unfoldingWord source and license details
           </a>
+        </p>
+      </article>
+
+      <article className="card infoFeaturesCard">
+        <h2>Features</h2>
+        <h3>
+          <Link href="/study">Study</Link>
+        </h3>
+        <p>
+          Explore passages and receive context with recommendations for deeper
+          study and practical application.
+        </p>
+        <h3>
+          <Link href="/compare">Compare</Link>
+        </h3>
+        <p>
+          View two Bible translations side by side with linked verse-level
+          differences and quick chapter navigation.
+        </p>
+        <h3>
+          <Link href="/word-lens">Interlinear</Link>
+        </h3>
+        <p>
+          Analyze one verse at a time in original language with AI-assisted
+          word-by-word transliteration, translation, and morphology support.
+        </p>
+        <h3>
+          <Link href="/memorize">Memorize</Link>
+        </h3>
+        <p>
+          Save a verse, contiguous passage, or whole chapter; practice recall
+          with word-level feedback; and test both the text and its address.
         </p>
       </article>
     </section>

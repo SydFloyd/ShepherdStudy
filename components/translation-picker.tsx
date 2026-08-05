@@ -16,6 +16,8 @@ import {
   LOCAL_BIBLE_VERSIONS
 } from "@/lib/bible";
 import {
+  filterBibleVersionsByLanguage,
+  getBibleLanguageOptions,
   mergeBibleVersions,
   searchBibleVersions,
   TRANSLATION_SEARCH_LIMIT
@@ -119,6 +121,7 @@ function getPickerOptions(
   if (
     query.trim() ||
     !selectedVersion ||
+    !translations.some((version) => version.value === selectedVersion.value) ||
     matches.some((version) => version.value === selectedVersion.value)
   ) {
     return matches;
@@ -152,6 +155,7 @@ export function TranslationPicker({
   const listboxId = `${inputId}-listbox`;
   const statusId = `${inputId}-status`;
   const resultsId = `${inputId}-results`;
+  const languageFilterId = `${inputId}-language`;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const optionRefs = useRef(new Map<string, HTMLLIElement>());
   const [translations, setTranslations] = useState<BibleVersion[]>(() => [
@@ -163,6 +167,7 @@ export function TranslationPicker({
   const [catalogWarning, setCatalogWarning] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [languageIso, setLanguageIso] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -199,9 +204,18 @@ export function TranslationPicker({
   const selectedLabel = selectedVersion
     ? getVersionDisplayName(selectedVersion)
     : getTranslationLabel(value);
+  const languageOptions = useMemo(
+    () => getBibleLanguageOptions(translations),
+    [translations]
+  );
+  const languageFilteredTranslations = useMemo(
+    () => filterBibleVersionsByLanguage(translations, languageIso),
+    [languageIso, translations]
+  );
   const options = useMemo(
-    () => getPickerOptions(translations, query, selectedVersion),
-    [query, selectedVersion, translations]
+    () =>
+      getPickerOptions(languageFilteredTranslations, query, selectedVersion),
+    [languageFilteredTranslations, query, selectedVersion]
   );
   const safeActiveIndex = options.length
     ? Math.min(activeIndex, options.length - 1)
@@ -322,7 +336,7 @@ export function TranslationPicker({
               setQuery("");
               setOpen(true);
               const browseOptions = getPickerOptions(
-                translations,
+                languageFilteredTranslations,
                 "",
                 selectedVersion
               );
@@ -359,6 +373,24 @@ export function TranslationPicker({
 
         {open ? (
           <div className="translationPickerPopover">
+            <div className="translationPickerFilters">
+              <label htmlFor={languageFilterId}>Language</label>
+              <select
+                id={languageFilterId}
+                value={languageIso}
+                onChange={(event) => {
+                  setLanguageIso(event.target.value);
+                  setActiveIndex(0);
+                }}
+              >
+                <option value="">All languages ({translations.length})</option>
+                {languageOptions.map((language) => (
+                  <option key={language.iso} value={language.iso}>
+                    {language.name} ({language.iso.toUpperCase()}) — {language.count}
+                  </option>
+                ))}
+              </select>
+            </div>
             <ul id={listboxId} role="listbox" aria-label={label}>
               {options.map((version, index) => {
                 const vernacularTitle =
@@ -420,7 +452,8 @@ export function TranslationPicker({
             </ul>
             {options.length === 0 ? (
               <p className="translationPickerEmpty">
-                No translations match &quot;{query}&quot;.
+                No translations match{query ? ` “${query}”` : ""}
+                {languageIso ? " in the selected language." : "."}
               </p>
             ) : null}
             <p

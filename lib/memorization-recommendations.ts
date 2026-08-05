@@ -44,7 +44,7 @@ export async function generateMemorizationRecommendations(input: {
     messages: [
       {
         role: "system",
-        content: `You assist a Christian Scripture memorization tool. Return only valid JSON with this shape: {"recommendations":[{"reference":"Book Chapter:Verse-Verse","reason":"one short sentence"}]}. Recommend exactly five compact, contiguous Bible passages, normally one to eight verses. Do not repeat or overlap the saved passages. Prefer passages that build a balanced foundation in the gospel, trust in God, prayer, holiness, love, wisdom, and faithful life in the local church. Keep recommendations rooted in historic orthodox Christianity. Reasons are assistive suggestions, not claims of divine or pastoral authority. Do not quote Bible text.`
+        content: `You assist a Christian Scripture memorization tool. Return only valid JSON with this shape: {"recommendations":[{"reference":"Book Chapter:Verse-Verse","reason":"one short sentence"}]}. Write every reference with its canonical English Protestant book name regardless of the user's language or selected Bible (for example, "1 Peter 1:3-5", never "1 Pedro 1:3-5"). Recommend exactly five compact, contiguous Bible passages, normally one to eight verses. Do not repeat or overlap the saved passages. Prefer passages that build a balanced foundation in the gospel, trust in God, prayer, holiness, love, wisdom, and faithful life in the local church. Keep recommendations rooted in historic orthodox Christianity. Reasons are assistive suggestions, not claims of divine or pastoral authority. Do not quote Bible text.`
       },
       {
         role: "user",

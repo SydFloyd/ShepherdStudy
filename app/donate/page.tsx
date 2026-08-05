@@ -23,6 +23,16 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
         ShepherdStudy is designed to stay accessible. Donations are entirely
         optional and never affect account features or support priority.
       </p>
+      <h2>Where your donation goes</h2>
+      <p>
+        We commit half of every donation to the{" "}
+        <a href="https://dbs.org/" target="_blank" rel="noreferrer">
+          Digital Bible Society
+        </a>{" "}
+        in gratitude for the Scripture resources that make ShepherdStudy&apos;s
+        multilingual library possible. The other half supports the hosting,
+        maintenance, security, and continued improvement of ShepherdStudy.
+      </p>
       {params.checkout === "returned" ? (
         <p className="donationNotice" role="status">
           Thank you for supporting ShepherdStudy. Stripe will provide the final
