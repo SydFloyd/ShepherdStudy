@@ -11,6 +11,14 @@ export type LocalBibleTranslationId =
   (typeof LOCAL_BIBLE_TRANSLATION_IDS)[number];
 export type BibleTranslationId = string;
 export const DEFAULT_BIBLE_TRANSLATION = "web";
+export const DEFAULT_BIBLE_LANGUAGE = "eng";
+export const bibleLanguageIsoSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(16)
+  .regex(/^[A-Za-z0-9_-]+$/, "Invalid Bible language.")
+  .transform((value) => value.toLowerCase());
 
 export const DBS_TRANSLATION_PREFIX = "dbs:";
 const DBS_BIBLE_ID_RE = /^[A-Za-z0-9_-]{2,48}$/;

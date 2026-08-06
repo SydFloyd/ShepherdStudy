@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { bibleTranslationIdSchema } from "@/lib/bible";
+import {
+  bibleLanguageIsoSchema,
+  bibleTranslationIdSchema
+} from "@/lib/bible";
 import { getBibleVersion } from "@/lib/bible-catalog";
 import { DbsBibleError } from "@/lib/dbs-bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
@@ -16,6 +19,7 @@ import { captureServerException } from "@/lib/sentry";
 const updateSchema = z.object({
   name: z.string().trim().max(80).optional(),
   preferredTranslation: bibleTranslationIdSchema.optional(),
+  preferredLanguage: bibleLanguageIsoSchema.optional(),
   currentPassword: z.string().min(1).max(128).optional(),
   newPassword: z.string().min(8).max(128).optional()
 });
@@ -47,6 +51,7 @@ export async function GET(req: Request) {
         name: true,
         accountTier: true,
         preferredTranslation: true,
+        preferredLanguage: true,
         createdAt: true
       }
     });
@@ -62,6 +67,7 @@ export async function GET(req: Request) {
         name: user.name,
         accountTier: user.accountTier,
         preferredTranslation: user.preferredTranslation,
+        preferredLanguage: user.preferredLanguage,
         createdAt: user.createdAt.toISOString()
       }
     });
@@ -126,6 +132,7 @@ export async function PATCH(req: Request) {
       passwordHash?: string;
       authVersion?: { increment: number };
       preferredTranslation?: string;
+      preferredLanguage?: string;
     } = {};
     if (input.name !== undefined) {
       data.name = nextName;
@@ -139,6 +146,9 @@ export async function PATCH(req: Request) {
         );
       }
       data.preferredTranslation = version.value;
+    }
+    if (input.preferredLanguage !== undefined) {
+      data.preferredLanguage = input.preferredLanguage;
     }
     if (wantsPasswordChange && input.newPassword) {
       data.passwordHash = await bcrypt.hash(input.newPassword, 12);

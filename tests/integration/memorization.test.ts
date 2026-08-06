@@ -27,6 +27,7 @@ describePostgres("memorization persistence", () => {
     });
     userIds.push(user.id);
     expect(user.preferredTranslation).toBe("web");
+    expect(user.preferredLanguage).toBe("eng");
 
     await prisma.user.update({
       where: { id: user.id },

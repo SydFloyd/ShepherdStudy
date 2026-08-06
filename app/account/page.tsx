@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { TranslationPicker } from "@/components/translation-picker";
+import { LanguagePicker } from "@/components/language-picker";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import { MemorizationTranslationId } from "@/lib/bible";
+import { DEFAULT_BIBLE_LANGUAGE } from "@/lib/bible";
+import { setCachedPreferredLanguage } from "@/lib/preferred-language-client";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
 type AccountPayload = {
@@ -16,6 +19,7 @@ type AccountPayload = {
     name: string | null;
     accountTier: "FREE" | "PAID";
     preferredTranslation: MemorizationTranslationId;
+    preferredLanguage: string;
     createdAt: string;
   };
 };
@@ -29,6 +33,9 @@ export default function AccountPage() {
   const [accountTier, setAccountTier] = useState<"FREE" | "PAID">("FREE");
   const [preferredTranslation, setPreferredTranslation] =
     useState<MemorizationTranslationId>("web");
+  const [preferredLanguage, setPreferredLanguage] = useState(
+    DEFAULT_BIBLE_LANGUAGE
+  );
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -76,6 +83,7 @@ export default function AccountPage() {
       setCreatedAt(new Date(data.account.createdAt).toLocaleString());
       setAccountTier(data.account.accountTier);
       setPreferredTranslation(data.account.preferredTranslation);
+      setPreferredLanguage(data.account.preferredLanguage);
       setIsLoading(false);
     }
 
@@ -91,7 +99,7 @@ export default function AccountPage() {
     const response = await fetch("/api/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, preferredTranslation })
+      body: JSON.stringify({ name, preferredTranslation, preferredLanguage })
     });
 
     const data = (await parseJsonSafe(response)) as { ok?: boolean; error?: string };
@@ -101,6 +109,7 @@ export default function AccountPage() {
       return;
     }
 
+    setCachedPreferredLanguage(preferredLanguage);
     setMessage("Profile updated.");
     setIsSavingProfile(false);
   }
@@ -191,6 +200,13 @@ export default function AccountPage() {
             Display name
             <input value={name} onChange={(event) => setName(event.target.value)} />
           </label>
+          <LanguagePicker
+            id="account-preferred-language"
+            label="Preferred language"
+            value={preferredLanguage}
+            onChange={setPreferredLanguage}
+            disabled={isSavingProfile}
+          />
           <TranslationPicker
             id="account-preferred-translation"
             label="Preferred Bible translation"
@@ -198,6 +214,7 @@ export default function AccountPage() {
             onChange={setPreferredTranslation}
             disabled={isSavingProfile}
             required
+            preferredLanguageIso={preferredLanguage}
           />
           <button type="submit" disabled={isSavingProfile}>
             {isSavingProfile ? "Saving..." : "Save profile"}

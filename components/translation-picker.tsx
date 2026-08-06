@@ -12,9 +12,11 @@ import {
 
 import {
   BibleVersion,
+  DEFAULT_BIBLE_LANGUAGE,
   getTranslationLabel,
   LOCAL_BIBLE_VERSIONS
 } from "@/lib/bible";
+import { loadBibleCatalog } from "@/lib/bible-catalog-client";
 import {
   filterBibleVersionsByLanguage,
   getBibleLanguageOptions,
@@ -22,12 +24,7 @@ import {
   searchBibleVersions,
   TRANSLATION_SEARCH_LIMIT
 } from "@/lib/bible-version-search";
-
-type CatalogResponse = {
-  translations: BibleVersion[];
-  remoteAvailable: boolean;
-  warning?: string;
-};
+import { loadPreferredLanguage } from "@/lib/preferred-language-client";
 
 type Props = {
   value: string;
@@ -39,63 +36,8 @@ type Props = {
   required?: boolean;
   ariaDescribedBy?: string;
   className?: string;
+  preferredLanguageIso?: string;
 };
-
-let catalogPromise: Promise<CatalogResponse> | null = null;
-
-function isBibleVersion(value: unknown): value is BibleVersion {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const candidate = value as Partial<BibleVersion>;
-  return (
-    typeof candidate.value === "string" &&
-    typeof candidate.providerId === "string" &&
-    (candidate.provider === "local" || candidate.provider === "dbs") &&
-    typeof candidate.label === "string" &&
-    typeof candidate.title === "string" &&
-    (candidate.vernacularTitle === null ||
-      typeof candidate.vernacularTitle === "string") &&
-    typeof candidate.languageName === "string" &&
-    typeof candidate.languageIso === "string" &&
-    typeof candidate.script === "string" &&
-    (candidate.direction === "ltr" || candidate.direction === "rtl") &&
-    (candidate.year === null || typeof candidate.year === "number") &&
-    (candidate.copyright === null || typeof candidate.copyright === "string") &&
-    typeof candidate.originalLanguage === "boolean"
-  );
-}
-
-async function loadCatalog(): Promise<CatalogResponse> {
-  if (!catalogPromise) {
-    catalogPromise = fetch("/api/bible/translations", {
-      headers: { Accept: "application/json" }
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Bible translation catalog request failed.");
-        }
-        const payload = (await response.json()) as Partial<CatalogResponse>;
-        const translations = Array.isArray(payload.translations)
-          ? payload.translations.filter(isBibleVersion)
-          : [];
-        if (translations.length === 0) {
-          throw new Error("Bible translation catalog was empty.");
-        }
-        return {
-          translations,
-          remoteAvailable: payload.remoteAvailable === true,
-          warning:
-            typeof payload.warning === "string" ? payload.warning : undefined
-        };
-      })
-      .catch((error) => {
-        catalogPromise = null;
-        throw error;
-      });
-  }
-  return catalogPromise;
-}
 
 function getVersionMeta(version: BibleVersion): string {
   return [
@@ -148,7 +90,8 @@ export function TranslationPicker({
   disabled = false,
   required = false,
   ariaDescribedBy,
-  className
+  className,
+  preferredLanguageIso
 }: Props) {
   const reactId = useId().replace(/:/g, "");
   const inputId = id ?? `translation-picker-${reactId}`;
@@ -167,12 +110,15 @@ export function TranslationPicker({
   const [catalogWarning, setCatalogWarning] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [languageIso, setLanguageIso] = useState("");
+  const [languageIso, setLanguageIso] = useState(
+    preferredLanguageIso?.trim().toLowerCase() || DEFAULT_BIBLE_LANGUAGE
+  );
+  const languageChangedRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
-    void loadCatalog()
+    void loadBibleCatalog()
       .then((catalog) => {
         if (!mounted) {
           return;
@@ -196,6 +142,27 @@ export function TranslationPicker({
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (preferredLanguageIso !== undefined) {
+      setLanguageIso(
+        preferredLanguageIso.trim().toLowerCase() || DEFAULT_BIBLE_LANGUAGE
+      );
+      setActiveIndex(0);
+      return;
+    }
+
+    let mounted = true;
+    void loadPreferredLanguage().then((preferredLanguage) => {
+      if (mounted && !languageChangedRef.current) {
+        setLanguageIso(preferredLanguage);
+        setActiveIndex(0);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [preferredLanguageIso]);
 
   const selectedVersion = useMemo(
     () => translations.find((version) => version.value === value) ?? null,
@@ -379,6 +346,7 @@ export function TranslationPicker({
                 id={languageFilterId}
                 value={languageIso}
                 onChange={(event) => {
+                  languageChangedRef.current = true;
                   setLanguageIso(event.target.value);
                   setActiveIndex(0);
                 }}

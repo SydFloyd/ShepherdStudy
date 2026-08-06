@@ -111,6 +111,7 @@ test("memorization passage recall and progress flow", async ({ page }) => {
       contentType: "application/json",
       body: JSON.stringify({
         preferredTranslation: "web",
+        preferredLanguage: "eng",
         passages: [passage],
         recommendations: null,
         recommendationsStale: false
