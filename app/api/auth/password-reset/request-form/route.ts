@@ -1,4 +1,4 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { sendPasswordResetEmail } from "@/lib/account-email";
 import { consumeAccountEmailRateLimit } from "@/lib/auth-rate-limit";
@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { readUrlEncodedBody } from "@/lib/request-body";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { PostmarkDeliveryError } from "@/lib/postmark";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 function redirect(request: Request, key: string, value: string) {
@@ -62,20 +63,24 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (user) {
-      after(async () => {
-        try {
-          await sendPasswordResetEmail(user);
-        } catch (error) {
-          captureServerException(error, {
-            route: "/api/auth/password-reset/request-form",
-            requestId
-          });
-          logEvent("error", "auth.password_reset_delivery_failure", {
-            ...requestMeta,
-            error
-          });
-        }
-      });
+      try {
+        await sendPasswordResetEmail(user);
+      } catch (error) {
+        captureServerException(error, {
+          route: "/api/auth/password-reset/request-form",
+          requestId
+        });
+        logEvent("error", "auth.password_reset_delivery_failure", {
+          ...requestMeta,
+          postmarkStatus:
+            error instanceof PostmarkDeliveryError ? error.status : undefined,
+          postmarkErrorCode:
+            error instanceof PostmarkDeliveryError
+              ? error.errorCode
+              : undefined,
+          error
+        });
+      }
     }
 
     logEvent("info", "auth.password_reset_request_processed", requestMeta);

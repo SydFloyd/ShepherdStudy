@@ -1,5 +1,5 @@
 import { TURNSTILE_ACTION } from "@/lib/turnstile-config";
-import { verifyTurnstile } from "@/lib/turnstile";
+import { isTurnstileConfigured, verifyTurnstile } from "@/lib/turnstile";
 
 function configureTurnstile() {
   vi.stubEnv("TURNSTILE_SECRET", "test-secret");
@@ -56,7 +56,10 @@ describe("Turnstile verification", () => {
 
   it("fails closed when server configuration is incomplete", async () => {
     vi.stubEnv("TURNSTILE_SECRET", "");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "");
     vi.stubEnv("TURNSTILE_HOSTNAMES", "");
+    vi.stubEnv("ACCOUNT_EMAIL_BASE_URL", "");
+    vi.stubEnv("NEXTAUTH_URL", "");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -67,6 +70,41 @@ describe("Turnstile verification", () => {
       reason: "missing_configuration"
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the trusted application URL when the explicit hostname list is absent", async () => {
+    vi.stubEnv("TURNSTILE_SECRET", "test-secret");
+    vi.stubEnv("TURNSTILE_HOSTNAMES", "");
+    vi.stubEnv("NEXTAUTH_URL", "https://example.com/login");
+    mockSiteverify({
+      success: true,
+      action: TURNSTILE_ACTION,
+      hostname: "example.com"
+    });
+
+    await expect(verifyTurnstile(request(), "token")).resolves.toEqual({
+      success: true
+    });
+    expect(isTurnstileConfigured()).toBe(true);
+  });
+
+  it("accepts the common secret-key alias", async () => {
+    vi.stubEnv("TURNSTILE_SECRET", "");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "alternate-secret");
+    vi.stubEnv("TURNSTILE_HOSTNAMES", "example.com");
+    const fetchMock = mockSiteverify({
+      success: true,
+      action: TURNSTILE_ACTION,
+      hostname: "example.com"
+    });
+
+    await expect(verifyTurnstile(request(), "token")).resolves.toEqual({
+      success: true
+    });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.body as URLSearchParams).get("secret")).toBe(
+      "alternate-secret"
+    );
   });
 
   it("rejects empty and oversized tokens before calling Siteverify", async () => {

@@ -29,12 +29,54 @@ function normalizeHostname(hostname: string) {
   return hostname.trim().toLowerCase().replace(/\.$/, "");
 }
 
+function getApplicationHostname() {
+  const configuredOrigins = [
+    process.env.ACCOUNT_EMAIL_BASE_URL,
+    process.env.NEXTAUTH_URL
+  ];
+
+  for (const configuredOrigin of configuredOrigins) {
+    if (!configuredOrigin?.trim()) {
+      continue;
+    }
+    try {
+      const url = new URL(configuredOrigin.trim());
+      const hostname = normalizeHostname(url.hostname);
+      const local = hostname === "localhost" || hostname === "127.0.0.1";
+      if (
+        !url.username &&
+        !url.password &&
+        (url.protocol === "https:" || (local && url.protocol === "http:"))
+      ) {
+        return hostname;
+      }
+    } catch {
+      // Ignore malformed optional fallbacks; verification will fail closed.
+    }
+  }
+
+  return "";
+}
+
 function getExpectedHostnames() {
-  return new Set(
+  const configuredHostnames = new Set(
     (process.env.TURNSTILE_HOSTNAMES ?? "")
       .split(",")
       .map(normalizeHostname)
       .filter(Boolean)
+  );
+  if (configuredHostnames.size > 0) {
+    return configuredHostnames;
+  }
+
+  const applicationHostname = getApplicationHostname();
+  return new Set(applicationHostname ? [applicationHostname] : []);
+}
+
+function getSecret() {
+  return (
+    process.env.TURNSTILE_SECRET?.trim() ||
+    process.env.TURNSTILE_SECRET_KEY?.trim()
   );
 }
 
@@ -64,7 +106,7 @@ export async function verifyTurnstile(
     return { success: false, reason: "invalid_token" };
   }
 
-  const secret = process.env.TURNSTILE_SECRET?.trim();
+  const secret = getSecret();
   const expectedHostnames = getExpectedHostnames();
   if (!secret || expectedHostnames.size === 0) {
     return { success: false, reason: "missing_configuration" };
@@ -125,4 +167,8 @@ export async function verifyTurnstile(
   }
 
   return { success: true };
+}
+
+export function isTurnstileConfigured(): boolean {
+  return Boolean(getSecret() && getExpectedHostnames().size > 0);
 }
