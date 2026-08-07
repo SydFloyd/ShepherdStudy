@@ -32,6 +32,16 @@ function authorized(request: Request) {
   );
 }
 
+function configurationField(error: PostmarkConfigurationError) {
+  if (error.message.includes("POSTMARK_API_KEY")) {
+    return "api_key";
+  }
+  if (error.message.includes("POSTMARK_FROM_EMAIL")) {
+    return "from_email";
+  }
+  return "from_name_or_stream";
+}
+
 export async function POST(request: Request) {
   if (!authorized(request)) {
     return Response.json(
@@ -66,7 +76,11 @@ export async function POST(request: Request) {
   } catch (error) {
     const body =
       error instanceof PostmarkConfigurationError
-        ? { ok: false, failure: "configuration" }
+        ? {
+            ok: false,
+            failure: "configuration",
+            configurationField: configurationField(error)
+          }
         : error instanceof PostmarkDeliveryError
           ? {
               ok: false,
