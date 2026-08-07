@@ -46,7 +46,7 @@ cp .env.example .env
 ```
 
 Set `NEXTAUTH_SECRET`, `OPENAI_API_KEY`, `TURNSTILE_SECRET`,
-`TURNSTILE_HOSTNAMES`, `CRON_SECRET`, `POSTMARK_API_KEY`, and
+`TURNSTILE_HOSTNAMES` (or an exact `NEXTAUTH_URL` fallback), `CRON_SECRET`, `POSTMARK_API_KEY`, and
 `POSTMARK_FROM_EMAIL`. Set `STRIPE_SECRET_KEY` to accept optional contributions
 through hosted Stripe Checkout; the publishable key is not used by this flow.
 The Postmark sender must be a confirmed sender signature or use a verified

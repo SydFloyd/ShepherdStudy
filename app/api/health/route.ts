@@ -4,6 +4,7 @@ import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getRequestId } from "@/lib/request-context";
 import { captureServerException } from "@/lib/sentry";
+import { isTurnstileConfigured } from "@/lib/turnstile";
 
 export async function GET(req: Request) {
   const requestId = await getRequestId();
@@ -20,7 +21,8 @@ export async function GET(req: Request) {
       service: "shepherd-study",
       timestamp: new Date().toISOString(),
       checks: {
-        db: "ok"
+        db: "ok",
+        turnstile: isTurnstileConfigured() ? "ok" : "error"
       }
     };
     logEvent("info", "health.ok", requestMeta);
