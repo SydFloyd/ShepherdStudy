@@ -36,6 +36,14 @@ const arabicVersion: BibleVersion = {
 };
 
 describe("Bible catalog", () => {
+  beforeEach(() => {
+    vi.stubEnv("ESV_API_KEY", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("combines local and available DBS translations", async () => {
     dbsMocks.getCatalog.mockResolvedValue([arabicVersion]);
 
@@ -91,7 +99,6 @@ describe("Bible catalog", () => {
     await expect(getBibleVersion("esv")).resolves.toEqual(
       expect.objectContaining({ value: "esv", provider: "esv" })
     );
-    vi.unstubAllEnvs();
   });
 
   it("delegates DBS IDs and rejects unsupported identifier formats", async () => {

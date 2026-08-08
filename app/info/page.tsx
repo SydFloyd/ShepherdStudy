@@ -57,20 +57,34 @@ export default function InfoPage() {
         </ul>
         <p>
           ESV Scripture text is retrieved on demand from Crossway&apos;s official
-          service and kept only in a small, expiring shared cache. Scripture
-          quotations are from the{" "}
+          service and kept only in a small, expiring shared cache. All
+          ShepherdStudy features and ESV access are offered without charge.
+          Scripture quotations marked &ldquo;ESV&rdquo; are from the{" "}
           <a href="https://www.esv.org/" target="_blank" rel="noreferrer">
             ESV&reg; Bible (The Holy Bible, English Standard Version&reg;)
           </a>
           , &copy; 2001 by Crossway, a publishing ministry of Good News
-          Publishers. ESV Text Edition: 2025. The ESV text may not be quoted in
-          any publication made available to the public by a Creative Commons
-          license. The ESV may not be translated in whole or in part into any
-          other language. Used by permission. All rights reserved.
+          Publishers. Used by permission. All rights reserved. The ESV text may
+          not be quoted in any publication made available to the public by a
+          Creative Commons license. The ESV may not be translated into any
+          other language.
         </p>
         <p>
           Users may not copy or download more than 500 verses of the ESV Bible
           or more than one half of any book of the ESV Bible.
+        </p>
+        <p>
+          <a href="https://api.esv.org/" target="_blank" rel="noreferrer">
+            ESV API conditions of use
+          </a>
+          {" | "}
+          <a
+            href="https://www.crossway.org/permissions/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Crossway permissions
+          </a>
         </p>
         <p>
           <a

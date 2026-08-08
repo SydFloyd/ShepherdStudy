@@ -60,6 +60,8 @@ describe("study history licensed text storage", () => {
     expect(stored.passages?.[0].verses).toEqual([]);
     expect(stored.passage?.verses).toEqual([]);
     expect(stored.recommendations[0].preview).toBeUndefined();
+    expect(stored.recommendations[0].previewRestricted).toBe(true);
+    expect(stored.providerNotice).toBeUndefined();
     expect(stored.passage?.reference).toBe("John 3:16");
     expect(stored.answer).toBe("A derived study answer.");
   });

@@ -7,6 +7,7 @@ import {
 import { resolvePassageFromBible } from "@/lib/bible-provider";
 import { prisma } from "@/lib/prisma";
 import {
+  hideEsvQuotations,
   StudyPassageResult,
   StudyResponsePayload
 } from "@/lib/study-contract";
@@ -20,19 +21,7 @@ function isEsvPassage(passage: StudyPassageResult | null | undefined) {
 export function stripLicensedTextFromStudyResponse(
   response: StudyResponsePayload
 ): StudyResponsePayload {
-  const stripPassage = (passage: StudyPassageResult) =>
-    isEsvPassage(passage) ? { ...passage, verses: [] } : passage;
-  return {
-    ...response,
-    passages: response.passages?.map(stripPassage),
-    passage: response.passage ? stripPassage(response.passage) : null,
-    recommendations: response.recommendations.map((recommendation) =>
-      recommendation.translation === "esv" ||
-      recommendation.source?.provider === "esv"
-        ? { ...recommendation, preview: undefined }
-        : recommendation
-    )
-  };
+  return hideEsvQuotations(response, null);
 }
 
 async function hydrateStudyResponse(
@@ -102,6 +91,7 @@ async function hydrateStudyResponse(
               preview:
                 resolution.selectedVerses[0]?.text ??
                 resolution.chapterVerses[0]?.text,
+              previewRestricted: undefined,
               translation: resolution.source.translation,
               translationName: resolution.translationName,
               source: resolution.source
@@ -288,6 +278,17 @@ export async function getStudyThreadDetail(input: {
   }
 
   const turns = [];
+  let lastAssistantMessageIndex = -1;
+  for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
+    const message = thread.messages[index];
+    if (
+      message.role === StudyMessageRole.ASSISTANT &&
+      Boolean(message.response)
+    ) {
+      lastAssistantMessageIndex = index;
+      break;
+    }
+  }
   for (let index = 0; index < thread.messages.length; index += 1) {
     const userMessage = thread.messages[index];
     const assistantMessage = thread.messages[index + 1];
@@ -302,9 +303,12 @@ export async function getStudyThreadDetail(input: {
       continue;
     }
 
-    const response = await hydrateStudyResponse(
-      assistantMessage.response as unknown as StudyResponsePayload
-    );
+    const storedResponse =
+      assistantMessage.response as unknown as StudyResponsePayload;
+    const response =
+      index + 1 === lastAssistantMessageIndex
+        ? await hydrateStudyResponse(storedResponse)
+        : hideEsvQuotations(storedResponse);
     turns.push({
       id: assistantMessage.id,
       kind: (userMessage.kind === "verse" ? "verse" : "prompt") as

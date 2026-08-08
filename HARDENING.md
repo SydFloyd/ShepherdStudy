@@ -63,10 +63,12 @@ Last reviewed: August 4, 2026
     cron deletes expired word-lens cache rows and authentication rate buckets.
 16. **Bounded licensed ESV access (high).** Added one server-side Crossway API
     identity with conservative global request budgets, a 450-slot expiring cache,
-    per-book and per-page ceilings below one half of a book, exact display
-    attribution, and ESV-specific retry guidance. Memorization, study history,
-    and Word Lens persist references and derived results instead of additional
-    raw ESV copies.
+    per-book and aggregate per-page ceilings below one half of a book, exact
+    display attribution, and ESV-specific retry guidance. Compare, multi-passage
+    study, long study threads, and memorization sets cannot combine individually
+    valid excerpts into an oversized work. Memorization, study history, and Word
+    Lens persist references and derived results instead of additional raw ESV
+    copies.
 
 ## Ranked next improvements
 

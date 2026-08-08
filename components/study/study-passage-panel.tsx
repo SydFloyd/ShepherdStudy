@@ -49,6 +49,12 @@ export function StudyPassagePanel({ passage }: Props) {
         dir={source?.direction ?? "ltr"}
         lang={source?.languageIso}
       >
+        {paragraphGroups.length === 0 && source?.provider === "esv" ? (
+          <p className="muted">
+            ESV text is hidden in this older turn to keep the page within the
+            edition&apos;s usage limits. Open the chapter to view it again.
+          </p>
+        ) : null}
         {paragraphGroups.map((group) => (
           <p className="paragraphText" key={group.paragraph}>
             {group.verses.map((verse) => (

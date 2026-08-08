@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { BibleTranslationId } from "@/lib/bible";
+import { BibleTranslationId, isEsvTranslation } from "@/lib/bible";
 import {
   PassagePreviewPayload,
   PendingStudyTurn,
@@ -13,7 +13,10 @@ import {
   extractScriptureReferencesFromText,
   hasMeaningfulPromptText
 } from "@/lib/scripture";
-import { StudyResponsePayload } from "@/lib/study-contract";
+import {
+  hideEsvQuotations,
+  StudyResponsePayload
+} from "@/lib/study-contract";
 
 type SubmitPromptInput = {
   translation: BibleTranslationId;
@@ -159,8 +162,11 @@ export function useStudySession() {
     references: string[];
     translation: BibleTranslationId;
   }) {
+    const pendingReferences = isEsvTranslation(input.translation)
+      ? input.references.slice(0, 1)
+      : input.references;
     const previews = await Promise.all(
-      input.references.map(async (reference) => {
+      pendingReferences.map(async (reference) => {
         const response = await fetch("/api/passage-preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -206,6 +212,14 @@ export function useStudySession() {
     userText: string;
   }) {
     const pendingId = `pending-${Date.now()}`;
+    if (isEsvTranslation(input.translation)) {
+      setTurns((current) =>
+        current.map((turn) => ({
+          ...turn,
+          response: hideEsvQuotations(turn.response)
+        }))
+      );
+    }
     if (input.passages.length > 0) {
       setPendingTurn({
         id: pendingId,
@@ -257,7 +271,10 @@ export function useStudySession() {
 
     const turnId = `${Date.now()}-${turns.length}`;
     setTurns((current) => [
-      ...current,
+      ...current.map((turn) => ({
+        ...turn,
+        response: hideEsvQuotations(turn.response)
+      })),
       {
         id: turnId,
         kind: input.kind,

@@ -11,6 +11,7 @@ import {
   bibleProviderErrorResponse
 } from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import { EsvDisplayBudget } from "@/lib/esv-compliance";
 import {
   resolveMemorizationPassage,
   serializeMemorizationPassage,
@@ -45,10 +46,11 @@ export async function POST(request: Request) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
+    const userId = session.user.id;
 
     const input = createSchema.parse(await readJsonBody(request));
     const savedCount = await prisma.memorizationPassage.count({
-      where: { userId: session.user.id }
+      where: { userId }
     });
     if (savedCount >= MAX_SAVED_PASSAGES) {
       return NextResponse.json(
@@ -81,12 +83,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: resolution.message }, { status: 400 });
     }
 
-    const created = await prisma.memorizationPassage.create({
-      data: {
-        userId: session.user.id,
-        ...toMemorizationStorageData(resolution.passage)
-      }
-    });
+    const storageData = {
+      userId,
+      ...toMemorizationStorageData(resolution.passage)
+    };
+    const created =
+      resolution.passage.editionSnapshot.provider === "esv"
+        ? await prisma.$transaction(async (transaction) => {
+            await transaction.$queryRaw`
+              SELECT pg_advisory_xact_lock(8220047002)::text AS "lock"
+            `;
+            const savedEsvPassages =
+              await transaction.memorizationPassage.findMany({
+                where: { userId, translation: "esv" },
+                select: {
+                  bookOrder: true,
+                  verseStart: true,
+                  verseEnd: true
+                }
+              });
+            const displayBudget = new EsvDisplayBudget((bookOrder) =>
+              transaction.bibleVerse.count({
+                where: { translation: "web", bookOrder }
+              })
+            );
+            for (const passage of savedEsvPassages) {
+              await displayBudget.assert({
+                bookOrder: passage.bookOrder,
+                verseCount: passage.verseEnd - passage.verseStart + 1
+              });
+            }
+            await displayBudget.assert({
+              bookOrder: resolution.passage.bookOrder,
+              verseCount:
+                resolution.passage.verseEnd - resolution.passage.verseStart + 1
+            });
+            return transaction.memorizationPassage.create({
+              data: storageData
+            });
+          })
+        : await prisma.memorizationPassage.create({ data: storageData });
 
     logEvent("info", "memorize.passage_created", requestMeta);
     return NextResponse.json(

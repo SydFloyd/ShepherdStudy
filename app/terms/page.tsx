@@ -44,7 +44,8 @@ export default function TermsPage() {
       <h2>Optional Contributions</h2>
       <p>
         Voluntary contributions are processed by Stripe. They do not purchase
-        features, support priority, or service guarantees.
+        features, ESV access, support priority, or service guarantees. All
+        ShepherdStudy features are offered without charge.
       </p>
     </section>
   );
