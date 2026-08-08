@@ -371,7 +371,9 @@ async function cacheFetchedVerses(input: {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(8220047001)`;
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(8220047001)::text AS "lock"
+    `;
     const now = new Date();
     await tx.esvVerseCache.deleteMany({ where: { expiresAt: { lte: now } } });
 
