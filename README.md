@@ -101,7 +101,9 @@ Open `http://localhost:3000`.
   saved Scripture snapshots.
 - ESV text is requested on demand from Crossway under one application identity.
   A shared expiring cache is hard-capped at 450 verse slots and below 45% of any
-  book. Study history, memorization records, and Word Lens caches retain ESV
+  book. Aggregate response/page budgets also cover comparisons, multi-passage
+  studies, recommendation previews, long study threads, and saved memorization
+  sets. Study history, memorization records, and Word Lens caches retain ESV
   references and derived work without duplicating raw ESV text.
 - The public-domain import command downloads texts from eBible and loads:
   - `WEB` (default)

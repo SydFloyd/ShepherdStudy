@@ -116,6 +116,7 @@ export function StudyRecommendations({
         );
         const key = getPreviewKey(index, item.reference, selectionTranslation);
         if (
+          item.previewRestricted ||
           getStoredPreview(item, selectionTranslation) ||
           Object.prototype.hasOwnProperty.call(livePreviewByKey, key)
         ) {
@@ -246,6 +247,22 @@ export function StudyRecommendations({
                         lang={source?.languageIso}
                       >
                         {text}
+                        {source?.provider === "esv" ? (
+                          <>
+                            {" "}
+                            <a
+                              href="https://www.esv.org/"
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              (ESV)
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
+                    ) : item.previewRestricted ? (
+                      <span className="muted studyRecoSummary" role="status">
+                        Preview hidden to stay within ESV usage limits.
                       </span>
                     ) : isOpen ? (
                       <span className="muted studyRecoSummary" role="status">

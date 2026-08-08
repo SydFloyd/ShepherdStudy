@@ -409,7 +409,9 @@ export default function MemorizePage() {
     });
     if (result) {
       setPracticeAssessment(result);
-      setShowOriginal(true);
+      setShowOriginal(
+        getPassageSource(selectedPassage)?.provider !== "esv"
+      );
     }
   }
 
@@ -658,7 +660,15 @@ export default function MemorizePage() {
                   <button
                     type="button"
                     className="secondaryButton"
-                    onClick={() => setShowOriginal((current) => !current)}
+                    onClick={() => {
+                      if (
+                        getPassageSource(selectedPassage)?.provider === "esv" &&
+                        practiceAssessment
+                      ) {
+                        setPracticeAssessment(null);
+                      }
+                      setShowOriginal((current) => !current);
+                    }}
                   >
                     {showOriginal ? "Hide passage" : "Reveal passage"}
                   </button>

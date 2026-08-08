@@ -18,11 +18,11 @@ export function ScriptureAttribution({ source, className }: Props) {
     >
       {source.provider === "esv" ? (
         <span>
-          Scripture quotation marked{" "}
+          Scripture quotation (
           <a href="https://www.esv.org/" target="_blank" rel="noreferrer">
             ESV
           </a>
-          . See the full copyright and usage notice on the{" "}
+          ). See the full copyright and usage notice on the{" "}
           <a href="/info">Info page</a>.
         </span>
       ) : source.provider === "dbs" ? (

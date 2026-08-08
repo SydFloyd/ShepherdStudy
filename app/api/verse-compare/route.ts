@@ -12,6 +12,10 @@ import {
   bibleProviderErrorResponse
 } from "@/lib/bible-provider-error";
 import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
+import {
+  EsvDisplayBudget,
+  toEsvDisplaySelection
+} from "@/lib/esv-compliance";
 import { prisma } from "@/lib/prisma";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
 import { getRequestId } from "@/lib/request-context";
@@ -150,6 +154,24 @@ export async function POST(req: Request) {
     if (!right.ok) {
       return NextResponse.json({ error: right.message }, { status: 404 });
     }
+
+    const esvDisplayBudget = new EsvDisplayBudget();
+    await esvDisplayBudget.assert(
+      toEsvDisplaySelection({
+        translation: left.source.translation,
+        source: left.source,
+        reference: left.resolvedReference,
+        verses: left.selectedVerses
+      })
+    );
+    await esvDisplayBudget.assert(
+      toEsvDisplaySelection({
+        translation: right.source.translation,
+        source: right.source,
+        reference: right.resolvedReference,
+        verses: right.selectedVerses
+      })
+    );
 
     const { previousReference, nextReference } =
       await getAdjacentChapterReferences({

@@ -4,6 +4,7 @@ const recommendationSchema = z
   .object({
     reference: z.string().trim().min(1).max(120),
     preview: z.string().trim().max(2_000).optional(),
+    previewRestricted: z.boolean().optional(),
     summary: z.string().trim().max(2_000).optional(),
     translation: z.string().trim().min(1).max(64).optional(),
     translationName: z.string().trim().min(1).max(500).optional(),

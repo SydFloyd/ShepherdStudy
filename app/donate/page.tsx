@@ -22,6 +22,8 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
       <p>
         ShepherdStudy is designed to stay accessible. Donations are entirely
         optional and never affect account features or support priority.
+        All features, including access to ESV Scripture text, remain available
+        without charge.
       </p>
       <h2>Where your donation goes</h2>
       <p>
@@ -84,7 +86,8 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
       <p className="muted donationFinePrint">
         Stripe securely processes the payment; ShepherdStudy does not receive
         your full card number. Contributions are voluntary, do not purchase
-        features, and are not represented as tax-deductible.
+        features, ESV access, or service priority, and are not represented as
+        tax-deductible.
       </p>
     </section>
   );

@@ -17,6 +17,10 @@ import {
   getBibleProviderPublicError
 } from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
+import {
+  EsvDisplayBudget,
+  toEsvDisplaySelection
+} from "@/lib/esv-compliance";
 import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { generateStudyRecommendations } from "@/lib/openai";
 import { consumeQuota } from "@/lib/quota";
@@ -27,7 +31,11 @@ import {
   hasMeaningfulPromptText,
   parseScriptureReference
 } from "@/lib/scripture";
-import { StudyMode, StudyPassageResult } from "@/lib/study-contract";
+import {
+  StudyMode,
+  StudyPassageResult,
+  StudyRecommendation
+} from "@/lib/study-contract";
 import { persistStudyTurn } from "@/lib/study-history";
 import { captureServerException } from "@/lib/sentry";
 import { resolveActiveUserId } from "@/lib/session-user";
@@ -289,6 +297,10 @@ export async function POST(req: Request) {
     let passagesPayload = inputPassages;
     let passagePayload = passagesPayload[0] ?? null;
     let providerNotice: string | undefined;
+    const esvDisplayBudget = new EsvDisplayBudget();
+    for (const passage of passagesPayload) {
+      await esvDisplayBudget.assert(toEsvDisplaySelection(passage));
+    }
 
     const response = await generateStudyRecommendations({
       mode,
@@ -321,6 +333,14 @@ export async function POST(req: Request) {
         const verses = anchor.parsed.verseStart
           ? anchor.selectedVerses
           : anchor.chapterVerses.slice(0, 12);
+        await esvDisplayBudget.assert(
+          toEsvDisplaySelection({
+            translation: anchor.source.translation,
+            source: anchor.source,
+            reference: anchor.resolvedReference,
+            verses
+          })
+        );
 
         passagesPayload = [
           {
@@ -407,7 +427,35 @@ export async function POST(req: Request) {
           source: preview.source
         };
       })
-    )).filter((item) => item !== null);
+    )).filter((item) => item !== null) as StudyRecommendation[];
+
+    for (const recommendation of recommendations) {
+      if (!recommendation.preview) {
+        continue;
+      }
+      const parsedRecommendation = parseScriptureReference(
+        recommendation.reference
+      );
+      const allowed = await esvDisplayBudget.reserve(
+        toEsvDisplaySelection({
+          translation: recommendation.translation ?? selectedTranslation,
+          source: recommendation.source,
+          reference: recommendation.reference,
+          verses: parsedRecommendation
+            ? [{ verse: parsedRecommendation.verseStart ?? 1 }]
+            : []
+        })
+      );
+      if (!allowed) {
+        recommendation.preview = undefined;
+        recommendation.previewRestricted = true;
+        providerNotice ??=
+          "Some ESV previews were hidden to keep this page within Crossway's usage limits.";
+      }
+    }
+
+    const legacyPassagePayload =
+      selectedVersion.provider === "esv" ? null : passagePayload;
 
     let thread: {
       id: string;
@@ -450,7 +498,7 @@ export async function POST(req: Request) {
           recommendations,
           providerNotice,
           passages: passagesPayload,
-          passage: passagePayload,
+          passage: legacyPassagePayload,
           saved: true
         }
       });
@@ -466,7 +514,7 @@ export async function POST(req: Request) {
       recommendations,
       providerNotice,
       passages: passagesPayload,
-      passage: passagePayload,
+      passage: legacyPassagePayload,
       quota: quotaDecision,
       saved: Boolean(thread),
       thread:

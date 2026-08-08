@@ -29,7 +29,7 @@ export const ESV_VERSION: BibleVersion = {
   direction: "ltr",
   year: 2025,
   copyright:
-    "ESV\u00ae Text Edition: 2025. Copyright \u00a9 2001 by Crossway Bibles.",
+    "Scripture quotations marked \u201cESV\u201d are from the ESV\u00ae Bible (The Holy Bible, English Standard Version\u00ae), \u00a9 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved. The ESV text may not be quoted in any publication made available to the public by a Creative Commons license. The ESV may not be translated into any other language.",
   originalLanguage: false
 };
 
