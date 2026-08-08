@@ -31,7 +31,7 @@ const passageVerseSchema = z
 const bibleSourceSchema = z
   .object({
     translation: z.string().trim().min(1).max(64),
-    provider: z.enum(["local", "dbs"]),
+    provider: z.enum(["local", "dbs", "esv"]),
     providerId: z.string().trim().min(1).max(64),
     title: z.string().trim().min(1).max(500),
     vernacularTitle: z.string().trim().max(500).nullable(),
@@ -69,6 +69,7 @@ export const studyResponsePayloadSchema = z
     passages: z.array(studyPassageSchema).max(8).optional(),
     passage: studyPassageSchema.nullable(),
     recommendations: z.array(recommendationSchema).max(10),
+    providerNotice: z.string().trim().min(1).max(500).optional(),
     saved: z.boolean(),
     thread: z
       .object({

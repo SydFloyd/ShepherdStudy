@@ -8,7 +8,12 @@ import {
 } from "@/lib/bible";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
+import {
   getMemorizationSetFingerprint,
+  hydrateMemorizationPassage,
   recommendationPayloadSchema,
   serializeMemorizationPassage
 } from "@/lib/memorization-data";
@@ -71,15 +76,21 @@ export async function GET(request: Request) {
       }
     }
 
+    const hydratedPassages = await Promise.all(
+      user.memorizationPassages.map(hydrateMemorizationPassage)
+    );
     const response = NextResponse.json({
       preferredTranslation,
-      passages: user.memorizationPassages.map(serializeMemorizationPassage),
+      passages: hydratedPassages.map(serializeMemorizationPassage),
       recommendations,
       recommendationsStale: Boolean(cache && !recommendations)
     });
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
+    }
     captureServerException(error, { route: "/api/memorize", requestId });
     logEvent("error", "memorize.load_failed", { ...requestMeta, error });
     return NextResponse.json(

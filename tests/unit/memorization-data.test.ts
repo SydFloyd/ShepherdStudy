@@ -4,7 +4,8 @@ import {
   isExactPassageReference,
   parseMemorizationEditionSnapshot,
   passagesOverlap,
-  serializeMemorizationPassage
+  serializeMemorizationPassage,
+  toMemorizationStorageData
 } from "@/lib/memorization-data";
 
 const psalm23 = {
@@ -113,5 +114,38 @@ describe("memorization passage helpers", () => {
         provider: "untrusted"
       })
     ).toBeNull();
+  });
+
+  it("persists ESV memorization references without another raw text copy", () => {
+    const stored = toMemorizationStorageData({
+      translation: "esv",
+      reference: "John 3:16",
+      book: "John",
+      bookOrder: 43,
+      chapter: 3,
+      verseStart: 16,
+      verseEnd: 16,
+      isWholeChapter: false,
+      text: "For God so loved the world.",
+      verses: [{ verse: 16, text: "For God so loved the world." }],
+      editionSnapshot: {
+        translation: "esv",
+        provider: "esv",
+        providerId: "esv",
+        title: "English Standard Version",
+        vernacularTitle: "English Standard Version",
+        languageName: "English",
+        languageIso: "eng",
+        script: "Latn",
+        direction: "ltr",
+        year: 2025,
+        copyright: "ESV copyright notice"
+      }
+    });
+
+    expect(stored.text).toBe("");
+    expect(stored.verses).toEqual([]);
+    expect(stored.reference).toBe("John 3:16");
+    expect(stored.editionSnapshot.provider).toBe("esv");
   });
 });

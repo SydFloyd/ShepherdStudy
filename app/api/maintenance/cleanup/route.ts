@@ -33,14 +33,16 @@ export async function GET(request: Request) {
 
   try {
     const now = new Date();
-    const [cache, rateLimits, accountTokens] = await prisma.$transaction([
+    const [cache, esvCache, rateLimits, accountTokens] = await prisma.$transaction([
       prisma.wordLensCache.deleteMany({ where: { expiresAt: { lt: now } } }),
+      prisma.esvVerseCache.deleteMany({ where: { expiresAt: { lt: now } } }),
       prisma.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: now } } }),
       prisma.accountToken.deleteMany({ where: { expiresAt: { lt: now } } })
     ]);
     logEvent("info", "maintenance.cleanup_ok", {
       ...requestMeta,
       expiredWordLensCacheRows: cache.count,
+      expiredEsvCacheRows: esvCache.count,
       expiredRateLimitBuckets: rateLimits.count,
       expiredAccountTokens: accountTokens.count
     });
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
       {
         ok: true,
         expiredWordLensCacheRows: cache.count,
+        expiredEsvCacheRows: esvCache.count,
         expiredRateLimitBuckets: rateLimits.count,
         expiredAccountTokens: accountTokens.count
       },

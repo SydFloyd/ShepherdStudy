@@ -7,7 +7,10 @@ import {
   isDbsTranslation
 } from "@/lib/bible";
 import { resolvePassageFromBible } from "@/lib/bible-provider";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { prisma } from "@/lib/prisma";
 import { isPrismaDatabaseUnavailableError } from "@/lib/prisma-errors";
@@ -151,7 +154,7 @@ export async function POST(req: Request) {
     const { previousReference, nextReference } =
       await getAdjacentChapterReferences({
         translation:
-          left.source.provider === "dbs" ? "web" : input.leftTranslation,
+          left.source.provider === "local" ? input.leftTranslation : "web",
         book: left.resolvedBook,
         chapter: parsed.chapter
       });
@@ -202,11 +205,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
     if (isPrismaDatabaseUnavailableError(error)) {
       return NextResponse.json(

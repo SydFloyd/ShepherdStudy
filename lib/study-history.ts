@@ -1,9 +1,129 @@
 import { Prisma, StudyMessageRole } from "@prisma/client";
 
+import {
+  BibleProviderError,
+  getBibleProviderPublicError
+} from "@/lib/bible-provider-error";
+import { resolvePassageFromBible } from "@/lib/bible-provider";
 import { prisma } from "@/lib/prisma";
-import { StudyResponsePayload } from "@/lib/study-contract";
+import {
+  StudyPassageResult,
+  StudyResponsePayload
+} from "@/lib/study-contract";
 
 const THREAD_TITLE_MAX = 72;
+
+function isEsvPassage(passage: StudyPassageResult | null | undefined) {
+  return passage?.translation === "esv" || passage?.source?.provider === "esv";
+}
+
+export function stripLicensedTextFromStudyResponse(
+  response: StudyResponsePayload
+): StudyResponsePayload {
+  const stripPassage = (passage: StudyPassageResult) =>
+    isEsvPassage(passage) ? { ...passage, verses: [] } : passage;
+  return {
+    ...response,
+    passages: response.passages?.map(stripPassage),
+    passage: response.passage ? stripPassage(response.passage) : null,
+    recommendations: response.recommendations.map((recommendation) =>
+      recommendation.translation === "esv" ||
+      recommendation.source?.provider === "esv"
+        ? { ...recommendation, preview: undefined }
+        : recommendation
+    )
+  };
+}
+
+async function hydrateStudyResponse(
+  response: StudyResponsePayload
+): Promise<StudyResponsePayload> {
+  const memo = new Map<string, Promise<StudyPassageResult | null>>();
+  let providerNotice = response.providerNotice;
+  const hydratePassage = async (passage: StudyPassageResult) => {
+    if (!isEsvPassage(passage) || passage.verses.length > 0) {
+      return passage;
+    }
+    const key = `${passage.translation}|${passage.reference}`;
+    let pending = memo.get(key);
+    if (!pending) {
+      pending = resolvePassageFromBible({
+        reference: passage.reference,
+        translation: passage.translation
+      }).then((resolution) =>
+        resolution.ok
+          ? {
+              ...passage,
+              reference: resolution.resolvedReference,
+              chapterReference: resolution.chapterReference,
+              source: resolution.source,
+              verses: resolution.selectedVerses,
+              chapterPath: resolution.chapterPath
+            }
+          : null
+      );
+      memo.set(key, pending);
+    }
+    try {
+      return (await pending) ?? passage;
+    } catch (error) {
+      if (error instanceof BibleProviderError) {
+        providerNotice = getBibleProviderPublicError(error).message;
+        return passage;
+      }
+      throw error;
+    }
+  };
+
+  const passages = response.passages
+    ? await Promise.all(response.passages.map(hydratePassage))
+    : undefined;
+  const passage = response.passage
+    ? await hydratePassage(response.passage)
+    : null;
+  const recommendations = await Promise.all(
+    response.recommendations.map(async (recommendation) => {
+      if (
+        recommendation.preview ||
+        (recommendation.translation !== "esv" &&
+          recommendation.source?.provider !== "esv")
+      ) {
+        return recommendation;
+      }
+      try {
+        const resolution = await resolvePassageFromBible({
+          reference: recommendation.reference,
+          translation: recommendation.translation ?? "esv"
+        });
+        return resolution.ok
+          ? {
+              ...recommendation,
+              reference: resolution.resolvedReference,
+              preview:
+                resolution.selectedVerses[0]?.text ??
+                resolution.chapterVerses[0]?.text,
+              translation: resolution.source.translation,
+              translationName: resolution.translationName,
+              source: resolution.source
+            }
+          : recommendation;
+      } catch (error) {
+        if (error instanceof BibleProviderError) {
+          providerNotice = getBibleProviderPublicError(error).message;
+          return recommendation;
+        }
+        throw error;
+      }
+    })
+  );
+  return {
+    ...response,
+    passages,
+    passage,
+    recommendations,
+    providerNotice
+  };
+}
 
 function normalizeTitle(text: string): string {
   const compact = text.trim().replace(/\s+/g, " ");
@@ -118,7 +238,9 @@ export async function persistStudyTurn(input: {
           kind: input.kind,
           content: input.response.answer,
           translation: input.translation,
-          response: input.response as Prisma.InputJsonValue
+          response: stripLicensedTextFromStudyResponse(
+            input.response
+          ) as Prisma.InputJsonValue
         }
       ]
     });
@@ -180,14 +302,17 @@ export async function getStudyThreadDetail(input: {
       continue;
     }
 
-      turns.push({
-        id: assistantMessage.id,
-        kind: (userMessage.kind === "verse" ? "verse" : "prompt") as
-          | "prompt"
-          | "verse",
-        userText: userMessage.content,
-        response: assistantMessage.response as unknown as StudyResponsePayload
-      });
+    const response = await hydrateStudyResponse(
+      assistantMessage.response as unknown as StudyResponsePayload
+    );
+    turns.push({
+      id: assistantMessage.id,
+      kind: (userMessage.kind === "verse" ? "verse" : "prompt") as
+        | "prompt"
+        | "verse",
+      userText: userMessage.content,
+      response
+    });
   }
 
   return {

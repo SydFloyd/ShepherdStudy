@@ -140,4 +140,16 @@ describe("authentication rate-limit helpers", () => {
       })
     );
   });
+
+  it("keeps ESV API use inside conservative shared limits", () => {
+    const defaults = __testables.getEsvApiRules();
+    expect(defaults.map((rule) => rule.limit)).toEqual([30, 500, 2500]);
+    expect(defaults.every((rule) => rule.scope === "global")).toBe(true);
+
+    vi.stubEnv("ESV_REQUESTS_PER_MINUTE", "1000");
+    vi.stubEnv("ESV_REQUESTS_PER_HOUR", "2000");
+    vi.stubEnv("ESV_REQUESTS_PER_DAY", "10000");
+    const clamped = __testables.getEsvApiRules();
+    expect(clamped.map((rule) => rule.limit)).toEqual([30, 500, 2500]);
+  });
 });

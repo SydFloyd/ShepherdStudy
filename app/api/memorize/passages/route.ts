@@ -6,11 +6,15 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { bibleTranslationIdSchema, isDbsTranslation } from "@/lib/bible";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   resolveMemorizationPassage,
-  serializeMemorizationPassage
+  serializeMemorizationPassage,
+  toMemorizationStorageData
 } from "@/lib/memorization-data";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -80,13 +84,20 @@ export async function POST(request: Request) {
     const created = await prisma.memorizationPassage.create({
       data: {
         userId: session.user.id,
-        ...resolution.passage
+        ...toMemorizationStorageData(resolution.passage)
       }
     });
 
     logEvent("info", "memorize.passage_created", requestMeta);
     return NextResponse.json(
-      { passage: serializeMemorizationPassage(created) },
+      {
+        passage: serializeMemorizationPassage({
+          ...created,
+          text: resolution.passage.text,
+          verses: resolution.passage.verses,
+          editionSnapshot: resolution.passage.editionSnapshot
+        })
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -100,11 +111,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

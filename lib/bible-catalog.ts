@@ -2,6 +2,7 @@ import {
   BibleVersion,
   getLocalBibleVersion,
   isDbsTranslation,
+  isEsvTranslation,
   LOCAL_BIBLE_VERSIONS
 } from "@/lib/bible";
 import {
@@ -9,6 +10,13 @@ import {
   getDbsBibleCatalog,
   getDbsBibleVersion
 } from "@/lib/dbs-bible";
+import { ESV_VERSION, isEsvConfigured } from "@/lib/esv-bible";
+
+function baseVersions() {
+  return isEsvConfigured()
+    ? [...LOCAL_BIBLE_VERSIONS, ESV_VERSION]
+    : [...LOCAL_BIBLE_VERSIONS];
+}
 
 export type BibleCatalog = {
   translations: BibleVersion[];
@@ -19,7 +27,7 @@ export async function getBibleCatalog(): Promise<BibleCatalog> {
   try {
     const remoteVersions = await getDbsBibleCatalog();
     return {
-      translations: [...LOCAL_BIBLE_VERSIONS, ...remoteVersions],
+      translations: [...baseVersions(), ...remoteVersions],
       remoteAvailable: true
     };
   } catch (error) {
@@ -27,7 +35,7 @@ export async function getBibleCatalog(): Promise<BibleCatalog> {
       throw error;
     }
     return {
-      translations: [...LOCAL_BIBLE_VERSIONS],
+      translations: baseVersions(),
       remoteAvailable: false
     };
   }
@@ -39,6 +47,9 @@ export async function getBibleVersion(
   const localVersion = getLocalBibleVersion(translation);
   if (localVersion) {
     return localVersion;
+  }
+  if (isEsvTranslation(translation)) {
+    return isEsvConfigured() ? ESV_VERSION : null;
   }
   if (!isDbsTranslation(translation)) {
     return null;

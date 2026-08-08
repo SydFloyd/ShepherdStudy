@@ -8,6 +8,7 @@ import {
   MemorizationTranslationId,
   resolveBibleBookCandidates
 } from "@/lib/bible";
+import { BibleProviderError } from "@/lib/bible-provider-error";
 import { resolvePassageFromBible } from "@/lib/bible-provider";
 import { assessRecall, RecallAssessment } from "@/lib/memorization-recall";
 import { parseScriptureReference } from "@/lib/scripture";
@@ -25,7 +26,7 @@ const verseSnapshotSchema = z.array(
 export const memorizationEditionSnapshotSchema = z
   .object({
     translation: z.string().trim().min(1).max(64),
-    provider: z.enum(["local", "dbs"]),
+    provider: z.enum(["local", "dbs", "esv"]),
     providerId: z.string().trim().min(1).max(64),
     title: z.string().trim().min(1).max(500),
     vernacularTitle: z.string().trim().max(500).nullable(),
@@ -91,6 +92,45 @@ type MemorizationPassageRecord = MemorizationPassageCoordinates & {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export function toMemorizationStorageData(
+  passage: ResolvedMemorizationPassage
+): ResolvedMemorizationPassage {
+  if (passage.editionSnapshot.provider !== "esv") {
+    return passage;
+  }
+  return {
+    ...passage,
+    text: "",
+    verses: []
+  };
+}
+
+export async function hydrateMemorizationPassage<
+  T extends MemorizationPassageRecord
+>(passage: T): Promise<T> {
+  if (passage.translation !== "esv") {
+    return passage;
+  }
+  const resolution = await resolveMemorizationPassage({
+    reference: passage.reference,
+    translation: passage.translation
+  });
+  if (!resolution.ok) {
+    throw new BibleProviderError(
+      resolution.message,
+      "esv",
+      "not_found",
+      404
+    );
+  }
+  return {
+    ...passage,
+    text: resolution.passage.text,
+    verses: resolution.passage.verses,
+    editionSnapshot: resolution.passage.editionSnapshot
+  };
+}
 
 function formatReference(input: {
   book: string;

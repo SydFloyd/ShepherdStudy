@@ -8,7 +8,10 @@ import {
   bibleTranslationIdSchema,
   DEFAULT_BIBLE_TRANSLATION
 } from "@/lib/bible";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { getOpenAIModelForTier } from "@/lib/model-tier";
 import { generateWordLensInterlinearMap } from "@/lib/original-word-lens";
@@ -58,6 +61,38 @@ type MapPayload = {
   rows: Array<{ position: number; aiTranslation: string }>;
 };
 
+function withoutLicensedTargetText(payload: MapPayload): MapPayload {
+  return payload.targetSource.provider === "esv"
+    ? {
+        ...payload,
+        selectedVerse: { ...payload.selectedVerse, text: "" }
+      }
+    : payload;
+}
+
+async function hydrateCachedPayload(
+  payload: MapPayload,
+  input: z.infer<typeof inputSchema>
+) {
+  if (payload.targetSource.provider !== "esv" || payload.selectedVerse.text) {
+    return payload;
+  }
+  const context = await resolveWordLensContext(input);
+  if (!context.ok) {
+    throw new BibleProviderError(
+      context.error,
+      "esv",
+      "not_found",
+      context.status
+    );
+  }
+  return {
+    ...payload,
+    targetSource: context.data.targetSource,
+    selectedVerse: context.data.selectedVerse
+  };
+}
+
 export async function POST(req: Request) {
   const requestId = await getRequestId();
   const requestMeta = getRequestMeta({
@@ -106,6 +141,7 @@ export async function POST(req: Request) {
       ? await readWordLensCache<MapPayload>({ cacheKey: requestCacheKey })
       : null;
     if (cached) {
+      const hydratedCached = await hydrateCachedPayload(cached, input);
       logEvent("info", "word_lens.map_cache_hit", {
         ...requestMeta,
         reference: requestCacheCoordinates?.reference
@@ -120,7 +156,7 @@ export async function POST(req: Request) {
         requestId
       });
       return NextResponse.json({
-        ...cached,
+        ...hydratedCached,
         quota: quotaDecision,
         cached: true
       });
@@ -173,6 +209,8 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({
           ...canonicalCached,
+          targetSource: context.targetSource,
+          selectedVerse: context.selectedVerse,
           quota: quotaDecision,
           cached: true
         });
@@ -259,7 +297,7 @@ export async function POST(req: Request) {
       targetTranslation: context.translation,
       model,
       promptVersion,
-      payload
+      payload: withoutLicensedTargetText(payload)
     });
     if (requestCacheKey && requestCacheKey !== cacheKey) {
       await writeWordLensCacheAlias({
@@ -308,11 +346,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
     if (isPrismaDatabaseUnavailableError(error)) {
       logEvent("warn", "word_lens.map_only_database_unavailable", {

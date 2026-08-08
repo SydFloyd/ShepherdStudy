@@ -149,6 +149,24 @@ model BibleVerse {
   @@index([translation, bookOrder, chapter])
 }
 
+model EsvVerseCache {
+  id             String   @id @default(cuid())
+  book           String
+  bookOrder      Int
+  chapter        Int
+  verse          Int
+  text           String
+  expiresAt      DateTime
+  lastAccessedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([bookOrder, chapter, verse])
+  @@index([expiresAt])
+  @@index([lastAccessedAt])
+  @@index([bookOrder, lastAccessedAt])
+}
+
 model BibleFootnote {
   id          Int     @id @default(autoincrement())
   translation String

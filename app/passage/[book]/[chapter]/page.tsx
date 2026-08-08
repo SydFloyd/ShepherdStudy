@@ -11,7 +11,10 @@ import {
 } from "@/lib/bible";
 import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { getChapterFromBible } from "@/lib/bible-provider";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  getBibleProviderPublicError
+} from "@/lib/bible-provider-error";
 import {
   buildPassagePath,
   isSameBook,
@@ -85,8 +88,8 @@ async function getChapter(
     return {
       data: null,
       error:
-        error instanceof DbsBibleError
-          ? "The selected Bible edition is temporarily unavailable."
+        error instanceof BibleProviderError
+          ? getBibleProviderPublicError(error).message
           : "Unable to load this chapter right now."
     };
   }
@@ -173,7 +176,8 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
           <PassageVersionSelect currentValue={translation} />
         </div>
         <p className="muted">
-          Could not load this chapter from the selected Bible edition.
+          {chapterResult.error ??
+            "Could not load this chapter from the selected Bible edition."}
         </p>
         {allCandidates.length > 1 ? (
           <div>
@@ -197,9 +201,6 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
               })}
             </ul>
           </div>
-        ) : null}
-        {process.env.NODE_ENV !== "production" && chapterResult.error ? (
-          <p className="muted">Debug: {chapterResult.error}</p>
         ) : null}
       </section>
     );

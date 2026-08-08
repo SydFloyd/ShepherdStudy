@@ -25,6 +25,7 @@ Its mission principles and non-negotiables are intended to remain unchanged.
 - Fuzzy/alias book matching (e.g. `corinthians`, `corinthans`)
 - Searchable multilingual translation selector across reading and study tools
 - Dynamically loaded Digital Bible Society editions with source attribution
+- On-demand ESV access through Crossway's official API with bounded caching
 - Optional original-language versions: UHB (Hebrew OT), UGNT (Greek NT)
 - Save study sessions for authenticated users
 - Dashboard showing recent sessions
@@ -52,6 +53,9 @@ through hosted Stripe Checkout; the publishable key is not used by this flow.
 The Postmark sender must be a confirmed sender signature or use a verified
 domain. Use `localhost,127.0.0.1` only for local development; production must
 list only its public registration hostnames.
+
+Set `ESV_API_KEY` to offer the English Standard Version. ESV text is fetched
+server-side; never expose this token through a `NEXT_PUBLIC_` variable.
 
 Direct Vercel deployments use Vercel's authenticated forwarded-IP header for
 anonymous quotas and rate limits. If Cloudflare proxies the site, set a random
@@ -95,6 +99,10 @@ Open `http://localhost:3000`.
   cached for 24 hours and chapter responses for 7 days to minimize upstream
   traffic. Edition copyright and source metadata travel with displayed and
   saved Scripture snapshots.
+- ESV text is requested on demand from Crossway under one application identity.
+  A shared expiring cache is hard-capped at 450 verse slots and below 45% of any
+  book. Study history, memorization records, and Word Lens caches retain ESV
+  references and derived work without duplicating raw ESV text.
 - The public-domain import command downloads texts from eBible and loads:
   - `WEB` (default)
   - `KJV`
@@ -117,6 +125,8 @@ Open `http://localhost:3000`.
 - UHB/UGNT source attribution: unfoldingWord resources (CC BY-SA 4.0).
 - Digital Bible Society source and edition copyright details are shown with
   remotely provided Scripture. See `/info` for the full attribution.
+- ESV quotations are marked at each display point; the complete Crossway
+  copyright and user-copying notice is on `/info`.
 
 ## Notes
 

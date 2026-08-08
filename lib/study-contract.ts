@@ -48,6 +48,7 @@ export type StudyResponsePayload = {
   passages?: StudyPassageResult[];
   passage: StudyPassageResult | null;
   recommendations: StudyRecommendation[];
+  providerNotice?: string;
   saved: boolean;
   thread?: {
     id: string;

@@ -338,6 +338,12 @@ export default function StudyPage() {
                     <p>{turn.userText}</p>
                   </article>
 
+                  {turn.response.providerNotice ? (
+                    <p className="formError" role="status">
+                      {turn.response.providerNotice}
+                    </p>
+                  ) : null}
+
                   <section className="studyResultGrid">
                     {passages.length > 0 ? (
                       <div className="studyPassageList">

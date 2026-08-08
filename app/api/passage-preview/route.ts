@@ -7,7 +7,10 @@ import {
   isDbsTranslation
 } from "@/lib/bible";
 import { resolvePassageFromBible } from "@/lib/bible-provider";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { consumeDbsReadRateLimit } from "@/lib/auth-rate-limit";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { getRequestId } from "@/lib/request-context";
@@ -88,11 +91,8 @@ export async function POST(req: Request) {
       );
     }
 
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
 
     captureServerException(error, {
