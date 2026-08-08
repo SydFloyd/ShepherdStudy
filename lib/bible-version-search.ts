@@ -1,4 +1,7 @@
-import type { BibleVersion } from "@/lib/bible";
+import {
+  ENGLISH_BIBLE_TRANSLATION_PRIORITY,
+  type BibleVersion
+} from "@/lib/bible";
 
 export const TRANSLATION_SEARCH_LIMIT = 50;
 
@@ -54,6 +57,16 @@ function getMatchScore(version: BibleVersion, normalizedQuery: string): number {
     return 1;
   }
   return 2;
+}
+
+function getBrowsePriority(version: BibleVersion): number {
+  if (version.languageIso.trim().toLowerCase() !== "eng") {
+    return ENGLISH_BIBLE_TRANSLATION_PRIORITY.length;
+  }
+  const index = ENGLISH_BIBLE_TRANSLATION_PRIORITY.indexOf(
+    version.value as (typeof ENGLISH_BIBLE_TRANSLATION_PRIORITY)[number]
+  );
+  return index === -1 ? ENGLISH_BIBLE_TRANSLATION_PRIORITY.length : index;
 }
 
 export function mergeBibleVersions(
@@ -133,11 +146,19 @@ export function searchBibleVersions(
     }))
     .filter(({ searchText }) => terms.every((term) => searchText.includes(term)))
     .sort((left, right) => {
+      if (normalizedQuery && left.score !== right.score) {
+        return left.score - right.score;
+      }
+      const priorityDifference =
+        getBrowsePriority(left.version) - getBrowsePriority(right.version);
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+      if (!normalizedQuery) {
+        return left.index - right.index;
+      }
       if (left.version.provider !== right.version.provider) {
         return left.version.provider === "local" ? -1 : 1;
-      }
-      if (left.score !== right.score) {
-        return left.score - right.score;
       }
       return left.index - right.index;
     })

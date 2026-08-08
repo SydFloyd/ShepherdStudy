@@ -12,7 +12,9 @@ import {
 
 import {
   BibleVersion,
+  DEFAULT_BIBLE_FALLBACK_TRANSLATION,
   DEFAULT_BIBLE_LANGUAGE,
+  DEFAULT_BIBLE_TRANSLATION,
   getTranslationLabel,
   LOCAL_BIBLE_VERSIONS
 } from "@/lib/bible";
@@ -106,6 +108,8 @@ export function TranslationPicker({
   const resultsId = `${inputId}-results`;
   const languageFilterId = `${inputId}-language`;
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
   const optionRefs = useRef(new Map<string, HTMLLIElement>());
   const [translations, setTranslations] = useState<BibleVersion[]>(() => [
     ...LOCAL_BIBLE_VERSIONS
@@ -122,6 +126,9 @@ export function TranslationPicker({
   const languageChangedRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  valueRef.current = value;
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     let mounted = true;
     void loadBibleCatalog()
@@ -129,9 +136,25 @@ export function TranslationPicker({
         if (!mounted) {
           return;
         }
-        setTranslations(
-          mergeBibleVersions(LOCAL_BIBLE_VERSIONS, catalog.translations)
+        const mergedTranslations = mergeBibleVersions(
+          LOCAL_BIBLE_VERSIONS,
+          catalog.translations
         );
+        setTranslations(mergedTranslations);
+        if (
+          valueRef.current === DEFAULT_BIBLE_TRANSLATION &&
+          !mergedTranslations.some(
+            (version) => version.value === DEFAULT_BIBLE_TRANSLATION
+          )
+        ) {
+          const fallback = mergedTranslations.find(
+            (version) =>
+              version.value === DEFAULT_BIBLE_FALLBACK_TRANSLATION
+          );
+          if (fallback) {
+            onChangeRef.current(fallback.value, fallback);
+          }
+        }
         setCatalogState(catalog.remoteAvailable ? "ready" : "local-only");
         setCatalogWarning(catalog.warning ?? null);
       })

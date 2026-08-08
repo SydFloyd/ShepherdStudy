@@ -72,6 +72,37 @@ describe("Bible version search", () => {
     expect(results[0]?.value).toBe("web");
   });
 
+  it("starts English browsing with NASB, ESV, KJV, and WEB", () => {
+    const catalog = [
+      version("dbs:OTHER", { label: "Another English Bible" }),
+      version("web", { provider: "local", providerId: "web", label: "WEB" }),
+      version("esv", { provider: "esv", providerId: "esv", label: "ESV" }),
+      version("kjv", { provider: "local", providerId: "kjv", label: "KJV" }),
+      version("dbs:ENGNASB", { label: "New American Standard Bible" })
+    ];
+
+    expect(searchBibleVersions(catalog, "").map((item) => item.value)).toEqual([
+      "dbs:ENGNASB",
+      "esv",
+      "kjv",
+      "web",
+      "dbs:OTHER"
+    ]);
+  });
+
+  it("keeps exact text matches ahead of browse priorities while searching", () => {
+    const catalog = [
+      version("dbs:OTHER", { label: "Another English Bible" }),
+      version("dbs:ENGNASB", { label: "New American Standard Bible" })
+    ];
+
+    expect(
+      searchBibleVersions(catalog, "Another English Bible").map(
+        (item) => item.value
+      )
+    ).toEqual(["dbs:OTHER"]);
+  });
+
   it("keeps the first catalog entry when merging duplicate IDs", () => {
     const local = version("web", {
       provider: "local",

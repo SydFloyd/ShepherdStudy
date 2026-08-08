@@ -16,7 +16,7 @@ model User {
   emailVerifiedAt                 DateTime?
   authVersion                     Int                              @default(0)
   accountTier                     AccountTier                      @default(FREE)
-  preferredTranslation            String                           @default("web")
+  preferredTranslation            String                           @default("dbs:ENGNASB")
   preferredLanguage               String                           @default("eng")
   createdAt                       DateTime                         @default(now())
   updatedAt                       DateTime                         @updatedAt

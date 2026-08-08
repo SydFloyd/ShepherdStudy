@@ -10,7 +10,17 @@ export const LOCAL_BIBLE_TRANSLATION_IDS = [
 export type LocalBibleTranslationId =
   (typeof LOCAL_BIBLE_TRANSLATION_IDS)[number];
 export type BibleTranslationId = string;
-export const DEFAULT_BIBLE_TRANSLATION = "web";
+export const DBS_TRANSLATION_PREFIX = "dbs:";
+export const NASB_TRANSLATION_ID = `${DBS_TRANSLATION_PREFIX}ENGNASB`;
+export const ESV_TRANSLATION_ID = "esv";
+export const DEFAULT_BIBLE_TRANSLATION = NASB_TRANSLATION_ID;
+export const DEFAULT_BIBLE_FALLBACK_TRANSLATION = "web";
+export const ENGLISH_BIBLE_TRANSLATION_PRIORITY = [
+  NASB_TRANSLATION_ID,
+  ESV_TRANSLATION_ID,
+  "kjv",
+  "web"
+] as const;
 export const DEFAULT_BIBLE_LANGUAGE = "eng";
 export const bibleLanguageIsoSchema = z
   .string()
@@ -20,8 +30,6 @@ export const bibleLanguageIsoSchema = z
   .regex(/^[A-Za-z0-9_-]+$/, "Invalid Bible language.")
   .transform((value) => value.toLowerCase());
 
-export const DBS_TRANSLATION_PREFIX = "dbs:";
-export const ESV_TRANSLATION_ID = "esv";
 const DBS_BIBLE_ID_RE = /^[A-Za-z0-9_-]{2,48}$/;
 
 export function isDbsBibleId(value: string): boolean {
@@ -108,7 +116,7 @@ const LOCAL_VERSION_DETAILS: Record<LocalBibleTranslationId, BibleVersion> = {
     value: "web",
     provider: "local",
     providerId: "web",
-    label: "WEB (default)",
+    label: "WEB",
     title: "World English Bible",
     vernacularTitle: "World English Bible",
     languageName: "English",
@@ -224,6 +232,7 @@ export function isMemorizationTranslation(
 export function getTranslationLabel(translation: string): string {
   return (
     getLocalBibleVersion(translation)?.label ??
+    (translation === NASB_TRANSLATION_ID ? "NASB" : null) ??
     (isEsvTranslation(translation) ? "ESV" : null) ??
     getDbsBibleId(translation) ??
     translation.toUpperCase()

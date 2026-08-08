@@ -69,6 +69,10 @@ Last reviewed: August 4, 2026
     valid excerpts into an oversized work. Memorization, study history, and Word
     Lens persist references and derived results instead of additional raw ESV
     copies.
+17. **Resilient English translation defaults (medium).** New users and anonymous
+    sessions start with DBS-provided NASB, while English pickers prioritize NASB,
+    ESV, KJV, and WEB. The picker falls back to local WEB if the remote catalog
+    cannot supply the default. Existing saved user preferences are preserved.
 
 ## Ranked next improvements
 

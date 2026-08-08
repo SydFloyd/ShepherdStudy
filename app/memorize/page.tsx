@@ -8,6 +8,7 @@ import { TranslationPicker } from "@/components/translation-picker";
 import { useAuthStatus } from "@/hooks/use-auth-status";
 import {
   BibleSourceInfo,
+  DEFAULT_BIBLE_TRANSLATION,
   getLocalBibleVersion,
   getTranslationLabel,
   MemorizationTranslationId,
@@ -197,7 +198,7 @@ export default function MemorizePage() {
   const [isAssessing, setIsAssessing] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
   const [preferredTranslation, setPreferredTranslation] =
-    useState<MemorizationTranslationId>("web");
+    useState<MemorizationTranslationId>(DEFAULT_BIBLE_TRANSLATION);
   const [passages, setPassages] = useState<Passage[]>([]);
   const [recommendations, setRecommendations] = useState<
     Recommendation[] | null
