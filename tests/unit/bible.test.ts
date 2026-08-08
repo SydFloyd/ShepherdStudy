@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   bibleLanguageIsoSchema,
   bibleTranslationIdSchema,
+  DEFAULT_BIBLE_TRANSLATION,
+  getTranslationLabel,
   getBibleTextDirection
 } from "@/lib/bible";
 
@@ -19,6 +21,11 @@ describe("Bible translation identifiers", () => {
     for (const value of ["ARBVDV", "dbs:bad.id", "dbs:../secret", "dbs:x"]) {
       expect(bibleTranslationIdSchema.safeParse(value).success).toBe(false);
     }
+  });
+
+  it("uses the DBS NASB edition as the friendly default", () => {
+    expect(DEFAULT_BIBLE_TRANSLATION).toBe("dbs:ENGNASB");
+    expect(getTranslationLabel(DEFAULT_BIBLE_TRANSLATION)).toBe("NASB");
   });
 });
 

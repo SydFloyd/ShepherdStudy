@@ -104,7 +104,12 @@ Open `http://localhost:3000`.
   book. Aggregate response/page budgets also cover comparisons, multi-passage
   studies, recommendation previews, long study threads, and saved memorization
   sets. Study history, memorization records, and Word Lens caches retain ESV
-  references and derived work without duplicating raw ESV text.
+  references and derived work without duplicating raw ESV text. Cache hits
+  update recency, least-recently-used verses are evicted first, and the default
+  seven-day expiry periodically refreshes popular text from Crossway.
+- English translation lists begin with NASB (the default), ESV, KJV, and WEB;
+  remaining editions retain their catalog order. If the remote catalog is
+  temporarily unavailable, a new NASB selection falls back to local WEB.
 - The public-domain import command downloads texts from eBible and loads:
   - `WEB` (default)
   - `KJV`

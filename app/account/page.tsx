@@ -7,8 +7,11 @@ import { useEffect, useState } from "react";
 import { TranslationPicker } from "@/components/translation-picker";
 import { LanguagePicker } from "@/components/language-picker";
 import { useAuthStatus } from "@/hooks/use-auth-status";
-import { MemorizationTranslationId } from "@/lib/bible";
-import { DEFAULT_BIBLE_LANGUAGE } from "@/lib/bible";
+import {
+  DEFAULT_BIBLE_LANGUAGE,
+  DEFAULT_BIBLE_TRANSLATION,
+  MemorizationTranslationId
+} from "@/lib/bible";
 import { setCachedPreferredLanguage } from "@/lib/preferred-language-client";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
@@ -32,7 +35,7 @@ export default function AccountPage() {
   const [createdAt, setCreatedAt] = useState("");
   const [accountTier, setAccountTier] = useState<"FREE" | "PAID">("FREE");
   const [preferredTranslation, setPreferredTranslation] =
-    useState<MemorizationTranslationId>("web");
+    useState<MemorizationTranslationId>(DEFAULT_BIBLE_TRANSLATION);
   const [preferredLanguage, setPreferredLanguage] = useState(
     DEFAULT_BIBLE_LANGUAGE
   );
