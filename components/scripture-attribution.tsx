@@ -16,7 +16,16 @@ export function ScriptureAttribution({ source, className }: Props) {
       dir="ltr"
       data-provider={source.provider}
     >
-      {source.provider === "dbs" ? (
+      {source.provider === "esv" ? (
+        <span>
+          Scripture quotation marked{" "}
+          <a href="https://www.esv.org/" target="_blank" rel="noreferrer">
+            ESV
+          </a>
+          . See the full copyright and usage notice on the{" "}
+          <a href="/info">Info page</a>.
+        </span>
+      ) : source.provider === "dbs" ? (
         <>
           <span>
             Scripture text generously provided by the{" "}
@@ -43,7 +52,7 @@ export function ScriptureAttribution({ source, className }: Props) {
           .
         </span>
       )}
-      {source.copyright ? (
+      {source.copyright && source.provider !== "esv" ? (
         <span className="scriptureCopyright">
           <bdi dir="auto" lang={source.languageIso}>
             {source.copyright}

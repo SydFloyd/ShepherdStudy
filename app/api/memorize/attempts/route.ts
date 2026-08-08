@@ -5,9 +5,14 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { consumeMemorizationAttemptRateLimit } from "@/lib/auth-rate-limit";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   assessReferenceRecall,
+  hydrateMemorizationPassage,
   parseMemorizationEditionSnapshot,
   serializeMemorizationPassage
 } from "@/lib/memorization-data";
@@ -137,15 +142,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Passage not found." }, { status: 404 });
     }
 
+    const hydratedPassage = await hydrateMemorizationPassage(passage);
     const assessment =
       input.mode === "TEXT"
         ? assessRecall(
-            passage.text,
+            hydratedPassage.text,
             input.response,
-            parseMemorizationEditionSnapshot(passage.editionSnapshot) ??
+            parseMemorizationEditionSnapshot(hydratedPassage.editionSnapshot) ??
               undefined
           )
-        : assessReferenceRecall(passage, input.response);
+        : assessReferenceRecall(hydratedPassage, input.response);
     const updated = await persistAttempt({
       passageId: passage.id,
       userId: session.user.id,
@@ -164,7 +170,12 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       assessment,
-      passage: serializeMemorizationPassage(updated)
+      passage: serializeMemorizationPassage({
+        ...updated,
+        text: hydratedPassage.text,
+        verses: hydratedPassage.verses,
+        editionSnapshot: hydratedPassage.editionSnapshot
+      })
     });
   } catch (error) {
     const bodyErrorResponse = requestBodyErrorResponse(error);
@@ -176,6 +187,9 @@ export async function POST(request: Request) {
         { error: "Invalid memorization attempt." },
         { status: 400 }
       );
+    }
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
     if (error instanceof RangeError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

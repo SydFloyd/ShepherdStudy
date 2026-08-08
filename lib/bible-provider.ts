@@ -1,6 +1,7 @@
 import {
   getLocalBibleVersion,
   isDbsTranslation,
+  isEsvTranslation,
   resolveBibleBookCandidates,
   toBibleSourceInfo
 } from "@/lib/bible";
@@ -9,6 +10,7 @@ import {
   getDbsBookId,
   DbsBibleError
 } from "@/lib/dbs-bible";
+import { getEsvBiblePassage } from "@/lib/esv-bible";
 import {
   formatResolvedReference,
   getChapterFromLocalBible,
@@ -30,6 +32,10 @@ function uniqueDbsBookCandidates(book: string) {
   return Array.from(
     new Set([book, ...resolveBibleBookCandidates(book)])
   ).filter((candidate) => Boolean(getDbsBookId(candidate)));
+}
+
+function uniqueCanonicalBookCandidates(book: string) {
+  return Array.from(new Set([book, ...resolveBibleBookCandidates(book)]));
 }
 
 function withEmptyNotes(
@@ -145,6 +151,62 @@ async function resolvePassageFromDbs(input: {
   };
 }
 
+async function resolvePassageFromEsv(input: {
+  reference: string;
+  translation: string;
+}): Promise<PassageResolutionResult> {
+  const parsed = parseScriptureReference(input.reference);
+  if (!parsed) {
+    return {
+      ok: false,
+      reason: "invalid_reference",
+      message: "Invalid passage format. Example: Matthew 6:25-34"
+    };
+  }
+  const version = await getBibleVersion(input.translation);
+  if (!version || version.provider !== "esv") {
+    return {
+      ok: false,
+      reason: "not_found",
+      message: "The ESV edition is not available.",
+      parsed
+    };
+  }
+
+  for (const candidate of uniqueCanonicalBookCandidates(parsed.book)) {
+    const passage = await getEsvBiblePassage({
+      book: candidate,
+      chapter: parsed.chapter,
+      verseStart: parsed.verseStart,
+      verseEnd: parsed.verseEnd
+    });
+    if (!passage) {
+      continue;
+    }
+    const verses = withEmptyNotes(passage.verses);
+    const resolvedReference = formatResolvedReference(passage.book, parsed);
+    return {
+      ok: true,
+      parsed,
+      resolvedBook: passage.book,
+      resolvedReference,
+      chapterVerses: verses,
+      selectedVerses: verses,
+      chapterReference: `${passage.book} ${parsed.chapter}`,
+      chapterPath: buildPassagePath(resolvedReference, version.value),
+      translationName: version.title,
+      source: toBibleSourceInfo(version)
+    };
+  }
+  return {
+    ok: false,
+    reason: "not_found",
+    message: "Passage not found in the ESV.",
+    parsed,
+    bookCandidates: uniqueCanonicalBookCandidates(parsed.book)
+  };
+}
+
 export async function resolveBiblePassage(input: {
   reference: string;
   translation: string;
@@ -154,6 +216,9 @@ export async function resolveBiblePassage(input: {
   }
   if (isDbsTranslation(input.translation)) {
     return resolvePassageFromDbs(input);
+  }
+  if (isEsvTranslation(input.translation)) {
+    return resolvePassageFromEsv(input);
   }
   return {
     ok: false,
@@ -175,6 +240,35 @@ export async function getBibleChapter(input: {
 }> {
   if (getLocalBibleVersion(input.translation)) {
     return getChapterFromLocalBible(input);
+  }
+  if (isEsvTranslation(input.translation)) {
+    const version = await getBibleVersion(input.translation);
+    if (!version || version.provider !== "esv") {
+      return { data: null, error: "The ESV edition is not available." };
+    }
+    for (const book of input.books.flatMap(uniqueCanonicalBookCandidates)) {
+      const chapter = await getEsvBiblePassage({
+        book,
+        chapter: input.chapter
+      });
+      if (!chapter) {
+        continue;
+      }
+      return {
+        resolvedBook: chapter.book,
+        data: {
+          origin: "input",
+          reference: `${chapter.book} ${input.chapter}`,
+          chapterReference: `${chapter.book} ${input.chapter}`,
+          translation: version.value,
+          translationName: version.title,
+          source: toBibleSourceInfo(version),
+          verses: withEmptyNotes(chapter.verses),
+          chapterPath: null
+        }
+      };
+    }
+    return { data: null, error: "No ESV text was found for this chapter." };
   }
   if (!isDbsTranslation(input.translation)) {
     return { data: null, error: "That Bible translation is not available." };

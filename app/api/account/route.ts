@@ -9,7 +9,10 @@ import {
   bibleTranslationIdSchema
 } from "@/lib/bible";
 import { getBibleVersion } from "@/lib/bible-catalog";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, requestBodyErrorResponse } from "@/lib/request-body";
@@ -175,11 +178,8 @@ export async function PATCH(req: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid account update input." }, { status: 400 });
     }
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The translation catalog is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
 
     captureServerException(error, { route: "/api/account", requestId });

@@ -4,6 +4,8 @@ import { request as httpsRequest } from "node:https";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 
+import { BibleProviderError } from "@/lib/bible-provider-error";
+
 import {
   BibleVersion,
   BOOK_CODE_ENTRIES,
@@ -58,14 +60,14 @@ const compactEditionSchema = z
   })
   .passthrough();
 
-export class DbsBibleError extends Error {
+export class DbsBibleError extends BibleProviderError {
   constructor(
     message: string,
     readonly code: "unavailable" | "invalid_response" | "not_found",
     readonly status?: number,
     readonly circuitFailure = false,
   ) {
-    super(message);
+    super(message, "dbs", code, status);
     this.name = "DbsBibleError";
   }
 }

@@ -31,7 +31,7 @@ export async function GET() {
         translations: LOCAL_BIBLE_VERSIONS,
         remoteAvailable: false,
         warning:
-          "The multilingual catalog is temporarily unavailable. Local translations remain available."
+          "The multilingual catalog is temporarily unavailable. Other configured translations remain available."
       },
       { headers: { "Cache-Control": DEGRADED_CACHE_CONTROL } }
     );

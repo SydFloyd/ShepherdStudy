@@ -40,11 +40,17 @@ type Props = {
 };
 
 function getVersionMeta(version: BibleVersion): string {
+  const providerName =
+    version.provider === "dbs"
+      ? "Digital Bible Society"
+      : version.provider === "esv"
+        ? "Crossway ESV API"
+        : "Local";
   return [
     version.languageName,
     version.languageIso.toUpperCase(),
     version.script,
-    version.provider === "dbs" ? "Digital Bible Society" : "Local"
+    providerName
   ]
     .filter(Boolean)
     .join(" \u00b7 ");
@@ -135,7 +141,7 @@ export function TranslationPicker({
         }
         setCatalogState("local-only");
         setCatalogWarning(
-          "The multilingual catalog is temporarily unavailable. Local translations remain available."
+          "The multilingual catalog is temporarily unavailable. Other configured translations remain available."
         );
       });
     return () => {
@@ -256,7 +262,7 @@ export function TranslationPicker({
       ? "Loading multilingual translations\u2026"
       : catalogState === "local-only"
         ? catalogWarning ??
-          "The multilingual catalog is temporarily unavailable. Local translations remain available."
+          "The multilingual catalog is temporarily unavailable. Other configured translations remain available."
         : `${translations.length.toLocaleString()} translations available.`;
 
   return (

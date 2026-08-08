@@ -61,6 +61,12 @@ Last reviewed: August 4, 2026
 15. **Reduced and maintained server surface (medium).** Removed the unconsumed
     client-side study-message append route. A bearer-authenticated daily Vercel
     cron deletes expired word-lens cache rows and authentication rate buckets.
+16. **Bounded licensed ESV access (high).** Added one server-side Crossway API
+    identity with conservative global request budgets, a 450-slot expiring cache,
+    per-book and per-page ceilings below one half of a book, exact display
+    attribution, and ESV-specific retry guidance. Memorization, study history,
+    and Word Lens persist references and derived results instead of additional
+    raw ESV copies.
 
 ## Ranked next improvements
 

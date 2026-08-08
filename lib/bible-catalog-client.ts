@@ -18,7 +18,9 @@ function isBibleVersion(value: unknown): value is BibleVersion {
   return (
     typeof candidate.value === "string" &&
     typeof candidate.providerId === "string" &&
-    (candidate.provider === "local" || candidate.provider === "dbs") &&
+    (candidate.provider === "local" ||
+      candidate.provider === "dbs" ||
+      candidate.provider === "esv") &&
     typeof candidate.label === "string" &&
     typeof candidate.title === "string" &&
     (candidate.vernacularTitle === null ||

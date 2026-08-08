@@ -16,6 +16,9 @@ const MEMORIZATION_RECOMMENDATION_WINDOW_MS = 60 * 60 * 1000;
 const MEMORIZATION_RECOMMENDATION_DAY_MS = 24 * 60 * 60 * 1000;
 const MEMORIZATION_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 const DBS_READ_WINDOW_MS = 10 * 60 * 1000;
+const ESV_MINUTE_WINDOW_MS = 60 * 1000;
+const ESV_HOUR_WINDOW_MS = 60 * 60 * 1000;
+const ESV_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type RateLimitRule = {
@@ -98,6 +101,29 @@ function getDbsReadRules(input: {
         100_000
       ),
       windowMs: DBS_READ_WINDOW_MS,
+      scope: "global"
+    }
+  ];
+}
+
+function getEsvApiRules(): RateLimitRule[] {
+  return [
+    {
+      key: "esv_api:global:minute",
+      limit: readPositiveInteger(process.env.ESV_REQUESTS_PER_MINUTE, 30, 30),
+      windowMs: ESV_MINUTE_WINDOW_MS,
+      scope: "global"
+    },
+    {
+      key: "esv_api:global:hour",
+      limit: readPositiveInteger(process.env.ESV_REQUESTS_PER_HOUR, 500, 500),
+      windowMs: ESV_HOUR_WINDOW_MS,
+      scope: "global"
+    },
+    {
+      key: "esv_api:global:day",
+      limit: readPositiveInteger(process.env.ESV_REQUESTS_PER_DAY, 2_500, 2_500),
+      windowMs: ESV_DAY_WINDOW_MS,
       scope: "global"
     }
   ];
@@ -512,11 +538,16 @@ export function consumeDbsReadRateLimit(input: {
   return consumeRules(getDbsReadRules(input));
 }
 
+export function consumeEsvApiQuota() {
+  return consumeRules(getEsvApiRules());
+}
+
 export const __testables = {
   buildRuleKeys,
   getDonationCheckoutRules,
   getMemorizationRecommendationRules,
   getMemorizationAttemptRules,
   getDbsReadRules,
+  getEsvApiRules,
   readPositiveInteger
 };

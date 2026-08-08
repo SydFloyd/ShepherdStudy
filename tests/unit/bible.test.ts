@@ -7,8 +7,9 @@ import {
 } from "@/lib/bible";
 
 describe("Bible translation identifiers", () => {
-  it("accepts local and namespaced DBS identifiers", () => {
+  it("accepts local, ESV, and namespaced DBS identifiers", () => {
     expect(bibleTranslationIdSchema.safeParse("web").success).toBe(true);
+    expect(bibleTranslationIdSchema.safeParse("esv").success).toBe(true);
     expect(bibleTranslationIdSchema.safeParse("dbs:ARBVDV").success).toBe(
       true
     );

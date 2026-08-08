@@ -76,6 +76,24 @@ describe("Bible catalog", () => {
     expect(dbsMocks.getVersion).not.toHaveBeenCalled();
   });
 
+  it("offers ESV only when its server-side API key is configured", async () => {
+    vi.stubEnv("ESV_API_KEY", "test-esv-key");
+    dbsMocks.getCatalog.mockResolvedValue([]);
+
+    const catalog = await getBibleCatalog();
+    expect(catalog.translations).toContainEqual(
+      expect.objectContaining({
+        value: "esv",
+        provider: "esv",
+        year: 2025
+      })
+    );
+    await expect(getBibleVersion("esv")).resolves.toEqual(
+      expect.objectContaining({ value: "esv", provider: "esv" })
+    );
+    vi.unstubAllEnvs();
+  });
+
   it("delegates DBS IDs and rejects unsupported identifier formats", async () => {
     dbsMocks.getVersion.mockResolvedValue(arabicVersion);
 

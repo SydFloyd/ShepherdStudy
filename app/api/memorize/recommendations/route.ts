@@ -8,7 +8,10 @@ import {
   isMemorizationTranslation,
   MemorizationTranslationId
 } from "@/lib/bible";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import {
   getMemorizationSetFingerprint,
@@ -240,11 +243,8 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ recommendations, cached: false });
   } catch (error) {
-    if (error instanceof DbsBibleError) {
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+    if (error instanceof BibleProviderError) {
+      return bibleProviderErrorResponse(error);
     }
     const openAiError = mapOpenAiErrorToResponse(error);
     if (openAiError) {

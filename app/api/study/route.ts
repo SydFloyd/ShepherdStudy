@@ -11,7 +11,11 @@ import {
 } from "@/lib/bible";
 import { resolvePassageFromBible } from "@/lib/bible-provider";
 import { getBibleVersion } from "@/lib/bible-catalog";
-import { DbsBibleError } from "@/lib/dbs-bible";
+import {
+  BibleProviderError,
+  bibleProviderErrorResponse,
+  getBibleProviderPublicError
+} from "@/lib/bible-provider-error";
 import { getRequestMeta, logEvent } from "@/lib/logger";
 import { mapOpenAiErrorToResponse } from "@/lib/openai-errors";
 import { generateStudyRecommendations } from "@/lib/openai";
@@ -284,6 +288,7 @@ export async function POST(req: Request) {
 
     let passagesPayload = inputPassages;
     let passagePayload = passagesPayload[0] ?? null;
+    let providerNotice: string | undefined;
 
     const response = await generateStudyRecommendations({
       mode,
@@ -296,10 +301,19 @@ export async function POST(req: Request) {
 
     if (passagesPayload.length === 0 && response.recommendations.length > 0) {
       for (const recommendation of response.recommendations) {
-        const anchor = await resolvePassageFromBible({
-          reference: recommendation.reference,
-          translation: selectedTranslation
-        });
+        let anchor;
+        try {
+          anchor = await resolvePassageFromBible({
+            reference: recommendation.reference,
+            translation: selectedTranslation
+          });
+        } catch (error) {
+          if (error instanceof BibleProviderError) {
+            providerNotice ??= getBibleProviderPublicError(error).message;
+            continue;
+          }
+          throw error;
+        }
         if (!anchor.ok) {
           continue;
         }
@@ -347,10 +361,36 @@ export async function POST(req: Request) {
           item.reference,
           selectedTranslation
         );
-        const preview = await resolvePassageFromBible({
-          reference: item.reference,
-          translation: selectionTranslation
-        });
+        let preview;
+        try {
+          preview = await resolvePassageFromBible({
+            reference: item.reference,
+            translation: selectionTranslation
+          });
+        } catch (error) {
+          if (error instanceof BibleProviderError) {
+            providerNotice ??= getBibleProviderPublicError(error).message;
+            return {
+              reference: item.reference,
+              translation: selectedVersion.value,
+              translationName: selectedVersion.title,
+              source: {
+                translation: selectedVersion.value,
+                provider: selectedVersion.provider,
+                providerId: selectedVersion.providerId,
+                title: selectedVersion.title,
+                vernacularTitle: selectedVersion.vernacularTitle,
+                languageName: selectedVersion.languageName,
+                languageIso: selectedVersion.languageIso,
+                script: selectedVersion.script,
+                direction: selectedVersion.direction,
+                year: selectedVersion.year,
+                copyright: selectedVersion.copyright
+              }
+            };
+          }
+          throw error;
+        }
 
         if (!preview.ok) {
           return null;
@@ -408,6 +448,7 @@ export async function POST(req: Request) {
           context: "",
           relevance: "",
           recommendations,
+          providerNotice,
           passages: passagesPayload,
           passage: passagePayload,
           saved: true
@@ -423,6 +464,7 @@ export async function POST(req: Request) {
       context: "",
       relevance: "",
       recommendations,
+      providerNotice,
       passages: passagesPayload,
       passage: passagePayload,
       quota: quotaDecision,
@@ -469,15 +511,13 @@ export async function POST(req: Request) {
       );
     }
 
-    if (error instanceof DbsBibleError) {
+    if (error instanceof BibleProviderError) {
       logEvent("warn", "study.scripture_provider_unavailable", {
         ...requestMeta,
+        provider: error.provider,
         providerStatus: error.status
       });
-      return NextResponse.json(
-        { error: "The selected Bible edition is temporarily unavailable." },
-        { status: 503 }
-      );
+      return bibleProviderErrorResponse(error);
     }
 
     const openAiError = mapOpenAiErrorToResponse(error);

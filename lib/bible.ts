@@ -21,6 +21,7 @@ export const bibleLanguageIsoSchema = z
   .transform((value) => value.toLowerCase());
 
 export const DBS_TRANSLATION_PREFIX = "dbs:";
+export const ESV_TRANSLATION_ID = "esv";
 const DBS_BIBLE_ID_RE = /^[A-Za-z0-9_-]{2,48}$/;
 
 export function isDbsBibleId(value: string): boolean {
@@ -35,6 +36,7 @@ export const bibleTranslationIdSchema = z
   .refine(
     (value) =>
       (LOCAL_BIBLE_TRANSLATION_IDS as readonly string[]).includes(value) ||
+      value === ESV_TRANSLATION_ID ||
       (value.startsWith(DBS_TRANSLATION_PREFIX) &&
         isDbsBibleId(value.slice(DBS_TRANSLATION_PREFIX.length))),
     "Invalid Bible translation."
@@ -45,6 +47,10 @@ export function isDbsTranslation(translation: string): boolean {
     translation.startsWith(DBS_TRANSLATION_PREFIX) &&
     isDbsBibleId(translation.slice(DBS_TRANSLATION_PREFIX.length))
   );
+}
+
+export function isEsvTranslation(translation: string): boolean {
+  return translation === ESV_TRANSLATION_ID;
 }
 
 export function getDbsBibleId(translation: string): string | null {
@@ -63,7 +69,7 @@ export function toDbsTranslationId(bibleId: string): string {
 export type MemorizationTranslationId = BibleTranslationId;
 
 export type BibleTextDirection = "ltr" | "rtl";
-export type BibleProvider = "local" | "dbs";
+export type BibleProvider = "local" | "dbs" | "esv";
 
 export type BibleVersion = {
   value: string;
@@ -218,6 +224,7 @@ export function isMemorizationTranslation(
 export function getTranslationLabel(translation: string): string {
   return (
     getLocalBibleVersion(translation)?.label ??
+    (isEsvTranslation(translation) ? "ESV" : null) ??
     getDbsBibleId(translation) ??
     translation.toUpperCase()
   );
