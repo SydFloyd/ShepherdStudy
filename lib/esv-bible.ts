@@ -8,6 +8,7 @@ import {
 } from "@/lib/bible";
 import { BibleProviderError } from "@/lib/bible-provider-error";
 import { prisma } from "@/lib/prisma";
+import { applyParagraphTemplate } from "@/lib/remote-passage-formatting";
 
 const ESV_API_URL = "https://api.esv.org/v3/passage/text/";
 const ESV_TIMEOUT_MS = 8_000;
@@ -50,6 +51,7 @@ type EsvChapterMetadata = {
   bookOrder: number;
   bookVerseCount: number;
   chapterVerseNumbers: number[];
+  paragraphTemplate: Array<{ verse: number; paragraph: number }>;
 };
 
 const inFlightRequests = new Map<string, Promise<EsvVerse[]>>();
@@ -106,14 +108,32 @@ function parseRetryAfter(value: string | null): number | undefined {
 }
 
 export function parseEsvPassageText(text: string): EsvVerse[] {
-  const markers = Array.from(text.matchAll(/\[(\d+)\]\s*/g));
+  const normalizedText = text.replace(/\r\n?/g, "\n");
+  const markers = Array.from(normalizedText.matchAll(/\[(\d+)\][^\S\n]*/g));
+  let paragraph = 1;
+
   return markers
     .map((marker, index) => {
+      if (index > 0) {
+        const previousMarker = markers[index - 1];
+        const boundary = normalizedText.slice(
+          (previousMarker.index ?? 0) + previousMarker[0].length,
+          marker.index ?? 0,
+        );
+        const trailingWhitespace = boundary.match(/\s+$/)?.[0] ?? "";
+        if (/\n[^\S\n]*\n/.test(trailingWhitespace)) {
+          paragraph += 1;
+        }
+      }
+
       const verse = Number(marker[1]);
       const start = (marker.index ?? 0) + marker[0].length;
-      const end = markers[index + 1]?.index ?? text.length;
-      const verseText = text.slice(start, end).replace(/\s+/g, " ").trim();
-      return { verse, paragraph: 1, text: verseText };
+      const end = markers[index + 1]?.index ?? normalizedText.length;
+      const verseText = normalizedText
+        .slice(start, end)
+        .replace(/[ \t]+$/gm, "")
+        .trim();
+      return { verse, paragraph, text: verseText };
     })
     .filter(
       (verse) =>
@@ -143,7 +163,7 @@ async function getChapterMetadata(input: {
         chapter: input.chapter
       },
       orderBy: { verse: "asc" },
-      select: { book: true, verse: true }
+      select: { book: true, verse: true, paragraph: true }
     })
   ]);
   if (bookVerseCount === 0 || chapterRows.length === 0) {
@@ -153,7 +173,11 @@ async function getChapterMetadata(input: {
     book: chapterRows[0].book,
     bookOrder,
     bookVerseCount,
-    chapterVerseNumbers: chapterRows.map((row) => row.verse)
+    chapterVerseNumbers: chapterRows.map((row) => row.verse),
+    paragraphTemplate: chapterRows.map((row) => ({
+      verse: row.verse,
+      paragraph: row.paragraph,
+    })),
   };
 }
 
@@ -214,8 +238,8 @@ async function fetchEsvSegment(input: {
     url.searchParams.set("include-copyright", "false");
     url.searchParams.set("include-passage-horizontal-lines", "false");
     url.searchParams.set("include-heading-horizontal-lines", "false");
-    url.searchParams.set("indent-poetry", "false");
-    url.searchParams.set("indent-paragraphs", "0");
+    url.searchParams.set("indent-poetry", "true");
+    url.searchParams.set("indent-paragraphs", "2");
     url.searchParams.set("line-length", "0");
 
     const controller = new AbortController();
@@ -541,7 +565,10 @@ export async function getEsvBiblePassage(input: {
       "invalid_response"
     );
   }
-  return { book: metadata.book, verses };
+  return {
+    book: metadata.book,
+    verses: applyParagraphTemplate(verses, metadata.paragraphTemplate),
+  };
 }
 
 export const __testables = {

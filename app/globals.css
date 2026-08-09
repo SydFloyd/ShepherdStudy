@@ -592,6 +592,10 @@ a {
   grid-column: 1 / -1;
 }
 
+.infoSupportCard {
+  grid-column: 1 / -1;
+}
+
 .infoFreeCard {
   grid-column: span 1;
 }
@@ -602,13 +606,15 @@ a {
 
 .infoFeaturesCard h2,
 .infoFreeCard h2,
+.infoSupportCard h2,
 .infoHeroCard h1 {
   margin-top: 0;
 }
 
 .infoHeroCard,
 .infoFeaturesCard,
-.infoFreeCard {
+.infoFreeCard,
+.infoSupportCard {
   height: 100%;
 }
 
@@ -624,6 +630,31 @@ a {
   line-height: 1.55;
 }
 
+.infoSupportList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0 0;
+  padding-left: 22px;
+}
+
+.infoSupportList li {
+  padding-left: 4px;
+  line-height: 1.55;
+}
+
+.infoSupportList strong,
+.infoSupportVerse {
+  display: block;
+}
+
+.infoSupportVerse {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-style: italic;
+}
+
 @media (max-width: 860px) {
   .infoPageGrid {
     grid-template-columns: 1fr;
@@ -632,8 +663,13 @@ a {
   .infoFeaturesCard,
   .infoHeroCard,
   .infoFreeCard,
-  .infoLicenseCard {
+  .infoLicenseCard,
+  .infoSupportCard {
     grid-column: auto;
+  }
+
+  .infoSupportList {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -932,6 +968,7 @@ button:disabled {
 
 .verseInline {
   display: inline;
+  white-space: pre-wrap;
 }
 
 .highlightInline {

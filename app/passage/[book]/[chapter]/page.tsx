@@ -262,6 +262,7 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
                     className={inRange ? "verseInline highlightInline" : "verseInline"}
                   >
                     <span className="verseNumber">{verse.verse}</span>
+                    {" "}
                     <span>{verse.text.trim()}</span>
                     {verse.notes.length > 0 ? (
                       <sup className="noteCounter">{verse.notes.length}</sup>
@@ -276,6 +277,7 @@ export default async function PassagePage({ params, searchParams }: PageProps) {
                         ))}
                       </span>
                     ) : null}
+                    {" "}
                   </span>
                 );
               })}

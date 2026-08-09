@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { z } from "zod";
 
 import { BibleProviderError } from "@/lib/bible-provider-error";
+import { applyLocalParagraphFormatting } from "@/lib/remote-passage-formatting";
 
 import {
   BibleVersion,
@@ -502,7 +503,7 @@ async function fetchAndNormalizeDbsChapter(
 
 const getCachedDbsChapter = unstable_cache(
   fetchAndNormalizeDbsChapter,
-  ["dbs-bible-chapter-v2"],
+  ["dbs-bible-chapter-v3"],
   { revalidate: DBS_CHAPTER_REVALIDATE_SECONDS, tags: ["dbs-bible-chapters"] },
 );
 
@@ -598,6 +599,15 @@ const chapterPayloadSchema = z
   .array(z.record(z.unknown()))
   .max(DBS_MAX_CHAPTER_RECORDS);
 
+function normalizeDbsVerseText(value: string) {
+  return value
+    .replace(/\s+/gu, " ")
+    .replace(/([,;:!?])(?=\p{Lu})/gu, "$1\n")
+    .replace(/(\p{Ll}{2,}\.)(?=\p{Lu})/gu, "$1\n")
+    .replace(/([,;:!?])(?=[\p{L}\p{N}])/gu, "$1 ")
+    .trim();
+}
+
 function normalizeDbsChapterPayload(
   payload: z.infer<typeof chapterPayloadSchema>,
   chapter: number,
@@ -648,7 +658,7 @@ function normalizeDbsChapterPayload(
       if (!Number.isSafeInteger(verse) || verse < 1 || verse > 999) {
         continue;
       }
-      const text = value.trim();
+      const text = normalizeDbsVerseText(value);
       const previousVerseTextLength = verseTextLengths.get(verse) ?? 0;
       const nextVerseTextLength =
         previousVerseTextLength +
@@ -702,12 +712,17 @@ export async function getDbsBibleChapter(input: {
     return [];
   }
 
-  return getCachedDbsChapter(
+  const verses = await getCachedDbsChapter(
     getDbsBaseUrl().toString(),
     bibleId,
     bookId,
     input.chapter,
   );
+  return applyLocalParagraphFormatting({
+    book: input.book,
+    chapter: input.chapter,
+    verses,
+  });
 }
 
 export const __testables = {
@@ -722,6 +737,7 @@ export const __testables = {
   DBS_MAX_VERSE_TEXT_LENGTH,
   DBS_QUEUE_TIMEOUT_MS,
   LOCAL_TO_DBS_BOOK_CODE,
+  normalizeDbsVerseText,
   getDbsRequestProtectionState: () => ({
     active: activeDbsRequests,
     queued: dbsRequestQueue.length,

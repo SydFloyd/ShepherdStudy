@@ -536,10 +536,12 @@ export default function StudyPage() {
                         {group.verses.map((verse) => (
                           <span key={verse.verse} className="verseInline">
                             <span className="verseNumber">{verse.verse}</span>
+                            {" "}
                             <span>{verse.text}</span>
                             {verse.notes.length > 0 ? (
                               <sup className="noteCounter">{verse.notes.length}</sup>
                             ) : null}
+                            {" "}
                           </span>
                         ))}
                       </p>

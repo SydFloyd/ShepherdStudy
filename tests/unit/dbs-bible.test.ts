@@ -50,6 +50,19 @@ describe("Digital Bible Society normalization", () => {
     ]);
   });
 
+  it("normalizes DBS inline whitespace and repairs missing punctuation spacing", () => {
+    expect(
+      __testables.normalizeDbsVerseText(
+        "James, a  bond-servant of \n God and of the \n Lord Jesus Christ,To the twelve tribes.",
+      ),
+    ).toBe(
+      "James, a bond-servant of God and of the Lord Jesus Christ,\nTo the twelve tribes.",
+    );
+    expect(__testables.normalizeDbsVerseText("world.The next section")).toBe(
+      "world.\nThe next section",
+    );
+  });
+
   it("treats the DBS empty-chapter sentinel as no verses", () => {
     expect(__testables.normalizeDbsChapterPayload([{}], 999)).toEqual([]);
   });

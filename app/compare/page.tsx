@@ -140,12 +140,14 @@ function DiffVerseParagraphs(input: {
               tabIndex={0}
             >
               <span className="verseNumber">{verseRow.verse}</span>
+              {" "}
               <DiffText
                 verse={verseRow.verse}
                 segments={verseRow.segments}
                 hoveredTokenKey={input.hoveredTokenKey}
                 onHoverToken={input.onHoverToken}
               />
+              {" "}
             </span>
           ))}
         </p>

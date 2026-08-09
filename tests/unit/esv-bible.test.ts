@@ -11,21 +11,26 @@ afterEach(() => {
 });
 
 describe("ESV passage parsing", () => {
-  it("extracts verse numbers and preserves words across poetry whitespace", () => {
+  it("extracts verse numbers and preserves poetry and paragraph breaks", () => {
     expect(
       parseEsvPassageText(
-        "\n  [1] Blessed is the man\n      who walks not in wicked counsel.\n  [2] But his delight is in the law."
+        "\n  [1] Blessed is the man\n      who walks not in wicked counsel.\n  [2] But his delight is in the law.\n\n  [3] He is like a tree."
       )
     ).toEqual([
       {
         verse: 1,
         paragraph: 1,
-        text: "Blessed is the man who walks not in wicked counsel."
+        text: "Blessed is the man\n      who walks not in wicked counsel."
       },
       {
         verse: 2,
         paragraph: 1,
         text: "But his delight is in the law."
+      },
+      {
+        verse: 3,
+        paragraph: 2,
+        text: "He is like a tree."
       }
     ]);
   });

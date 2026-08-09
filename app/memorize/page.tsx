@@ -133,6 +133,7 @@ function PassageText({ passage }: { passage: Passage }) {
         {passage.verses.map((verse) => (
           <span key={verse.verse} className="memorizeVerseText">
             <span className="verseNumber">{verse.verse}</span>
+            {" "}
             {verse.text}{" "}
           </span>
         ))}
