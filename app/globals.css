@@ -296,6 +296,14 @@ a {
   background: #eef6e9;
 }
 
+.memorizeGuestNotice {
+  border: 1px solid #d5c08d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fff8df;
+  line-height: 1.5;
+}
+
 .memorizeTabs {
   display: flex;
   flex-wrap: wrap;

@@ -108,15 +108,15 @@ export function Nav() {
             >
               Interlinear
             </Link>
+            <Link
+              href="/memorize"
+              className={navLinkClass("/memorize")}
+              role="menuitem"
+            >
+              Memorize
+            </Link>
             {isAuthenticated ? (
               <>
-                <Link
-                  href="/memorize"
-                  className={navLinkClass("/memorize")}
-                  role="menuitem"
-                >
-                  Memorize
-                </Link>
                 <Link href="/account" role="menuitem">
                   Settings
                 </Link>
@@ -154,11 +154,11 @@ export function Nav() {
         <Link href="/word-lens" className={navLinkClass("/word-lens")}>
           Interlinear
         </Link>
+        <Link href="/memorize" className={navLinkClass("/memorize")}>
+          Memorize
+        </Link>
         {isAuthenticated ? (
           <>
-            <Link href="/memorize" className={navLinkClass("/memorize")}>
-              Memorize
-            </Link>
             <div className="navAccountMenu" ref={accountMenuRef}>
               <button
                 type="button"

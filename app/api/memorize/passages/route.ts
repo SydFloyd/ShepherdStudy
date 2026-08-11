@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -43,22 +45,21 @@ export async function POST(request: Request) {
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-    const userId = session.user.id;
-
     const input = createSchema.parse(await readJsonBody(request));
-    const savedCount = await prisma.memorizationPassage.count({
-      where: { userId }
-    });
-    if (savedCount >= MAX_SAVED_PASSAGES) {
-      return NextResponse.json(
-        {
-          error: `You can save up to ${MAX_SAVED_PASSAGES} memorization passages.`
-        },
-        { status: 409 }
-      );
+    const userId = session?.user?.id;
+
+    if (userId) {
+      const savedCount = await prisma.memorizationPassage.count({
+        where: { userId }
+      });
+      if (savedCount >= MAX_SAVED_PASSAGES) {
+        return NextResponse.json(
+          {
+            error: `You can save up to ${MAX_SAVED_PASSAGES} memorization passages.`
+          },
+          { status: 409 }
+        );
+      }
     }
 
     if (isDbsTranslation(input.translation)) {
@@ -81,6 +82,30 @@ export async function POST(request: Request) {
     const resolution = await resolveMemorizationPassage(input);
     if (!resolution.ok) {
       return NextResponse.json({ error: resolution.message }, { status: 400 });
+    }
+
+    if (!userId) {
+      const now = new Date();
+      const passage = serializeMemorizationPassage({
+        ...resolution.passage,
+        id: `guest-${randomUUID()}`,
+        textAttemptCount: 0,
+        latestTextScore: null,
+        bestTextScore: null,
+        referenceAttemptCount: 0,
+        latestReferenceScore: null,
+        bestReferenceScore: null,
+        lastPracticedAt: null,
+        createdAt: now,
+        updatedAt: now
+      });
+      logEvent("info", "memorize.guest_passage_resolved", requestMeta);
+      const response = NextResponse.json(
+        { passage, temporary: true },
+        { status: 201 }
+      );
+      response.headers.set("Cache-Control", "no-store");
+      return response;
     }
 
     const storageData = {
