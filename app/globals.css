@@ -1778,6 +1778,55 @@ button:disabled {
   gap: 14px;
 }
 
+.adminGrid > .card {
+  scroll-margin-top: 16px;
+}
+
+.adminHeaderCard {
+  background:
+    radial-gradient(circle at top right, rgba(178, 134, 67, 0.16), transparent 38%),
+    var(--panel);
+}
+
+.adminHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.adminHeaderRow h1,
+.adminHeaderTimestamp {
+  margin-bottom: 0;
+}
+
+.adminAccessBadge {
+  flex: 0 0 auto;
+  border: 1px solid #8b6b36;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #fff5dc;
+  color: #694b1e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adminQuickLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.adminQuickLinks a {
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--panel);
+  font-size: 13px;
+  text-decoration: none;
+}
+
 .adminStatGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1802,6 +1851,65 @@ button:disabled {
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.adminStatDetail {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.adminInsightGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.adminInsightPanel {
+  min-width: 0;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 12px;
+  background: #faf7f0;
+}
+
+.adminInsightPanel h3 {
+  margin: 0 0 8px;
+}
+
+.adminMetricList {
+  margin: 0;
+}
+
+.adminMetricList > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--stroke);
+  padding: 8px 0;
+}
+
+.adminMetricList > div:first-child {
+  border-top: 0;
+}
+
+.adminMetricList dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.adminMetricList dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.adminMetricList dd span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .adminTableWrap {

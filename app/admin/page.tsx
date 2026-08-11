@@ -27,6 +27,49 @@ function sortByCountDesc<T extends { count: number }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => b.count - a.count);
 }
 
+function formatPercent(part: number, whole: number): string {
+  if (whole <= 0) {
+    return "0%";
+  }
+  return `${Math.round((part / whole) * 100)}%`;
+}
+
+function formatChange(current: number, previous: number): string {
+  if (previous <= 0) {
+    return current > 0 ? "New activity" : "No change";
+  }
+
+  const change = Math.round(((current - previous) / previous) * 100);
+  return `${change >= 0 ? "+" : ""}${change}%`;
+}
+
+function formatAverage(total: number, count: number): string {
+  if (count <= 0) {
+    return "0";
+  }
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1
+  }).format(total / count);
+}
+
+function AdminStatCard({
+  label,
+  value,
+  detail
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="adminStatCard">
+      <p className="adminStatLabel">{label}</p>
+      <p className="adminStatValue">{value}</p>
+      {detail ? <p className="adminStatDetail">{detail}</p> : null}
+    </div>
+  );
+}
+
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   const sessionEmail = session?.user?.email ?? null;
@@ -41,38 +84,95 @@ export default async function AdminPage() {
 
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
 
   const [
     totalUsers,
+    verifiedUsers,
+    usersCreated24h,
     usersCreated7d,
+    usersCreatedPrevious7d,
     totalStudyThreads,
+    totalMemorizationPassages,
+    totalMemorizationAttempts,
+    memorizationUserRows,
     totalUsageEvents,
     usageEvents24h,
+    usageEventsPrevious24h,
     usageEvents7d,
+    usageEventsPrevious7d,
+    authenticatedUsageEvents24h,
+    anonymousUsageEvents24h,
+    activeAnonymous24hRows,
     activeUsers7dRows,
     activeUsers30dRows,
     byFeatureRows,
     byActionRows,
+    accountTierRows,
     topUserRows,
     topAnonRows,
     topQuotaRows,
+    quotaToday,
     recentUsers
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({
+      where: { emailVerifiedAt: { not: null } }
+    }),
+    prisma.user.count({
+      where: { createdAt: { gte: oneDayAgo } }
+    }),
+    prisma.user.count({
       where: { createdAt: { gte: sevenDaysAgo } }
     }),
+    prisma.user.count({
+      where: { createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } }
+    }),
     prisma.studyThread.count(),
+    prisma.memorizationPassage.count(),
+    prisma.memorizationAttempt.count(),
+    prisma.memorizationPassage.findMany({
+      distinct: ["userId"],
+      select: { userId: true }
+    }),
     prisma.usageEvent.count(),
     prisma.usageEvent.count({
       where: { createdAt: { gte: oneDayAgo } }
     }),
     prisma.usageEvent.count({
+      where: { createdAt: { gte: twoDaysAgo, lt: oneDayAgo } }
+    }),
+    prisma.usageEvent.count({
       where: { createdAt: { gte: sevenDaysAgo } }
+    }),
+    prisma.usageEvent.count({
+      where: { createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } }
+    }),
+    prisma.usageEvent.count({
+      where: {
+        createdAt: { gte: oneDayAgo },
+        userId: { not: null }
+      }
+    }),
+    prisma.usageEvent.count({
+      where: {
+        createdAt: { gte: oneDayAgo },
+        userId: null
+      }
+    }),
+    prisma.usageEvent.findMany({
+      where: {
+        createdAt: { gte: oneDayAgo },
+        userId: null,
+        anonId: { not: null }
+      },
+      distinct: ["anonId"],
+      select: { anonId: true }
     }),
     prisma.usageEvent.findMany({
       where: {
@@ -103,6 +203,11 @@ export default async function AdminPage() {
       orderBy: { _count: { id: "desc" } },
       take: 12
     }),
+    prisma.user.groupBy({
+      by: ["accountTier"],
+      _count: { _all: true },
+      orderBy: { _count: { id: "desc" } }
+    }),
     prisma.usageEvent.groupBy({
       by: ["userId"],
       where: {
@@ -117,6 +222,7 @@ export default async function AdminPage() {
       by: ["anonId"],
       where: {
         createdAt: { gte: oneDayAgo },
+        userId: null,
         anonId: { not: null }
       },
       _count: { _all: true },
@@ -138,6 +244,19 @@ export default async function AdminPage() {
             email: true
           }
         }
+      }
+    }),
+    prisma.dailyQuotaUsage.aggregate({
+      where: {
+        day: { gte: startOfToday },
+        requestCount: { gt: 0 }
+      },
+      _sum: {
+        requestCount: true,
+        tokenCount: true
+      },
+      _max: {
+        requestCount: true
       }
     }),
     prisma.user.findMany({
@@ -232,54 +351,162 @@ export default async function AdminPage() {
 
   return (
     <section className="grid adminGrid">
-      <article className="card">
-        <h1>Admin Overview</h1>
+      <article className="card adminHeaderCard">
+        <div className="adminHeaderRow">
+          <div>
+            <h1>Admin Overview</h1>
+            <p className="muted adminHeaderTimestamp">
+              Generated at {formatDate(now)}
+            </p>
+          </div>
+          <span className="adminAccessBadge">Restricted access</span>
+        </div>
         <p className="muted">
-          Signed in as {sessionEmail}. These metrics help detect unusual traffic and
-          abusive usage patterns.
+          Signed in as {sessionEmail}. Server-side access is limited to emails in
+          the configured admin allowlist.
         </p>
-        <p className="muted">Generated at {formatDate(now)}.</p>
+        <nav className="adminQuickLinks" aria-label="Admin sections">
+          <a href="#summary">Summary</a>
+          <a href="#activity">Activity</a>
+          <a href="#usage">Usage</a>
+          <a href="#audience">Audience</a>
+          <a href="#quotas">Quotas</a>
+          <a href="#users">Users</a>
+        </nav>
       </article>
 
-      <article className="card">
+      <article className="card" id="summary">
         <h2>Summary</h2>
         <div className="adminStatGrid">
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Total users</p>
-            <p className="adminStatValue">{formatCount(totalUsers)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">New users (7d)</p>
-            <p className="adminStatValue">{formatCount(usersCreated7d)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Active users (7d)</p>
-            <p className="adminStatValue">{formatCount(activeUsers7dRows.length)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Active users (30d)</p>
-            <p className="adminStatValue">{formatCount(activeUsers30dRows.length)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Usage events (24h)</p>
-            <p className="adminStatValue">{formatCount(usageEvents24h)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Usage events (7d)</p>
-            <p className="adminStatValue">{formatCount(usageEvents7d)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Study threads</p>
-            <p className="adminStatValue">{formatCount(totalStudyThreads)}</p>
-          </div>
-          <div className="adminStatCard">
-            <p className="adminStatLabel">Total usage events</p>
-            <p className="adminStatValue">{formatCount(totalUsageEvents)}</p>
-          </div>
+          <AdminStatCard
+            label="Total users"
+            value={formatCount(totalUsers)}
+            detail={`${formatPercent(verifiedUsers, totalUsers)} email verified`}
+          />
+          <AdminStatCard
+            label="New users (7d)"
+            value={formatCount(usersCreated7d)}
+            detail={`${formatChange(usersCreated7d, usersCreatedPrevious7d)} vs prior 7d`}
+          />
+          <AdminStatCard
+            label="Active users (7d)"
+            value={formatCount(activeUsers7dRows.length)}
+            detail={`${formatPercent(activeUsers7dRows.length, totalUsers)} of accounts`}
+          />
+          <AdminStatCard
+            label="Active users (30d)"
+            value={formatCount(activeUsers30dRows.length)}
+            detail={`${formatPercent(activeUsers30dRows.length, totalUsers)} of accounts`}
+          />
+          <AdminStatCard
+            label="Usage events (24h)"
+            value={formatCount(usageEvents24h)}
+            detail={`${formatChange(usageEvents24h, usageEventsPrevious24h)} vs prior 24h`}
+          />
+          <AdminStatCard
+            label="Usage events (7d)"
+            value={formatCount(usageEvents7d)}
+            detail={`${formatChange(usageEvents7d, usageEventsPrevious7d)} vs prior 7d`}
+          />
+          <AdminStatCard
+            label="Study threads"
+            value={formatCount(totalStudyThreads)}
+            detail={`${formatAverage(totalStudyThreads, totalUsers)} per user`}
+          />
+          <AdminStatCard
+            label="Saved passages"
+            value={formatCount(totalMemorizationPassages)}
+            detail={`${formatCount(memorizationUserRows.length)} users · ${formatCount(totalMemorizationAttempts)} attempts`}
+          />
+          <AdminStatCard
+            label="Quota requests today"
+            value={formatCount(quotaToday._sum.requestCount ?? 0)}
+            detail={`Peak actor ${formatCount(quotaToday._max.requestCount ?? 0)} · ${formatCount(quotaToday._sum.tokenCount ?? 0)} tokens`}
+          />
+          <AdminStatCard
+            label="Total usage events"
+            value={formatCount(totalUsageEvents)}
+          />
         </div>
       </article>
 
-      <article className="card">
+      <article className="card" id="activity">
+        <h2>Activity Pulse</h2>
+        <div className="adminInsightGrid">
+          <section className="adminInsightPanel">
+            <h3>Last 24 hours</h3>
+            <dl className="adminMetricList">
+              <div>
+                <dt>New accounts</dt>
+                <dd>{formatCount(usersCreated24h)}</dd>
+              </div>
+              <div>
+                <dt>Signed-in events</dt>
+                <dd>
+                  {formatCount(authenticatedUsageEvents24h)}
+                  <span>{formatPercent(authenticatedUsageEvents24h, usageEvents24h)}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Anonymous events</dt>
+                <dd>
+                  {formatCount(anonymousUsageEvents24h)}
+                  <span>{formatPercent(anonymousUsageEvents24h, usageEvents24h)}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Distinct anonymous visitors</dt>
+                <dd>{formatCount(activeAnonymous24hRows.length)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="adminInsightPanel">
+            <h3>Account tiers</h3>
+            <dl className="adminMetricList">
+              {accountTierRows.length > 0 ? (
+                accountTierRows.map((row) => (
+                  <div key={row.accountTier}>
+                    <dt>{row.accountTier.toLowerCase()}</dt>
+                    <dd>
+                      {formatCount(row._count._all)}
+                      <span>{formatPercent(row._count._all, totalUsers)}</span>
+                    </dd>
+                  </div>
+                ))
+              ) : (
+                <div>
+                  <dt>Accounts</dt>
+                  <dd>0</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+
+          <section className="adminInsightPanel">
+            <h3>Memorization adoption</h3>
+            <dl className="adminMetricList">
+              <div>
+                <dt>Users with saved passages</dt>
+                <dd>
+                  {formatCount(memorizationUserRows.length)}
+                  <span>{formatPercent(memorizationUserRows.length, totalUsers)}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Saved passages</dt>
+                <dd>{formatCount(totalMemorizationPassages)}</dd>
+              </div>
+              <div>
+                <dt>Practice attempts</dt>
+                <dd>{formatCount(totalMemorizationAttempts)}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </article>
+
+      <article className="card" id="usage">
         <h2>Usage Breakdown</h2>
         <div className="adminTableWrap">
           <table className="adminTable">
@@ -314,7 +541,7 @@ export default async function AdminPage() {
         </div>
       </article>
 
-      <article className="card">
+      <article className="card" id="audience">
         <h2>Top Users by Usage (7d)</h2>
         <div className="adminTableWrap">
           <table className="adminTable">
@@ -372,7 +599,7 @@ export default async function AdminPage() {
         </div>
       </article>
 
-      <article className="card">
+      <article className="card" id="quotas">
         <h2>Quota Activity (Today)</h2>
         <div className="adminTableWrap">
           <table className="adminTable">
@@ -408,7 +635,7 @@ export default async function AdminPage() {
         </div>
       </article>
 
-      <article className="card">
+      <article className="card" id="users">
         <h2>Recent Users</h2>
         <div className="adminTableWrap">
           <table className="adminTable">
