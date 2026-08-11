@@ -23,55 +23,25 @@ export default function InfoPage() {
         </p>
       </article>
 
-      <article className="card infoSupportCard">
-        <h2>How to Support Our Mission</h2>
-        <p>
-          The best way to support ShepherdStudy&apos;s mission is to let
-          Scripture shape your life and the lives of those around you.
-        </p>
-        <ul className="infoSupportList">
-          <li>
-            <strong>Study and live out the Word.</strong> Return to Scripture
-            regularly, pray for understanding, and put what you learn into
-            practice.
-            <span className="infoSupportVerse">
-              &ldquo;Be doers of the word, and not hearers only.&rdquo; &mdash;
-              James 1:22
-            </span>
-          </li>
-          <li>
-            <strong>Share the Word with friends.</strong> Encourage someone
-            with Scripture, invite them to study with you, and make God&apos;s
-            Word part of life together.
-            <span className="infoSupportVerse">
-              &ldquo;Let the word of Christ dwell in you richly ... teaching and
-              admonishing one another.&rdquo; &mdash; Colossians 3:16
-            </span>
-          </li>
-          <li>
-            <strong>Help maintain ShepherdStudy.</strong> If this tool has
-            served you and you would like to help cover the cost of keeping it
-            available, you can make an optional{" "}
-            <Link href="/donate">contribution toward its maintenance</Link>.
-            <span className="infoSupportVerse">
-              Give as you have decided in your heart, not reluctantly or under
-              compulsion. &mdash; 2 Corinthians 9:7
-            </span>
-          </li>
-        </ul>
-      </article>
-
       <article className="card infoLicenseCard">
         <h2>Scripture Sources &amp; Licensing</h2>
         <p className="infoDbsThanks">
-          We are deeply grateful to the{" "}
+          We give thanks to God for the global Scripture resources made
+          available through the{" "}
           <a href="https://dbs.org/" target="_blank" rel="noreferrer">
             Digital Bible Society
-          </a>{" "}
-          for making a remarkable collection of translated Bibles available to
-          people around the world. Most translated editions in ShepherdStudy are
-          retrieved from their service only when needed and cached carefully;
-          the full DBS library is not copied into our database.
+          </a>
+          . Their multilingual catalog helps ShepherdStudy serve readers across
+          languages and communities far beyond the reach of our small local
+          Scripture library.
+        </p>
+        <p>
+          We are deeply grateful to the Digital Bible Society and to the
+          translators, ministries, publishers, and supporters whose faithful
+          work helps make these editions available around the world. Most DBS
+          editions in ShepherdStudy are retrieved from their service only when
+          needed and cached carefully; the full DBS library is not copied into
+          our database.
         </p>
         <p>
           Copyright and edition details are shown with Scripture text when they
@@ -133,6 +103,44 @@ export default function InfoPage() {
             unfoldingWord source and license details
           </a>
         </p>
+      </article>
+
+      <article className="card infoSupportCard">
+        <h2>How to Support Our Mission</h2>
+        <p>
+          The best way to support ShepherdStudy&apos;s mission is to let
+          Scripture shape your life and the lives of those around you.
+        </p>
+        <ul className="infoSupportList">
+          <li>
+            <strong>Study and live out the Word.</strong> Return to Scripture
+            regularly, pray for understanding, and put what you learn into
+            practice.
+            <span className="infoSupportVerse">
+              &ldquo;Be doers of the word, and not hearers only.&rdquo; &mdash;
+              James 1:22
+            </span>
+          </li>
+          <li>
+            <strong>Share the Word with friends.</strong> Encourage someone
+            with Scripture, invite them to study with you, and make God&apos;s
+            Word part of life together.
+            <span className="infoSupportVerse">
+              &ldquo;Let the word of Christ dwell in you richly ... teaching and
+              admonishing one another.&rdquo; &mdash; Colossians 3:16
+            </span>
+          </li>
+          <li>
+            <strong>Help maintain ShepherdStudy.</strong> If this tool has
+            served you and you would like to help cover the cost of keeping it
+            available, you can make an optional{" "}
+            <Link href="/donate">contribution toward its maintenance</Link>.
+            <span className="infoSupportVerse">
+              Give as you have decided in your heart, not reluctantly or under
+              compulsion. &mdash; 2 Corinthians 9:7
+            </span>
+          </li>
+        </ul>
       </article>
 
       <article className="card infoFeaturesCard">
