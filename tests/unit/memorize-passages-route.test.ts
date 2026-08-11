@@ -1,8 +1,10 @@
 const routeMocks = vi.hoisted(() => ({
   consumeDbsReadRateLimit: vi.fn(),
   countPassages: vi.fn(),
+  createPassage: vi.fn(),
   getServerSession: vi.fn(),
-  resolveMemorizationPassage: vi.fn()
+  resolveMemorizationPassage: vi.fn(),
+  serializePassage: vi.fn()
 }));
 
 vi.mock("next-auth", () => ({
@@ -26,14 +28,14 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/memorization-data", () => ({
   resolveMemorizationPassage: routeMocks.resolveMemorizationPassage,
-  serializeMemorizationPassage: vi.fn()
+  serializeMemorizationPassage: routeMocks.serializePassage
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     memorizationPassage: {
       count: routeMocks.countPassages,
-      create: vi.fn(),
+      create: routeMocks.createPassage,
       deleteMany: vi.fn()
     }
   }
@@ -62,10 +64,13 @@ describe("memorization passage DBS rate limiting", () => {
   beforeEach(() => {
     routeMocks.consumeDbsReadRateLimit.mockReset();
     routeMocks.countPassages.mockReset();
+    routeMocks.createPassage.mockReset();
     routeMocks.getServerSession.mockReset();
     routeMocks.resolveMemorizationPassage.mockReset();
+    routeMocks.serializePassage.mockReset();
     routeMocks.getServerSession.mockResolvedValue({ user: { id: "user-1" } });
     routeMocks.countPassages.mockResolvedValue(0);
+    routeMocks.serializePassage.mockImplementation((passage) => passage);
   });
 
   it("rejects a rate-limited remote passage before resolving Bible text", async () => {
@@ -97,5 +102,37 @@ describe("memorization passage DBS rate limiting", () => {
       reference: "John 3:16",
       translation: "web"
     });
+  });
+
+  it("returns a temporary passage without writing a guest database row", async () => {
+    routeMocks.getServerSession.mockResolvedValue(null);
+    routeMocks.resolveMemorizationPassage.mockResolvedValue({
+      ok: true,
+      passage: {
+        translation: "web",
+        reference: "John 3:16",
+        book: "John",
+        bookOrder: 43,
+        chapter: 3,
+        verseStart: 16,
+        verseEnd: 16,
+        isWholeChapter: false,
+        text: "For God so loved the world.",
+        verses: [{ verse: 16, text: "For God so loved the world." }],
+        editionSnapshot: {
+          provider: "local"
+        }
+      }
+    });
+
+    const response = await POST(createRequest("web"));
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.temporary).toBe(true);
+    expect(payload.passage.id).toMatch(/^guest-/);
+    expect(payload.passage.reference).toBe("John 3:16");
+    expect(routeMocks.countPassages).not.toHaveBeenCalled();
+    expect(routeMocks.createPassage).not.toHaveBeenCalled();
   });
 });

@@ -5,13 +5,16 @@ import { z } from "zod";
 import type { BibleSourceInfo } from "@/lib/bible";
 import {
   getBookOrderByName,
-  MemorizationTranslationId,
-  resolveBibleBookCandidates
+  MemorizationTranslationId
 } from "@/lib/bible";
 import { BibleProviderError } from "@/lib/bible-provider-error";
 import { resolvePassageFromBible } from "@/lib/bible-provider";
-import { assessRecall, RecallAssessment } from "@/lib/memorization-recall";
 import { parseScriptureReference } from "@/lib/scripture";
+
+export {
+  assessReferenceRecall,
+  isExactPassageReference
+} from "@/lib/memorization-assessment";
 
 const MAX_PASSAGE_VERSES = 200;
 const MAX_PASSAGE_TEXT_LENGTH = 50_000;
@@ -309,76 +312,8 @@ export function getMemorizationSetFingerprint(
   return createHash("sha256").update(source).digest("hex");
 }
 
-function isSameResolvedBook(input: string, expectedBook: string) {
-  return Array.from(new Set([input, ...resolveBibleBookCandidates(input)]))
-    .some((book) => book.toLowerCase() === expectedBook.toLowerCase());
-}
-
-export function isExactPassageReference(
-  passage: Pick<
-    ResolvedMemorizationPassage,
-    | "book"
-    | "chapter"
-    | "verseStart"
-    | "verseEnd"
-    | "isWholeChapter"
-  >,
-  submittedReference: string
-) {
-  const parsed = parseScriptureReference(submittedReference);
-  if (
-    !parsed ||
-    parsed.chapter !== passage.chapter ||
-    !isSameResolvedBook(parsed.book, passage.book)
-  ) {
-    return false;
-  }
-
-  if (parsed.verseStart === undefined) {
-    return passage.isWholeChapter;
-  }
-
-  return (
-    parsed.verseStart === passage.verseStart &&
-    (parsed.verseEnd ?? parsed.verseStart) === passage.verseEnd
-  );
-}
-
-export function assessReferenceRecall(
-  passage: Pick<
-    ResolvedMemorizationPassage,
-    | "reference"
-    | "book"
-    | "chapter"
-    | "verseStart"
-    | "verseEnd"
-    | "isWholeChapter"
-  >,
-  submittedReference: string
-): RecallAssessment {
-  const assessment = assessRecall(passage.reference, submittedReference);
-  if (!isExactPassageReference(passage, submittedReference)) {
-    return assessment;
-  }
-
-  return {
-    ...assessment,
-    score: 100,
-    matchedWords: assessment.expectedWordCount,
-    expected: assessment.expected.map((token) => ({
-      ...token,
-      status: "correct" as const
-    })),
-    submitted: assessment.submitted.map((token) => ({
-      ...token,
-      status: "correct" as const
-    }))
-  };
-}
-
 export const __testables = {
   MAX_PASSAGE_TEXT_LENGTH,
   MAX_PASSAGE_VERSES,
-  formatReference,
-  isSameResolvedBook
+  formatReference
 };

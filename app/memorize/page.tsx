@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { ScriptureAttribution } from "@/components/scripture-attribution";
 import { TranslationPicker } from "@/components/translation-picker";
@@ -14,7 +14,12 @@ import {
   MemorizationTranslationId,
   toBibleSourceInfo
 } from "@/lib/bible";
-import type { RecallAssessment, RecallToken } from "@/lib/memorization-recall";
+import { assessReferenceRecall } from "@/lib/memorization-assessment";
+import {
+  assessRecall,
+  type RecallAssessment,
+  type RecallToken
+} from "@/lib/memorization-recall";
 import { parseJsonSafe } from "@/lib/study-client-utils";
 
 type Passage = {
@@ -55,6 +60,29 @@ type WorkspacePayload = {
 
 type AttemptMode = "TEXT" | "REFERENCE";
 type TestDirection = AttemptMode | "MIXED";
+
+const GUEST_RECOMMENDATIONS: Recommendation[] = [
+  {
+    reference: "John 3:16",
+    reason: "A concise foundation for remembering the good news of God’s love in Christ."
+  },
+  {
+    reference: "Proverbs 3:5-6",
+    reason: "A practical call to trust God and submit every path to him."
+  },
+  {
+    reference: "Philippians 4:6-7",
+    reason: "A compact passage joining prayer, thanksgiving, and God’s peace."
+  },
+  {
+    reference: "Psalm 23:1-3",
+    reason: "A memorable confession of the Lord’s care, provision, and guidance."
+  },
+  {
+    reference: "Micah 6:8",
+    reason: "A clear summary of justice, mercy, and humble walking with God."
+  }
+];
 
 function formatScore(score: number | null) {
   return score === null ? "Not practiced" : `${score}%`;
@@ -192,8 +220,7 @@ function shufflePassageIds(passages: Passage[]) {
 }
 
 export default function MemorizePage() {
-  const router = useRouter();
-  const { status } = useAuthStatus();
+  const { status, refresh: refreshAuth } = useAuthStatus();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isAssessing, setIsAssessing] = useState(false);
@@ -227,6 +254,7 @@ export default function MemorizePage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isGuest = status === "unauthenticated";
 
   const selectedPassage = useMemo(
     () => passages.find((passage) => passage.id === selectedPassageId) ?? null,
@@ -246,7 +274,8 @@ export default function MemorizePage() {
       | { error?: string };
 
     if (response.status === 401) {
-      router.replace("/login");
+      await refreshAuth();
+      setIsLoading(false);
       return;
     }
     if (!response.ok || !("passages" in payload)) {
@@ -268,17 +297,23 @@ export default function MemorizePage() {
         : payload.passages[0]?.id ?? null
     );
     setIsLoading(false);
-  }, [router]);
+  }, [refreshAuth]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login");
+      setIsLoading(false);
+      setPassages([]);
+      setRecommendations(null);
+      setRecommendationsStale(false);
+      setSelectedPassageId(null);
+      setTestQueue([]);
+      clearPracticeResult();
       return;
     }
     if (status === "authenticated") {
       void loadWorkspace();
     }
-  }, [loadWorkspace, router, status]);
+  }, [loadWorkspace, status]);
 
   function clearPracticeResult() {
     setPracticeInput("");
@@ -322,6 +357,21 @@ export default function MemorizePage() {
       return false;
     }
 
+    if (
+      isGuest &&
+      passages.some(
+        (passage) =>
+          passage.translation === payload.passage?.translation &&
+          passage.bookOrder === payload.passage.bookOrder &&
+          passage.chapter === payload.passage.chapter &&
+          passage.verseStart === payload.passage.verseStart &&
+          passage.verseEnd === payload.passage.verseEnd
+      )
+    ) {
+      setError("That passage is already in your temporary list.");
+      return false;
+    }
+
     setPassages((current) =>
       [...current, payload.passage as Passage].sort(
         (left, right) =>
@@ -333,7 +383,11 @@ export default function MemorizePage() {
     setSelectedPassageId(payload.passage.id);
     setRecommendations(null);
     setRecommendationsStale(true);
-    setMessage(`${payload.passage.reference} added as one practice passage.`);
+    setMessage(
+      isGuest
+        ? `${payload.passage.reference} added temporarily for this visit.`
+        : `${payload.passage.reference} added as one practice passage.`
+    );
     clearPracticeResult();
     return true;
   }
@@ -347,6 +401,16 @@ export default function MemorizePage() {
   }
 
   async function savePreferredTranslation() {
+    if (isGuest) {
+      setError(null);
+      setRecommendations(null);
+      setRecommendationsStale(true);
+      setMessage(
+        `${translationLabel(preferredTranslation)} selected for this visit. Sign in to save this preference.`
+      );
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setMessage(null);
@@ -375,6 +439,59 @@ export default function MemorizePage() {
   }) {
     setIsAssessing(true);
     setError(null);
+
+    if (isGuest) {
+      const passage = passages.find((item) => item.id === input.passageId);
+      if (!passage) {
+        setIsAssessing(false);
+        setError("That temporary passage is no longer available.");
+        return null;
+      }
+
+      try {
+        const source = getPassageSource(passage);
+        const assessment =
+          input.mode === "TEXT"
+            ? assessRecall(passage.text, input.responseText, source ?? undefined)
+            : assessReferenceRecall(passage, input.responseText);
+        const now = new Date().toISOString();
+        replacePassage({
+          ...passage,
+          textAttemptCount:
+            passage.textAttemptCount + (input.mode === "TEXT" ? 1 : 0),
+          latestTextScore:
+            input.mode === "TEXT" ? assessment.score : passage.latestTextScore,
+          bestTextScore:
+            input.mode === "TEXT"
+              ? Math.max(passage.bestTextScore ?? 0, assessment.score)
+              : passage.bestTextScore,
+          referenceAttemptCount:
+            passage.referenceAttemptCount +
+            (input.mode === "REFERENCE" ? 1 : 0),
+          latestReferenceScore:
+            input.mode === "REFERENCE"
+              ? assessment.score
+              : passage.latestReferenceScore,
+          bestReferenceScore:
+            input.mode === "REFERENCE"
+              ? Math.max(passage.bestReferenceScore ?? 0, assessment.score)
+              : passage.bestReferenceScore,
+          lastPracticedAt: now,
+          updatedAt: now
+        });
+        setIsAssessing(false);
+        return assessment;
+      } catch (assessmentError) {
+        setIsAssessing(false);
+        setError(
+          assessmentError instanceof RangeError
+            ? assessmentError.message
+            : "Unable to assess that answer."
+        );
+        return null;
+      }
+    }
+
     const response = await fetch("/api/memorize/attempts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -468,6 +585,21 @@ export default function MemorizePage() {
       return;
     }
 
+    if (isGuest) {
+      const remaining = passages.filter((item) => item.id !== passageId);
+      setPassages(remaining);
+      if (selectedPassageId === passageId) {
+        setSelectedPassageId(remaining[0]?.id ?? null);
+        clearPracticeResult();
+      }
+      setPendingDeleteId(null);
+      setTestQueue([]);
+      setRecommendations(null);
+      setRecommendationsStale(true);
+      setMessage("Temporary passage and its practice results removed.");
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     const response = await fetch("/api/memorize/passages", {
@@ -495,6 +627,25 @@ export default function MemorizePage() {
   }
 
   async function requestRecommendations() {
+    if (isGuest) {
+      setError(null);
+      setMessage(
+        "Showing curated starter passages. Sign in for personalized suggestions."
+      );
+      setRecommendations(
+        GUEST_RECOMMENDATIONS.filter(
+          (recommendation) =>
+            !passages.some(
+              (passage) =>
+                passage.reference.toLowerCase() ===
+                recommendation.reference.toLowerCase()
+            )
+        )
+      );
+      setRecommendationsStale(false);
+      return;
+    }
+
     setIsRecommending(true);
     setError(null);
     setMessage(null);
@@ -522,20 +673,11 @@ export default function MemorizePage() {
     );
   }
 
-  if (status === "loading" || isLoading) {
+  if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
       <section className="card">
         <h1>Memorize</h1>
         <p className="muted">Loading your memorization passages...</p>
-      </section>
-    );
-  }
-
-  if (status !== "authenticated") {
-    return (
-      <section className="card">
-        <h1>Memorize</h1>
-        <p className="muted">Please sign in to save memorization progress.</p>
       </section>
     );
   }
@@ -563,10 +705,18 @@ export default function MemorizePage() {
             onClick={() => void savePreferredTranslation()}
             disabled={isSaving}
           >
-            Save preference
+            {isGuest ? "Use translation" : "Save preference"}
           </button>
         </div>
       </article>
+
+      {isGuest ? (
+        <aside className="memorizeGuestNotice" role="note">
+          <strong>Practicing as a guest.</strong> Your passages and progress are
+          temporary and will be lost when you leave or refresh this page.{" "}
+          <Link href="/login">Sign in to save them.</Link>
+        </aside>
+      ) : null}
 
       <article className="card">
         <form className="memorizeAddForm" onSubmit={onAddPassage}>
@@ -581,12 +731,16 @@ export default function MemorizePage() {
             />
           </label>
           <button type="submit" disabled={isSaving}>
-            {isSaving ? "Saving..." : "Add to memorization"}
+            {isSaving
+              ? "Adding..."
+              : isGuest
+                ? "Add temporary passage"
+                : "Add to memorization"}
           </button>
         </form>
         <p className="muted memorizeAddHint">
           The reference is verified against the selected Bible edition before
-          it is saved. A range or whole chapter remains one progress item.
+          it is added. A range or whole chapter remains one progress item.
         </p>
       </article>
 
@@ -615,7 +769,7 @@ export default function MemorizePage() {
       {activeView === "practice" ? (
         <div className="memorizeWorkspace">
           <aside className="card memorizeLibrary">
-            <h2>Saved passages</h2>
+            <h2>{isGuest ? "Temporary passages" : "Saved passages"}</h2>
             {passages.length === 0 ? (
               <p className="muted">Add your first passage above.</p>
             ) : (
@@ -808,7 +962,9 @@ export default function MemorizePage() {
           <article className="card">
             <h2>Passage progress</h2>
             {passages.length === 0 ? (
-              <p className="muted">No saved passages yet.</p>
+              <p className="muted">
+                {isGuest ? "No temporary passages yet." : "No saved passages yet."}
+              </p>
             ) : (
               <div className="memorizeProgressList">
                 {passages.map((passage) => (
@@ -862,9 +1018,9 @@ export default function MemorizePage() {
             <div>
               <h2>Suggested next passages</h2>
               <p className="muted">
-                AI-assisted suggestions are verified against your selected Bible
-                edition and cached for your current saved set. Adding or removing
-                a passage makes the cache stale; practice scores do not.
+                {isGuest
+                  ? "Choose from a few curated starters. Sign in for personalized suggestions based on your saved passages."
+                  : "AI-assisted suggestions are verified against your selected Bible edition and cached for your current saved set. Adding or removing a passage makes the cache stale; practice scores do not."}
               </p>
             </div>
             <button
@@ -875,10 +1031,16 @@ export default function MemorizePage() {
               {isRecommending
                 ? "Finding passages..."
                 : recommendations
-                  ? "Suggestions cached"
-                  : recommendationsStale
-                    ? "Update suggestions"
-                    : "Suggest next passages"}
+                  ? isGuest
+                    ? "Starters shown"
+                    : "Suggestions cached"
+                  : isGuest
+                    ? recommendationsStale
+                      ? "Refresh starter passages"
+                      : "Show starter passages"
+                    : recommendationsStale
+                      ? "Update suggestions"
+                      : "Suggest next passages"}
             </button>
 
             {recommendations ? (
